@@ -47,6 +47,7 @@ Erste Gegnertypen für den Prototyp (Namen im Fabrikthema sind Vorschlag):
 - Kein Kontaktschaden: Gegner verletzen nur über Angriffs-Hitboxen (Schlag, Projektil), nicht durch Berühren
 - Kein Gegner blockiert die Spieler, auch nicht Brutes, Elites und Bosse. Man bewegt sich frei durch alle Gegner
 - Der Dash (Iframes) dient dazu, große Angriffsbereiche und Projektile zu durchqueren. Bei großen Gegnern muss man ab und zu durch ihren Angriffsbereich hindurch
+- Nach einem Treffer hat der Spieler kurz Unverwundbarkeit (Iframes, Startwert Vorschlag 0,6 bis 1 Sekunde, mit Blinken). Zusätzlich hat der Dash eigene Iframes
 - Folge: Nahkampf-Gegner brauchen echte Angriffsanimationen mit Vorwarnung, nicht nur Berührung
 - Gefahr: Hunderte Nahkämpfer in einem Haufen greifen gleichzeitig an. Lösung (Vorschlag): Angriffs-Cooldowns und begrenzte Zahl gleichzeitiger Angreifer
 
@@ -144,6 +145,9 @@ Alle starten mit demselben Grundkit, unterscheiden sich in Hauptangriff, Klassen
 ### Getränkeautomat auf Panzerketten
 - Archetyp: tanky, Flächenschaden (AoE), langsam
 - Wirft Dosen im Bogen, geschüttelte Dosen explodieren
+- Walze: Mit genug Beschleunigung wird er zur Walze. Dann verursacht er Schaden durch Kontakt (er ist die Ausnahme vom Kein-Kontaktschaden-Prinzip, aber nur gegen Gegner) und hat etwas Rüstung gegen Nahkampftreffer
+- Walze baut Tempo über Anlauf auf, Richtungswechsel kostet Tempo (Vorschlag, damit er trotz Walze langsam bleibt)
+- Raupenboost-Firmware ist der Startknopf der Walze (Vorschlag)
 
 ### 3D-Drucker
 - Archetyp: Schwarm, viele Pfade, Utility
