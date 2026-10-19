@@ -64,6 +64,8 @@ Zwei getrennte Systeme, beide liefern Skills und Buffs.
 
 ## Elemente und Synergien
 
+Elemente kommen über Module in Waffen (siehe Waffen und Waffenrad), nicht über Klassen oder ein Rad.
+
 Vier Elemente: Feuer, Wasser, Eis, Blitz. Status liegen auf dem Gegner, egal welcher Spieler sie gesetzt hat (Vorschlag):
 
 | Kombination | Wirkung |
@@ -72,6 +74,16 @@ Vier Elemente: Feuer, Wasser, Eis, Blitz. Status liegen auf dem Gegner, egal wel
 | Wasser + Eis | gefroren, Gegner steht still |
 | Wasser + Feuer | Dampfexplosion |
 | Feuer + Eis | schmilzt, hebt beides auf |
+
+## Waffen und Waffenrad
+
+- Jeder Spieler hat mehrere Waffen und wählt sie über ein Waffenrad (wie in GTA)
+- Das Klassenwerkzeug (Geschütz, Dosenwerfer, Drohnendrucker, Saugkegel) bleibt die Basis jeder Klasse
+- Weitere Waffen werden im Shop gekauft und liegen im Rad
+- Elemente werden nicht im Rad gewechselt. Waffen sind neutral, Elementmodule werden im Shop in eine Waffe eingebaut
+- Im Kampf wechselt man nur die Waffe, der Elementbuild bleibt eine bewusste Shop-Entscheidung
+- Steuerung: D-Pad oder Schultertasten, da der rechte Stick zum Zielen belegt ist (Vorschlag)
+- Items: Allgemeine Stats (Schaden, Tempo) gelten global, Element-Items hängen am Modul (Vorschlag)
 
 ## Items und Stacking
 
@@ -162,6 +174,9 @@ Bosse sind nicht alle gleich. Neben Bullet-Hell-Musterbossen gibt es Umwelt-Boss
 - Offen: Treffen Flächenschaden und Drohnen die Schwachpunkte automatisch, oder müssen Spieler zielen?
 
 ## Offene Fragen
+
+- Waffenrad: Wie viele Slots, welche Waffentypen, wie viele Modul-Slots pro Waffe
+- Wie fügt sich das Klassenwerkzeug (z.B. Saugkegel) in das Waffenrad ein
 
 - Steuerungsbelegung auf dem PS5-Controller (Saugen, Dash, Klassenfähigkeit)
 - Dauer der Kopie beim Roomba: Zeit oder Ladungen
