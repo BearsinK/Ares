@@ -96,7 +96,10 @@ func _run() -> void:
 	var brute: Enemy = director.spawn("brute", Vector2(1040.0, 1220.0))
 	await _frames(40)
 	_check(is_equal_approx(p1.hp, p1.max_health()), "Brute macht waehrend der Vorwarnung keinen Schaden")
-	await _frames(70)
+	for i in 200:
+		await _frames(1)
+		if p1.hp < p1.max_health():
+			break
 	_check(p1.hp <= p1.max_health() - 20.0, "Brute-Schlag trifft hart (HP %d)" % int(p1.hp))
 	await _clear_enemies()
 

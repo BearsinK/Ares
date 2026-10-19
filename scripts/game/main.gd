@@ -33,6 +33,8 @@ var hud: Hud
 var director: Director
 var projectiles: Node2D
 var enemy_projectiles: Node2D
+var pickups: Node2D
+var levelup_menu: LevelUpMenu
 
 var level := 1
 var xp := 0
@@ -52,6 +54,8 @@ func _ready() -> void:
 	add_child(projectiles)
 	enemy_projectiles = Node2D.new()
 	add_child(enemy_projectiles)
+	pickups = Node2D.new()
+	add_child(pickups)
 	fx = Fx.new()
 	add_child(fx)
 	_spawn_players()
@@ -59,6 +63,9 @@ func _ready() -> void:
 	_setup_director()
 	if use_dummies:
 		_spawn_dummies()
+	levelup_menu = LevelUpMenu.new()
+	levelup_menu.chosen.connect(_on_perk_chosen)
+	add_child(levelup_menu)
 	hud = Hud.new()
 	hud.main = self
 	add_child(hud)
@@ -66,6 +73,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_check_level_up()
 	for entry in _respawns:
 		entry.t -= delta
 		if entry.t <= 0.0:
@@ -154,8 +162,53 @@ func _on_enemy_spawned(enemy: Enemy) -> void:
 	enemy.died.connect(_on_enemy_died)
 
 
-func _on_enemy_died(_enemy: Enemy) -> void:
+func _on_enemy_died(enemy: Enemy) -> void:
 	kills += 1
+	var info: Dictionary = enemy.data
+	_spawn_pickup("xp", int(info.xp), enemy.global_position)
+	var gold_value := 1 + int(director.time / 90.0)
+	var coins := int(float(info.gold_chance)) + (1 if randf() < fmod(float(info.gold_chance), 1.0) else 0)
+	for i in coins:
+		_spawn_pickup("gold", gold_value, enemy.global_position)
+
+
+func _spawn_pickup(kind: String, value: int, pos: Vector2) -> void:
+	if pickups.get_child_count() > 150:
+		# Zu viele Objekte: Wert direkt gutschreiben statt ein weiteres zu erzeugen.
+		if kind == "xp":
+			xp += value
+		return
+	var pickup := Pickup.new()
+	pickup.kind = kind
+	pickup.value = value
+	pickup.players = players
+	pickup.floor_y = FLOOR_Y
+	pickup.position = pos
+	pickup.collected.connect(_on_pickup_collected)
+	pickups.add_child(pickup)
+
+
+func _on_pickup_collected(pickup: Pickup, player: Player) -> void:
+	if pickup.kind == "xp":
+		xp += pickup.value
+		Sfx.play("pickup")
+	else:
+		player.gold += maxi(1, int(round(pickup.value * (1.0 + float(player.mods.gold)))))
+		Sfx.play("coin")
+
+
+func _check_level_up() -> void:
+	if game_over or levelup_menu.is_open or xp < xp_needed:
+		return
+	xp -= xp_needed
+	level += 1
+	xp_needed = 10 + 6 * (level - 1) + 2 * (level - 1) * (level - 1)
+	levelup_menu.open(players, Perks.random_ids(3), level)
+
+
+func _on_perk_chosen(perk_id: String) -> void:
+	for player in players:
+		player.add_mods(Perks.mods_for(perk_id, player.class_id))
 
 
 func _on_enemy_projectile_requested(_enemy: Enemy, origin: Vector2, direction: Vector2, speed: float, damage: float) -> void:
