@@ -1,6 +1,6 @@
 # Ares: Design-Zusammenfassung
 
-Stand: Planungsphase, noch kein Code. Alles hier ist ein Entwurf und kann sich ändern.
+Stand: Prototyp läuft (siehe Abschnitt Umsetzungsstand am Ende). Alles hier ist ein Entwurf und kann sich ändern.
 Markiert mit (Vorschlag) ist, was noch nicht bestätigt wurde.
 
 ## Eckdaten
@@ -245,3 +245,22 @@ Bosse sind nicht alle gleich. Neben Bullet-Hell-Musterbossen gibt es Umwelt-Boss
 - Name und Optik des Golds im Setting
 - Wie genau Bodengegner auf Plattformen navigieren
 - Welche zwei Klassen im Prototyp: Vorschlag Roomba und Hexapod, noch nicht bestätigt
+
+## Umsetzungsstand (Prototyp)
+
+Umgesetzt und automatisch getestet:
+- Bewegung (Laufen, variabler Sprung, Dash mit Iframes und Momentum), 2 Spieler, Controller und Tastatur
+- Sechs Waffentypen mit Rückstoß, Screenshake, Sounds; Waffenwechsel per Taste (bis 3 Waffen)
+- Elementmodule und Status (nass, brennend, verlangsamt, eingefroren) mit den vier Kombos; Coop-Bonus bei Status von einem und Auslöser von anderem Spieler
+- Vier Gegnertypen ohne Kontaktschaden, Angriffe mit Vorwarnung; Director mit steigender Menge und Stärke
+- Spieler-Leben, Iframes nach Treffer, Wiederbeleben durch Halten, Game Over
+- XP und Gold als Pickups, Level-Ups mit gemeinsamer Team-Perk-Wahl (klassenabhängige Wirkung)
+- Wellen mit Zeitlimit und Shop (Buffs, Module, Waffen, Firmware, Reroll), Sieg-Bildschirm
+- Bewegungs-Firmware: Doppelsprung, Wandsprung, Gleiten, Bodenstoß, Greifhaken, Dash-Ladungen; durchlässige Plattformen
+
+Noch offen:
+- Klassenfähigkeiten (L2) und die Klassenmechaniken von Roomba (Müll saugen), Automat (Walze), Drucker (Drohnen), Hexapod (Geschützmodus)
+- Bosse (Bullet-Hell, Elementschwäche, Schwachpunkte, Laufband-Ofen), Elites mit Element und Mechanik
+- Item-System mit Procs und Stacking, Team-Items (Kabelbaum u.a.)
+- Perma-Progression und Meta-Menü, Klassenauswahl, Optik (LCD-Gesichter, Assets)
+- Balancing durch Spieltests
