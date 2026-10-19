@@ -20,13 +20,25 @@ Markiert mit (Vorschlag) ist, was noch nicht bestätigt wurde.
 
 - Roboter, die sich Upgrades kaufen und per Firmware neue Skills lernen
 - Humor und lustige Details kommen später
-- Story-Rahmen: Die Roboter (Haushaltsgeräte und Maschinen) werden durch Wackelaugen (Googly Eyes) lebendig. Der Rest der Fabrik versucht, sie auszuschalten
+- Story-Rahmen: Die Roboter (Haushaltsgeräte und Maschinen) werden lebendig. Wie, ist offen: Wackelaugen oder LCD-Gesichter (Referenz: Roboter mit Display-Gesichtern aus leuchtenden Augen und Lächeln). Der Rest der Fabrik versucht, sie auszuschalten
 - Gegner: Sicherheitsbots, Förderband-Roboter, Drohnen, Qualitätskontrolle (Vorschlag)
 - Bosse: Fabrikbereiche und ihre Wächter, z.B. Presse, Schweißarm, Kühlanlage, Serverraum, am Ende die Fabrik-KI oder der Chef (Vorschlag)
-- Item-Idee: Firmware-Updates, Wackelaugen als Perma-Währung (Vorschlag)
+- Item-Idee: Firmware-Updates, Perma-Währung (Name offen, z.B. Gesichts-Chips oder Wackelaugen)
 - Ton: bunt und humorvoll
 - Optik: Platzhalter aus Formen und Farben. Wer was ist, zeigt Form und Spielerfarbe
 - Keine echten Marken oder Logos, nur erfundene
+
+## Gegner
+
+Erste Gegnertypen für den Prototyp (Namen im Fabrikthema sind Vorschlag):
+
+1. **Läufer:** läuft auf die Spieler zu und greift im Nahkampf an. Die Masse
+2. **Schütze:** hält Abstand, zielt und schießt Projektile
+3. **Flieger:** wie der Schütze, aber fliegt frei und ist beweglicher
+4. **Brute:** tanky Nahkämpfer mit hohem Schaden und wenigen starken Angriffen, denen man ausweichen muss (klares Vorzeichen vor dem Schlag)
+5. **Bosse:** siehe Boss-Typen
+
+Offen: Ist der Brute für den Roomba saugbar (z.B. nur Elite-Version oder nie)?
 
 ## Run-Struktur
 
@@ -58,7 +70,7 @@ Zwei getrennte Systeme, beide liefern Skills und Buffs.
 - Bezeichnung des Golds im Setting: z.B. Schrott oder Chips (Vorschlag)
 
 **Perma-Progression**
-- Ausgabe der Wackelaugen in einem einfachen Menü zwischen den Runs (Hub später möglich)
+- Ausgabe der Perma-Währung in einem einfachen Menü zwischen den Runs (Hub später möglich)
 - Neue Items und Firmware werden freigeschaltet (Pool wächst durch Erfolge)
 - Passive Dauer-Buffs
 - Manche Upgrades sind schon am Start eines Runs vorhanden. Damit Klassen weiter gleich anfangen, bleibt das klein (Vorschlag: ein Item aus drei zur Wahl)
