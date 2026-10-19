@@ -33,12 +33,14 @@ Markiert mit (Vorschlag) ist, was noch nicht bestätigt wurde.
 Erste Gegnertypen für den Prototyp (Namen im Fabrikthema sind Vorschlag):
 
 1. **Läufer:** läuft auf die Spieler zu und greift im Nahkampf an. Die Masse
-2. **Schütze:** hält Abstand, zielt und schießt Projektile
+2. **Schütze:** hält Abstand, zielt und schießt Projektile. Kurz vor dem Schuss zeigt er die Schusslinie an (Telegraph), damit man ausweichen kann
 3. **Flieger:** wie der Schütze, aber fliegt frei und ist beweglicher
 4. **Brute:** tanky Nahkämpfer mit hohem Schaden und wenigen starken Angriffen, denen man ausweichen muss (klares Vorzeichen vor dem Schlag)
 5. **Bosse:** siehe Boss-Typen
 
-Offen: Ist der Brute für den Roomba saugbar (z.B. nur Elite-Version oder nie)?
+- Der Brute ist für den Roomba nicht saugbar
+- Elites sind keine reinen Stat-Boosts, sondern bekommen ein Element und eine Mechanik (z.B. brennend, geladen, schildtragend)
+- Offen: Haben Gegner Elementschwächen, sind Elites saugbar
 
 ## Run-Struktur
 
