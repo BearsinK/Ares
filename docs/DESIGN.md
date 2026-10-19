@@ -138,6 +138,29 @@ Alle starten mit demselben Grundkit, unterscheiden sich in Hauptangriff, Klassen
 - Upgrade-Pfade (Firmware): Konter (Projektile als Salve zurück), Medic (Eingesaugtes heilt den Partner), Wirtschaft (Magnet, Beute-Boost, Gold klauen), mehr Behälter-Slots
 - Risiko: braucht viele gute Kopien, Basisangriff muss stark genug sein
 
+## Controller-Belegung (PS5 DualSense, Vorschlag bestätigt)
+
+Beide Daumen liegen auf den Sticks, deshalb liegen zeitkritische Aktionen auf den Schultertasten.
+
+| Taste | Aktion |
+|---|---|
+| Linker Stick | Bewegen. Stick nach unten plus Sprung in der Luft: Bodenstoß (Firmware) |
+| Rechter Stick | Zielen, 360 Grad |
+| L1 | Sprung (Doppelsprung, Wandsprung per erneutem Druck) |
+| R1 | Dash |
+| R2 | Hauptangriff halten (Dauerfeuer) |
+| L2 | Klassenfähigkeit (Saugen, Geschütz-Modus, Dose, Drucker) |
+| Quadrat | Greifhaken (Firmware) |
+| Dreieck | Waffe rotieren |
+| Kreis | Interagieren, Wiederbeleben halten |
+| Kreuz | Bestätigen im Menü, im Spiel frei |
+| D-Pad | Ping und Emotes |
+| Options | Pause |
+| Touchpad | Item- und Build-Übersicht |
+
+- Aim-Gedächtnis: Die letzte Zielrichtung bleibt etwa 0,25 Sekunden erhalten, wenn der Daumen für eine Face-Taste den Zielstick verlässt
+- Alle Belegungen frei umstellbar, Sprung auf Kreuz als Alternative
+
 ## Coop
 
 - Synergien zwischen Spielern über Elemente auf Gegnern
