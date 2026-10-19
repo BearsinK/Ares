@@ -82,6 +82,8 @@ Vier Elemente: Feuer, Wasser, Eis, Blitz. Status liegen auf dem Gegner, egal wel
 - Weitere Waffen werden im Shop gekauft und liegen im Rad
 - Elemente werden nicht im Rad gewechselt. Waffen sind neutral, Elementmodule werden im Shop in eine Waffe eingebaut
 - Im Kampf wechselt man nur die Waffe, der Elementbuild bleibt eine bewusste Shop-Entscheidung
+- Maximal ein Modul pro Waffe (Tendenz, damit Coop-Synergien zwischen den Spielern wichtiger bleiben als Solo-Kombos). Zweiter Modul-Slot höchstens als seltene Belohnung (Vorschlag)
+- Risiko: Mit mehreren Waffen im Rad kann ein Spieler Elemente selbst kombinieren, indem er die Waffe wechselt. Gegenmittel: Radgröße begrenzen (Vorschlag: 3 Slots) und Statuseffekte so tunen, dass Coop-Kombos deutlich stärker sind
 - Steuerung: D-Pad oder Schultertasten, da der rechte Stick zum Zielen belegt ist (Vorschlag)
 - Items: Allgemeine Stats (Schaden, Tempo) gelten global, Element-Items hängen am Modul (Vorschlag)
 
@@ -175,7 +177,7 @@ Bosse sind nicht alle gleich. Neben Bullet-Hell-Musterbossen gibt es Umwelt-Boss
 
 ## Offene Fragen
 
-- Waffenrad: Wie viele Slots, welche Waffentypen, wie viele Modul-Slots pro Waffe
+- Waffenrad: Wie viele Slots (Vorschlag 3), welche Waffentypen
 - Wie fügt sich das Klassenwerkzeug (z.B. Saugkegel) in das Waffenrad ein
 
 - Steuerungsbelegung auf dem PS5-Controller (Saugen, Dash, Klassenfähigkeit)
