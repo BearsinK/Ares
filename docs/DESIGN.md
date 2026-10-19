@@ -9,6 +9,10 @@ Markiert mit (Vorschlag) ist, was noch nicht bestätigt wurde.
 - Engine: Godot 4 (GDScript), läuft lokal, kein Browser
 - Erst 2D Seitenansicht (Action-Plattformer). 3D wäre später reizvoll, Spiellogik soll deshalb getrennt von Darstellung und Steuerung bleiben
 - Roguelike mit Runs und Perma-Progression zwischen den Runs
+- Nur 2 Spieler, kein Solo-Modus
+- Zielen mit dem rechten Stick, frei in 360 Grad
+- Kein Friendly Fire, Spieler laufen durcheinander
+- Eine feste Schwierigkeit, Balancing später
 - Fokus: Upgrades, Elemente, Synergien, Chaos durch Stacking (Risk of Rain 2 als Vorbild)
 
 ## Setting
@@ -20,7 +24,8 @@ Markiert mit (Vorschlag) ist, was noch nicht bestätigt wurde.
 
 ## Run-Struktur
 
-- Wellen im Wechsel mit Shop-Pause
+- Ein Run dauert etwa 40 bis 60 Minuten
+- Etwa 10 Wellen à 3 bis 5 Minuten im Wechsel mit Shop-Pause, Boss alle paar Wellen
 - Gegner spawnen nach und nach über einen Director (Punktesystem wie in Risk of Rain), nicht alle auf einmal
 - Schwierigkeit steigt kontinuierlich mit der Zeit
 - Viele Gegner, wenig Typen: 4 bis 6 Typen plus Elites und Boss
@@ -42,7 +47,10 @@ Zwei getrennte Systeme, beide liefern Skills und Buffs.
 - Bezeichnung des Golds im Setting: z.B. Schrott oder Chips (Vorschlag)
 
 **Perma-Progression**
-- Freischaltungen zwischen Runs (Klassen, Items, Firmware). Umfang offen
+- Neue Items und Firmware werden freigeschaltet (Pool wächst durch Erfolge)
+- Passive Dauer-Buffs
+- Manche Upgrades sind schon am Start eines Runs vorhanden. Damit Klassen weiter gleich anfangen, bleibt das klein (Vorschlag: ein Item aus drei zur Wahl)
+- Alle vier Klassen sind von Anfang an spielbar
 
 ## Elemente und Synergien
 
@@ -104,7 +112,9 @@ Alle starten mit demselben Grundkit, unterscheiden sich in Hauptangriff, Klassen
 ## Coop
 
 - Synergien zwischen Spielern über Elemente auf Gegnern
-- Wiederbeleben durch Halten in der Nähe des gefallenen Partners, beide down ist Game Over
+- Gefallener Spieler liegt am Boden, der Partner belebt ihn durch Halten in der Nähe wieder
+- Beide gleichzeitig am Boden ist Game Over
+- Am Wellenende steht jeder automatisch wieder auf (Vorschlag)
 - Team-Items und Team-Perks mit spielerspezifischen Effekten
 
 ## Karte
@@ -124,7 +134,7 @@ Alle starten mit demselben Grundkit, unterscheiden sich in Hauptangriff, Klassen
 
 - Steuerungsbelegung auf dem PS5-Controller (Saugen, Dash, Klassenfähigkeit)
 - Dauer der Kopie beim Roomba: Zeit oder Ladungen
-- Wie groß ist die Perma-Progression
+- Umfang der Perma-Progression und was genau Freischaltungen auslöst
 - Name und Optik des Golds im Setting
 - Wie genau Bodengegner auf Plattformen navigieren
 - Welche zwei Klassen im Prototyp: Vorschlag Roomba und Hexapod, noch nicht bestätigt
