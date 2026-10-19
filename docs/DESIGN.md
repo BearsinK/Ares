@@ -10,6 +10,7 @@ Markiert mit (Vorschlag) ist, was noch nicht bestätigt wurde.
 - Erst 2D Seitenansicht (Action-Plattformer). 3D wäre später reizvoll, Spiellogik soll deshalb getrennt von Darstellung und Steuerung bleiben
 - Roguelike mit Runs und Perma-Progression zwischen den Runs
 - Nur 2 Spieler, kein Solo-Modus
+- Privates Projekt nur zum Spaß, keine Veröffentlichung geplant (Lizenzen und Marken weniger kritisch, trotzdem keine echten Logos)
 - Zielen mit dem rechten Stick, frei in 360 Grad
 - Kein Friendly Fire, Spieler laufen durcheinander
 - Eine feste Schwierigkeit, Balancing später
@@ -57,6 +58,7 @@ Zwei getrennte Systeme, beide liefern Skills und Buffs.
 - Bezeichnung des Golds im Setting: z.B. Schrott oder Chips (Vorschlag)
 
 **Perma-Progression**
+- Ausgabe der Wackelaugen in einem einfachen Menü zwischen den Runs (Hub später möglich)
 - Neue Items und Firmware werden freigeschaltet (Pool wächst durch Erfolge)
 - Passive Dauer-Buffs
 - Manche Upgrades sind schon am Start eines Runs vorhanden. Damit Klassen weiter gleich anfangen, bleibt das klein (Vorschlag: ein Item aus drei zur Wahl)
@@ -85,6 +87,7 @@ Vier Elemente: Feuer, Wasser, Eis, Blitz. Status liegen auf dem Gegner, egal wel
 - Statt eines Waffenrads gibt es einen Rotate-Button: Waffe 1, dann 2, dann 3, dann wieder 1
 - Das Klassenwerkzeug (Geschütz, Dosenwerfer, Drohnendrucker, Saugkegel) bleibt die Basis jeder Klasse
 - Weitere Waffen werden im Shop gekauft und liegen im Rad
+- Waffentypen: Schnellfeuer, Schrot, Raketen und Granaten, Strahlwaffen (Laser, Flammenwerfer), Präzisionswaffe (Sniper)
 - Elemente werden nicht im Rad gewechselt. Waffen sind neutral, Elementmodule werden im Shop in eine Waffe eingebaut
 - Im Kampf wechselt man nur die Waffe, der Elementbuild bleibt eine bewusste Shop-Entscheidung
 - Maximal ein Modul pro Waffe (Tendenz, damit Coop-Synergien zwischen den Spielern wichtiger bleiben als Solo-Kombos). Zweiter Modul-Slot höchstens als seltene Belohnung (Vorschlag)
@@ -173,6 +176,8 @@ Beide Daumen liegen auf den Sticks, deshalb liegen zeitkritische Aktionen auf de
 
 - Hybrid aus mehreren handgebauten Arenen mit Variationen (Vorschlag)
 - Prototyp: eine Arena, etwa 2 Bildschirme breit und 1,5 hoch, Kamera zeigt beide Spieler
+- Kamera folgt beiden mit Zoom, harte Maximaldistanz zwischen den Spielern
+- Boss-Arenen können davon abweichen (z.B. scrollender Laufband-Boss)
 - Geometrie für jede Bewegungsoption: versetzte Plattformen, hohe Schächte, Lücken, Decken-Anker
 - Jede Karte muss ohne Bewegungs-Firmware spielbar sein, Firmware gibt Abkürzungen und Belohnungen
 
@@ -205,7 +210,6 @@ Bosse sind nicht alle gleich. Neben Bullet-Hell-Musterbossen gibt es Umwelt-Boss
 
 ## Offene Fragen
 
-- Welche Waffentypen gibt es
 - Genauer Wert für Statusdauer und Coop-Bonus, später beim Testen
 - Wie fügt sich das Klassenwerkzeug (z.B. Saugkegel) in das Waffenrad ein
 
