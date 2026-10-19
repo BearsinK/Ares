@@ -1,13 +1,17 @@
 class_name TestDummy
 extends Area2D
-## Uebungspuppe zum Testen von Schuss und Schaden. Spaeter durch echte
-## Gegner ersetzt.
+## Uebungspuppe zum Testen von Schuss und Schaden. Stirbt bei 0 Leben und
+## meldet das ueber das Signal died, damit die Hauptszene sie ersetzen kann.
+## Spaeter durch echte Gegner ersetzt.
+
+signal died(spawn_position: Vector2)
 
 var max_health := 500.0
 var health := 500.0
 var half_size := Vector2(25.0, 40.0)
 
 var _flash := 0.0
+var _dead := false
 
 
 func _ready() -> void:
@@ -27,12 +31,43 @@ func _process(delta: float) -> void:
 
 
 func take_damage(amount: float, _source: Node) -> void:
+	if _dead:
+		return
 	health -= amount
 	_flash = 0.08
 	_spawn_number(amount)
+	Sfx.play("hit")
 	if health <= 0.0:
-		health = max_health
+		_die()
 	queue_redraw()
+
+
+func _die() -> void:
+	_dead = true
+	Sfx.play("kill")
+	_spawn_burst()
+	died.emit(position)
+	queue_free()
+
+
+func _spawn_burst() -> void:
+	var burst := CPUParticles2D.new()
+	burst.position = position
+	burst.emitting = true
+	burst.one_shot = true
+	burst.explosiveness = 1.0
+	burst.amount = 24
+	burst.lifetime = 0.6
+	burst.spread = 180.0
+	burst.initial_velocity_min = 150.0
+	burst.initial_velocity_max = 400.0
+	burst.gravity = Vector2(0.0, 900.0)
+	burst.scale_amount_min = 3.0
+	burst.scale_amount_max = 6.0
+	burst.color = Color(1.0, 0.4, 0.4)
+	get_parent().add_child(burst)
+	var timer := burst.get_tree().create_timer(1.0)
+	timer.timeout.connect(burst.queue_free)
 
 
 func _spawn_number(amount: float) -> void:

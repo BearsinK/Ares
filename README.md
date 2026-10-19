@@ -43,7 +43,16 @@ Welche Klassen gespielt werden, steht in `scripts/game/main.gd` (`PLAYER_CLASSES
 ## Automatischer Test
 
 ```
-godot --headless --path . --script res://tests/smoke_test.gd
+godot --headless --path . res://tests/smoke_test.tscn
 ```
 
 Der Test simuliert Eingaben und prüft Laufen, Sprung, Dash, Schuss und die Hexapod-Regel.
+
+## Controller wird nicht erkannt
+
+Oben links im Spiel steht, welche Controller Godot sieht und welcher Input zuletzt ankam. Wenn dort "Kein Controller erkannt" steht:
+
+1. Controller per USB-Kabel anschließen (ein Datenkabel, nicht nur Ladekabel) und alle anderen Programme schließen, die Controller übernehmen: Steam, DS4Windows, Playstation-Remote-Play.
+2. In Windows "Gamecontroller einrichten" öffnen (Windows-Suche). Dort muss "Wireless Controller" oder "DualSense" auftauchen. Wenn nicht, liegt es an Windows oder dem Kabel.
+3. Bei Bluetooth: Controller zuerst in den Windows-Bluetooth-Einstellungen koppeln (PS-Taste und Share-Taste gedrückt halten, bis das Licht blinkt).
+4. Godot nach dem Anschließen neu starten.

@@ -1,21 +1,21 @@
-extends SceneTree
+extends Node
 ## Automatischer Smoke-Test: startet die Hauptszene, simuliert Eingaben und
 ## prueft Bewegung, Sprung, Dash, Schuss und die Hexapod-Regel.
-## Ausfuehren: godot --headless --path . --script res://tests/smoke_test.gd
+## Ausfuehren: godot --headless --path . res://tests/smoke_test.tscn
 
 var main: Node
 var failures := 0
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	main = load("res://scenes/main.tscn").instantiate()
-	root.add_child(main)
+	add_child(main)
 	_run.call_deferred()
 
 
 func _frames(count: int) -> void:
 	for i in count:
-		await physics_frame
+		await get_tree().physics_frame
 
 
 func _check(condition: bool, message: String) -> void:
@@ -96,5 +96,24 @@ func _run() -> void:
 	Input.action_release("p2_fire")
 	_check(shots[0] >= 1, "Hexapod schiesst im Stand (Schuesse: %d)" % shots[0])
 
+	# Puppe stirbt, verschwindet und kommt nach der Wartezeit zurueck
+	var dummy_count := 0
+	for child in main.get_children():
+		if child is TestDummy:
+			dummy_count += 1
+	dummy.take_damage(100000.0, p1)
+	await _frames(2)
+	var after_death := 0
+	for child in main.get_children():
+		if child is TestDummy:
+			after_death += 1
+	_check(after_death == dummy_count - 1, "Tote Puppe verschwindet (%d -> %d)" % [dummy_count, after_death])
+	await _frames(int(main.DUMMY_RESPAWN_TIME * 60.0) + 10)
+	var after_respawn := 0
+	for child in main.get_children():
+		if child is TestDummy:
+			after_respawn += 1
+	_check(after_respawn == dummy_count, "Puppe kommt zurueck (%d)" % after_respawn)
+
 	print("Fertig, Fehler: ", failures)
-	quit(failures)
+	get_tree().quit(failures)

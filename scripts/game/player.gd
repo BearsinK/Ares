@@ -154,10 +154,12 @@ func _process_movement(delta: float, move: float) -> void:
 			velocity.y = -stats.jump_speed
 			_jump_buffer = 0.0
 			_coyote = 0.0
+			Sfx.play("jump")
 		elif _air_jumps_left > 0:
 			velocity.y = -stats.jump_speed
 			_jump_buffer = 0.0
 			_air_jumps_left -= 1
+			Sfx.play("jump")
 
 
 func _try_dash() -> void:
@@ -172,6 +174,7 @@ func _try_dash() -> void:
 	_dash_time_left = DASH_TIME
 	dash_charges -= 1
 	iframes = maxf(iframes, DASH_IFRAMES)
+	Sfx.play("dash")
 
 
 func _process_dash(delta: float) -> void:
@@ -200,6 +203,7 @@ func _handle_fire(_delta: float) -> void:
 		return
 	_fire_cooldown = 1.0 / stats.fire_rate
 	var origin: Vector2 = global_position + aim_dir * (float(stats.radius) + 6.0)
+	Sfx.play("shoot_heavy" if float(stats.damage) > 20.0 else "shoot")
 	fired.emit(origin, aim_dir, stats.damage, self)
 
 

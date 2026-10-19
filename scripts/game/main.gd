@@ -16,6 +16,10 @@ var camera: CoopCamera
 var hud_label: Label
 var projectiles: Node2D
 
+const DUMMY_RESPAWN_TIME := 4.0
+var _respawns: Array[Dictionary] = []
+var _last_pad_event := "-"
+
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(BG_COLOR)
@@ -26,10 +30,31 @@ func _ready() -> void:
 	_spawn_players()
 	_setup_camera()
 	_build_hud()
+	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 
 
 func _process(_delta: float) -> void:
 	_update_hud()
+
+
+func _physics_process(delta: float) -> void:
+	for entry in _respawns:
+		entry.t -= delta
+		if entry.t <= 0.0:
+			_spawn_dummy(entry.pos)
+	_respawns = _respawns.filter(func(entry: Dictionary) -> bool: return entry.t > 0.0)
+
+
+func _input(event: InputEvent) -> void:
+	# Diagnose: zeigt im HUD, welcher Controller-Input zuletzt ankam.
+	if event is InputEventJoypadButton and event.pressed:
+		_last_pad_event = "Controller %d Taste %d" % [event.device, event.button_index]
+	elif event is InputEventJoypadMotion and absf(event.axis_value) > 0.5:
+		_last_pad_event = "Controller %d Achse %d (%.1f)" % [event.device, event.axis, event.axis_value]
+
+
+func _on_joy_connection_changed(device: int, connected: bool) -> void:
+	print("Controller %d %s: %s" % [device, "verbunden" if connected else "getrennt", Input.get_joy_name(device)])
 
 
 func _build_arena() -> void:
@@ -91,9 +116,18 @@ func _spawn_players() -> void:
 
 func _spawn_dummies() -> void:
 	for x in [1300.0, 1900.0, 2400.0]:
-		var dummy := TestDummy.new()
-		dummy.position = Vector2(x, FLOOR_Y - 40.0)
-		add_child(dummy)
+		_spawn_dummy(Vector2(x, FLOOR_Y - 40.0))
+
+
+func _spawn_dummy(pos: Vector2) -> void:
+	var dummy := TestDummy.new()
+	dummy.position = pos
+	dummy.died.connect(_on_dummy_died)
+	add_child(dummy)
+
+
+func _on_dummy_died(pos: Vector2) -> void:
+	_respawns.append({"pos": pos, "t": DUMMY_RESPAWN_TIME})
 
 
 func _setup_camera() -> void:
@@ -138,5 +172,6 @@ func _update_hud() -> void:
 		lines.append("Kein Controller erkannt (Tastatur aktiv)")
 	for pad in pads:
 		lines.append("Controller %d: %s" % [pad, Input.get_joy_name(pad)])
+	lines.append("Letzter Controller-Input: %s" % _last_pad_event)
 	lines.append("FPS: %d" % Engine.get_frames_per_second())
 	hud_label.text = "\n".join(lines)
