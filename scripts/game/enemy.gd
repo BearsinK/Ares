@@ -48,7 +48,7 @@ func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_playe
 
 func _ready() -> void:
 	collision_layer = 0
-	collision_mask = 1 << 0
+	collision_mask = (1 << 0) | (1 << 5) if data.movement == "ground" else (1 << 0)
 	add_to_group("enemies")
 	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()

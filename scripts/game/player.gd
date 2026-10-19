@@ -8,6 +8,7 @@ signal fired(player: Player, weapon_id: String, origin: Vector2, direction: Vect
 signal hurt(player: Player, amount: float)
 signal went_down(player: Player)
 signal revived(player: Player)
+signal slam_landed(player: Player, position: Vector2)
 
 const GRAVITY := 2000.0
 const FALL_GRAVITY_MULT := 1.35
@@ -26,6 +27,17 @@ const TRAIL_LIFETIME := 0.25
 const HIT_IFRAMES := 0.8
 const REVIVE_TIME := 3.0
 const REVIVE_RANGE := 90.0
+const WALL_SLIDE_SPEED := 140.0
+const GLIDE_SPEED := 160.0
+const WALL_JUMP_PUSH := 520.0
+const WALL_LOCK_TIME := 0.18
+const SLAM_SPEED := 1600.0
+const HOOK_RANGE := 650.0
+const HOOK_SPEED := 1400.0
+const HOOK_COOLDOWN := 0.8
+const HOOK_MAX_TIME := 0.7
+const DROP_TIME := 0.25
+const WORLD_MASK := (1 << 0) | (1 << 5)
 
 var player_index := 1
 var class_id := "roomba"
@@ -43,6 +55,10 @@ var gold := 0
 var downed := false
 var revive_progress := 0.0
 var partner: Player = null
+# Bewegungs-Firmware: id -> Anzahl Stapel (siehe Firmware).
+var firmware: Dictionary = {}
+var hook_active := false
+var hook_anchor := Vector2.ZERO
 # Dauerhafte Boni aus Perks und Items (Anteile, ausser max_hp als fester Wert).
 var mods := {"damage": 0.0, "fire_rate": 0.0, "speed": 0.0, "max_hp": 0.0, "dmg_taken": 0.0,
 	"dash_cd": 0.0, "pickup": 0.0, "gold": 0.0}
@@ -60,6 +76,11 @@ var _aim_memory := 0.0
 var _mouse_timer := 0.0
 var _trail_timer := 0.0
 var _trail: Array[Dictionary] = []
+var _wall_lock := 0.0
+var _slamming := false
+var _hook_time := 0.0
+var _hook_cooldown := 0.0
+var _drop_time := 0.0
 
 
 func setup(index: int, new_class_id: String) -> void:
@@ -72,6 +93,18 @@ func setup(index: int, new_class_id: String) -> void:
 	for weapon_id in stats.weapons:
 		weapons.append(weapon_id)
 		modules.append("")
+
+
+func fw(firmware_id: String) -> int:
+	return int(firmware.get(firmware_id, 0))
+
+
+func add_firmware(firmware_id: String) -> void:
+	firmware[firmware_id] = fw(firmware_id) + 1
+
+
+func dash_max() -> int:
+	return int(stats.dash_charges) + fw("dash_charge")
 
 
 func max_health() -> float:
@@ -142,7 +175,7 @@ func _process_downed(delta: float) -> void:
 func _ready() -> void:
 	collision_layer = 1 << 1
 	# Spieler kollidieren nur mit der Welt, nicht mit Gegnern oder dem Partner.
-	collision_mask = 1 << 0
+	collision_mask = WORLD_MASK
 	floor_snap_length = 8.0
 	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
@@ -173,8 +206,15 @@ func _physics_process(delta: float) -> void:
 		_jump_buffer = JUMP_BUFFER_TIME
 	if Input.is_action_just_pressed(_prefix + "dash"):
 		_try_dash()
+	if Input.is_action_just_pressed(_prefix + "hook"):
+		if hook_active:
+			_release_hook()
+		else:
+			_try_hook()
 
-	if _dash_time_left > 0.0:
+	if hook_active:
+		_process_hook(delta)
+	elif _dash_time_left > 0.0:
 		_process_dash(delta)
 	else:
 		_process_movement(delta, move)
@@ -189,9 +229,13 @@ func _update_timers(delta: float) -> void:
 	_jump_buffer = maxf(0.0, _jump_buffer - delta)
 	_mouse_timer = maxf(0.0, _mouse_timer - delta)
 	_fire_cooldown = maxf(0.0, _fire_cooldown - delta)
+	_wall_lock = maxf(0.0, _wall_lock - delta)
+	_hook_cooldown = maxf(0.0, _hook_cooldown - delta)
+	_drop_time = maxf(0.0, _drop_time - delta)
+	collision_mask = (1 << 0) if _drop_time > 0.0 else WORLD_MASK
 	_switch_cooldown = maxf(0.0, _switch_cooldown - delta)
 
-	if dash_charges < stats.dash_charges:
+	if dash_charges < dash_max():
 		_dash_recharge += delta
 		if _dash_recharge >= float(stats.dash_cooldown) * (1.0 - float(mods.dash_cd)):
 			_dash_recharge = 0.0
@@ -226,33 +270,111 @@ func _update_aim(delta: float) -> void:
 
 func _process_movement(delta: float, move: float) -> void:
 	var on_floor := is_on_floor()
+	var down := Input.get_axis(_prefix + "up", _prefix + "down")
 	var accel: float = stats.accel if on_floor else stats.air_accel
-	velocity.x = move_toward(velocity.x, move * move_speed(), accel * delta)
+
+	if _slamming:
+		velocity.x = move_toward(velocity.x, 0.0, 2000.0 * delta)
+		velocity.y = SLAM_SPEED
+		if on_floor:
+			_slamming = false
+			slam_landed.emit(self, global_position + Vector2(0.0, float(stats.radius)))
+		return
+	if _wall_lock <= 0.0:
+		velocity.x = move_toward(velocity.x, move * move_speed(), accel * delta)
+
+	var on_wall := is_on_wall_only() and not on_floor
+	var wall_normal := get_wall_normal() if on_wall else Vector2.ZERO
+	var pushing_wall := on_wall and move != 0.0 and signf(move) == -signf(wall_normal.x)
+	var jump_held := Input.is_action_pressed(_prefix + "jump")
 
 	var gravity := GRAVITY
 	if velocity.y > 0.0:
 		gravity *= FALL_GRAVITY_MULT
-	elif velocity.y < 0.0 and not Input.is_action_pressed(_prefix + "jump"):
+	elif velocity.y < 0.0 and not jump_held:
 		gravity *= JUMP_CUT_GRAVITY_MULT
 	velocity.y = minf(velocity.y + gravity * delta, MAX_FALL_SPEED)
 
+	# Wandrutschen und Gleiten bremsen den Fall.
+	if velocity.y > 0.0:
+		if fw("wall_jump") > 0 and pushing_wall:
+			velocity.y = minf(velocity.y, WALL_SLIDE_SPEED)
+		elif fw("glide") > 0 and jump_held and not on_floor:
+			velocity.y = minf(velocity.y, GLIDE_SPEED)
+
 	if on_floor:
 		_coyote = COYOTE_TIME
-		_air_jumps_left = int(stats.get("air_jumps", 0))
+		_air_jumps_left = fw("double_jump")
 	else:
 		_coyote = maxf(0.0, _coyote - delta)
 
-	if _jump_buffer > 0.0:
-		if _coyote > 0.0:
-			velocity.y = -stats.jump_speed
-			_jump_buffer = 0.0
-			_coyote = 0.0
-			Sfx.play("jump")
-		elif _air_jumps_left > 0:
-			velocity.y = -stats.jump_speed
-			_jump_buffer = 0.0
-			_air_jumps_left -= 1
-			Sfx.play("jump")
+	if _jump_buffer <= 0.0:
+		return
+	if on_floor and down > 0.6 and _is_on_one_way():
+		# Nach unten durch eine Plattform fallen.
+		_drop_time = DROP_TIME
+		_jump_buffer = 0.0
+	elif not on_floor and down > 0.6 and fw("slam") > 0:
+		_slamming = true
+		_jump_buffer = 0.0
+		Sfx.play("slam")
+	elif _coyote > 0.0:
+		velocity.y = -stats.jump_speed
+		_jump_buffer = 0.0
+		_coyote = 0.0
+		Sfx.play("jump")
+	elif on_wall and fw("wall_jump") > 0:
+		velocity = Vector2(wall_normal.x * WALL_JUMP_PUSH, -float(stats.jump_speed) * 0.95)
+		facing = signf(wall_normal.x)
+		_wall_lock = WALL_LOCK_TIME
+		_jump_buffer = 0.0
+		Sfx.play("jump")
+	elif _air_jumps_left > 0:
+		velocity.y = -stats.jump_speed
+		_jump_buffer = 0.0
+		_air_jumps_left -= 1
+		Sfx.play("jump")
+
+
+## True, wenn der Spieler auf einer durchlaessigen Plattform steht.
+func _is_on_one_way() -> bool:
+	for i in get_slide_collision_count():
+		var collider := get_slide_collision(i).get_collider()
+		if collider is CollisionObject2D and (collider.collision_layer & (1 << 5)) != 0:
+			return true
+	return false
+
+
+func _try_hook() -> void:
+	if fw("hook") <= 0 or _hook_cooldown > 0.0 or _dash_time_left > 0.0:
+		return
+	var query := PhysicsRayQueryParameters2D.create(global_position, global_position + aim_dir * HOOK_RANGE, WORLD_MASK)
+	query.exclude = [get_rid()]
+	var result := get_world_2d().direct_space_state.intersect_ray(query)
+	if result.is_empty():
+		_hook_cooldown = 0.3
+		Sfx.play("switch")
+		return
+	hook_active = true
+	hook_anchor = result.position
+	_hook_time = HOOK_MAX_TIME
+	_slamming = false
+	Sfx.play("dash")
+
+
+func _process_hook(delta: float) -> void:
+	_hook_time -= delta
+	var to_anchor := hook_anchor - global_position
+	if to_anchor.length() < 36.0 or _hook_time <= 0.0 or _jump_buffer > 0.0:
+		_release_hook()
+		return
+	velocity = to_anchor.normalized() * HOOK_SPEED
+
+
+func _release_hook() -> void:
+	hook_active = false
+	_hook_cooldown = HOOK_COOLDOWN
+	velocity *= 0.65
 
 
 func _try_dash() -> void:
@@ -285,6 +407,22 @@ func _process_dash(delta: float) -> void:
 
 func current_weapon_id() -> String:
 	return weapons[weapon_index]
+
+
+## Setzt das Elementmodul der aktiven Waffe (ersetzt ein vorhandenes).
+func set_module(element: String) -> void:
+	modules[weapon_index] = element
+
+
+## Neue Waffe: freier Slot, sonst ersetzt sie die aktive Waffe (inklusive Modul).
+func add_weapon(weapon_id: String) -> void:
+	if weapons.size() < 3:
+		weapons.append(weapon_id)
+		modules.append("")
+		weapon_index = weapons.size() - 1
+	else:
+		weapons[weapon_index] = weapon_id
+		modules[weapon_index] = ""
 
 
 func current_module() -> String:
@@ -344,6 +482,9 @@ func _draw() -> void:
 		ghost.a = 0.35 * (entry.t / TRAIL_LIFETIME)
 		draw_circle(to_local(entry.pos), r * 0.8, ghost)
 
+	if hook_active:
+		draw_line(Vector2.ZERO, to_local(hook_anchor), Color(0.9, 0.9, 0.5), 2.0)
+		draw_circle(to_local(hook_anchor), 5.0, Color(0.9, 0.9, 0.5))
 	_draw_body(r, body_color, outline)
 	_draw_face(r, alpha)
 	_draw_weapon(r, outline)
@@ -420,7 +561,7 @@ func _draw_weapon(r: float, outline: Color) -> void:
 
 
 func _draw_dash_pips(r: float) -> void:
-	var total: int = stats.dash_charges
+	var total: int = dash_max()
 	for i in total:
 		var x := (i - (total - 1) * 0.5) * 12.0
 		var pos := Vector2(x, -r * 1.9)

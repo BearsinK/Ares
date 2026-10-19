@@ -9,6 +9,7 @@ var failures := 0
 
 func _ready() -> void:
 	main = load("res://scenes/main.tscn").instantiate()
+	main.test_loadout = true
 	main.use_dummies = true
 	main.director_enabled = false
 	add_child(main)

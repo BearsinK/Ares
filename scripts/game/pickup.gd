@@ -15,6 +15,8 @@ var value := 1
 var players: Array[Player] = []
 var floor_y := 1250.0
 var velocity := Vector2.ZERO
+## Wird am Wellenende gesetzt: Das Objekt fliegt zum naechsten Spieler, egal wie weit.
+var force_pull := false
 
 var _age := 0.0
 var _pulling := false
@@ -42,7 +44,7 @@ func _physics_process(delta: float) -> void:
 
 	if nearest != null and _age > 0.3:
 		var radius := MAGNET_RADIUS * (1.0 + float(nearest.mods.pickup))
-		if best <= radius:
+		if best <= radius or force_pull:
 			_pulling = true
 		if _pulling:
 			var direction := (nearest.global_position - global_position).normalized()

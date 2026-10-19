@@ -27,10 +27,19 @@ const TEST_MODULES := [
 
 const DUMMY_RESPAWN_TIME := 4.0
 const RESTART_DELAY := 1.0
+const CLEAR_DELAY := 3.0
+
+enum Phase { WAVE, CLEARING, SHOP, VICTORY }
 
 ## Tests koennen diese Werte vor dem Einhaengen der Szene setzen.
 var use_dummies := false
 var director_enabled := true
+## Wenn gesetzt, starten die Spieler mit allen Testwaffen und Modulen.
+## Sonst nur mit der Klassenwaffe, der Rest kommt aus dem Shop. F3 gibt das Testset.
+var test_loadout := false
+## Wellen: Dauer in Sekunden und Anzahl bis zum Sieg.
+var wave_duration := 120.0
+var max_waves := 10
 
 var players: Array[Player] = []
 var camera: CoopCamera
@@ -41,16 +50,21 @@ var projectiles: Node2D
 var enemy_projectiles: Node2D
 var pickups: Node2D
 var levelup_menu: LevelUpMenu
+var shop_menu: ShopMenu
 
 var level := 1
 var xp := 0
 var xp_needed := 10
 var kills := 0
 var game_over := false
+var wave := 1
+var wave_time_left := 120.0
+var phase := Phase.WAVE
 var last_pad_event := "-"
 
 var _respawns: Array[Dictionary] = []
 var _game_over_time := 0.0
+var _clear_time := 0.0
 
 
 func _ready() -> void:
@@ -69,6 +83,10 @@ func _ready() -> void:
 	_setup_director()
 	if use_dummies:
 		_spawn_dummies()
+	wave_time_left = wave_duration
+	shop_menu = ShopMenu.new()
+	shop_menu.closed.connect(_on_shop_closed)
+	add_child(shop_menu)
 	levelup_menu = LevelUpMenu.new()
 	levelup_menu.chosen.connect(_on_perk_chosen)
 	add_child(levelup_menu)
@@ -80,13 +98,14 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_check_level_up()
+	_update_wave(delta)
 	for entry in _respawns:
 		entry.t -= delta
 		if entry.t <= 0.0:
 			_spawn_dummy(entry.pos)
 	_respawns = _respawns.filter(func(entry: Dictionary) -> bool: return entry.t > 0.0)
 
-	if game_over:
+	if game_over or phase == Phase.VICTORY:
 		_game_over_time += delta
 		if _game_over_time >= RESTART_DELAY and _any_restart_pressed():
 			get_tree().reload_current_scene()
@@ -114,6 +133,71 @@ func _unhandled_input(event: InputEvent) -> void:
 			_cycle_weapon(0)
 		elif event.keycode == KEY_F2:
 			_cycle_weapon(1)
+		elif event.keycode == KEY_F3:
+			_grant_test_loadout()
+
+
+func _grant_test_loadout() -> void:
+	for i in players.size():
+		var player := players[i]
+		player.weapons.clear()
+		player.modules.clear()
+		for j in TEST_LOADOUTS[i].size():
+			player.weapons.append(TEST_LOADOUTS[i][j])
+			player.modules.append(TEST_MODULES[i][j])
+		player.weapon_index = 0
+	Sfx.play("levelup")
+
+
+func _update_wave(delta: float) -> void:
+	match phase:
+		Phase.WAVE:
+			if not director_enabled or game_over:
+				return
+			wave_time_left -= delta
+			if wave_time_left <= 0.0:
+				_end_wave()
+		Phase.CLEARING:
+			_clear_time -= delta
+			if _clear_time <= 0.0 and not game_over:
+				_open_shop()
+
+
+func _end_wave() -> void:
+	phase = Phase.CLEARING
+	_clear_time = CLEAR_DELAY
+	director.enabled = false
+	Sfx.play("levelup")
+	# Restliche Gegner zerfallen und lassen ihre Beute fallen, die zu den Spielern fliegt.
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy is Enemy:
+			enemy.take_damage(1.0e9, null, Vector2.ZERO, "", true)
+	for bullet in enemy_projectiles.get_children():
+		bullet.queue_free()
+	for pickup in pickups.get_children():
+		pickup.force_pull = true
+	# Alle stehen wieder auf und erholen sich etwas.
+	for player in players:
+		if player.downed:
+			player.revive(0.5)
+		else:
+			player.hp = minf(player.max_health(), player.hp + player.max_health() * 0.3)
+
+
+func _open_shop() -> void:
+	if wave >= max_waves:
+		phase = Phase.VICTORY
+		_game_over_time = 0.0
+		return
+	phase = Phase.SHOP
+	shop_menu.open(players, wave)
+
+
+func _on_shop_closed() -> void:
+	wave += 1
+	wave_time_left = wave_duration
+	phase = Phase.WAVE
+	director.enabled = director_enabled
 
 
 func _cycle_weapon(index: int) -> void:
@@ -131,18 +215,24 @@ func _spawn_players() -> void:
 	for i in 2:
 		var player := Player.new()
 		player.setup(i + 1, PLAYER_CLASSES[i])
-		player.weapons.clear()
-		player.modules.clear()
-		for j in TEST_LOADOUTS[i].size():
-			player.weapons.append(TEST_LOADOUTS[i][j])
-			player.modules.append(TEST_MODULES[i][j])
+		if test_loadout:
+			player.weapons.clear()
+			player.modules.clear()
+			for j in TEST_LOADOUTS[i].size():
+				player.weapons.append(TEST_LOADOUTS[i][j])
+				player.modules.append(TEST_MODULES[i][j])
 		player.position = Vector2(300.0 + i * 90.0, FLOOR_Y - 40.0)
 		player.fired.connect(_on_player_fired)
 		player.went_down.connect(_on_player_down)
+		player.slam_landed.connect(_on_slam_landed)
 		add_child(player)
 		players.append(player)
 	players[0].partner = players[1]
 	players[1].partner = players[0]
+
+
+func _on_slam_landed(player: Player, pos: Vector2) -> void:
+	_explode(pos, 150.0, 35.0 * player.damage_mult(), player, Color(0.9, 0.9, 1.0))
 
 
 func _on_player_down(_player: Player) -> void:
@@ -191,6 +281,7 @@ func _spawn_pickup(kind: String, value: int, pos: Vector2) -> void:
 	pickup.value = value
 	pickup.players = players
 	pickup.floor_y = FLOOR_Y
+	pickup.force_pull = phase == Phase.CLEARING
 	pickup.position = pos
 	pickup.collected.connect(_on_pickup_collected)
 	pickups.add_child(pickup)
@@ -260,17 +351,18 @@ func _build_arena() -> void:
 		Rect2(2150.0, 1120.0, 300.0, 24.0),
 	]
 	for rect in platforms:
-		_add_block(rect)
+		_add_block(rect, true)
 
 	# Hoher Schacht mit Belohnungs-Plattform: gedacht fuer Wandsprung und Haken.
 	_add_block(Rect2(2600.0, 700.0, 40.0, 550.0))
 	_add_block(Rect2(2840.0, 700.0, 40.0, 550.0))
-	_add_block(Rect2(2580.0, 676.0, 320.0, 24.0))
+	_add_block(Rect2(2580.0, 676.0, 320.0, 24.0), true)
 
 
-func _add_block(rect: Rect2) -> void:
+func _add_block(rect: Rect2, one_way := false) -> void:
 	var body := StaticBody2D.new()
-	body.collision_layer = 1 << 0
+	# Plattformen (one_way) liegen auf Ebene 6 und lassen sich von unten durchspringen.
+	body.collision_layer = (1 << 5) if one_way else (1 << 0)
 	body.collision_mask = 0
 	body.position = rect.get_center()
 
@@ -278,6 +370,8 @@ func _add_block(rect: Rect2) -> void:
 	var box := RectangleShape2D.new()
 	box.size = rect.size
 	shape.shape = box
+	shape.one_way_collision = one_way
+	shape.one_way_collision_margin = 10.0
 	body.add_child(shape)
 
 	var half := rect.size * 0.5

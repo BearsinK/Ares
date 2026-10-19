@@ -37,11 +37,14 @@ func _draw_hud() -> void:
 	var view := _canvas.get_viewport_rect().size
 	_draw_player_panel(main.players[0], Vector2(20.0, 14.0))
 	_draw_player_panel(main.players[1], Vector2(view.x - PANEL_WIDTH - 20.0, 14.0))
-	_draw_top_center(view)
+	if not main.shop_menu.is_open:
+		_draw_top_center(view)
 	_draw_xp_bar(view)
 	_draw_debug(view)
 	if main.game_over:
 		_draw_game_over(view)
+	elif main.phase == main.Phase.VICTORY:
+		_draw_victory(view)
 
 
 func _draw_player_panel(player: Player, origin: Vector2) -> void:
@@ -52,7 +55,7 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 	_bar(origin + Vector2(0, 28), Vector2(PANEL_WIDTH, BAR_HEIGHT), player.hp / player.max_health(), hp_color)
 	_text(origin + Vector2(6, 41), "%d / %d" % [int(ceil(player.hp)), int(player.max_health())], 13, Color(0, 0, 0, 0.9))
 
-	for i in int(player.stats.dash_charges):
+	for i in player.dash_max():
 		var filled := i < player.dash_charges
 		_canvas.draw_circle(origin + Vector2(8 + i * 18, 60), 6.0, Color(1, 1, 1, 0.9 if filled else 0.2))
 
@@ -68,15 +71,25 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 		_text(origin + Vector2(x, 82), label, 16, Color.WHITE if active else Color(0.65, 0.65, 0.7))
 		x += 16.0 + label.length() * 8.0
 
+	var fw_parts: Array[String] = []
+	for id in player.firmware:
+		var count: int = player.firmware[id]
+		fw_parts.append(Firmware.SHORT[id] + (" x%d" % count if count > 1 else ""))
+	if not fw_parts.is_empty():
+		_text(origin + Vector2(0, 102), "  ".join(fw_parts), 14, Color(0.6, 0.9, 0.7))
 	if player.downed:
-		_text(origin + Vector2(0, 104), "AM BODEN - Partner: Interagieren halten", 16, Color(1.0, 0.5, 0.4))
+		_text(origin + Vector2(0, 122), "AM BODEN - Partner: Interagieren halten", 16, Color(1.0, 0.5, 0.4))
 
 
 func _draw_top_center(view: Vector2) -> void:
-	var seconds := int(main.director.time)
-	var clock := "%02d:%02d" % [seconds / 60, seconds % 60]
-	_text(Vector2(0, 28), clock, 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	_text(Vector2(0, 52), "Stufe %d   Gegner %d" % [main.level, main.director.alive_count()], 16, Color(0.8, 0.8, 0.9), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	var title := "Welle %d / %d" % [main.wave, main.max_waves]
+	var remaining := int(ceil(maxf(main.wave_time_left, 0.0)))
+	var clock := "%02d:%02d" % [remaining / 60, remaining % 60]
+	if main.phase == main.Phase.CLEARING:
+		clock = "Welle geschafft!"
+	_text(Vector2(0, 24), title, 18, Color(0.85, 0.85, 0.95), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(0, 52), clock, 28, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(0, 74), "Stufe %d   Gegner %d" % [main.level, main.director.alive_count()], 16, Color(0.8, 0.8, 0.9), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
 func _draw_xp_bar(view: Vector2) -> void:
@@ -101,5 +114,13 @@ func _draw_game_over(view: Vector2) -> void:
 	_text(Vector2(0, view.y * 0.4), "GAME OVER", 64, Color(1.0, 0.4, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var seconds := int(main.director.time)
 	_text(Vector2(0, view.y * 0.4 + 50.0), "Zeit %02d:%02d   Stufe %d   Besiegt %d" % [seconds / 60, seconds % 60, main.level, main.kills],
+		24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(0, view.y * 0.4 + 100.0), "Springen, Schiessen oder Bestaetigen zum Neustart", 20, Color(0.8, 0.8, 0.9), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+
+
+func _draw_victory(view: Vector2) -> void:
+	_canvas.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.6))
+	_text(Vector2(0, view.y * 0.4), "ALLE WELLEN GESCHAFFT", 56, Color(0.5, 1.0, 0.6), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(0, view.y * 0.4 + 50.0), "Hier kommt spaeter der Endboss. Besiegt: %d   Stufe %d" % [main.kills, main.level],
 		24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	_text(Vector2(0, view.y * 0.4 + 100.0), "Springen, Schiessen oder Bestaetigen zum Neustart", 20, Color(0.8, 0.8, 0.9), HORIZONTAL_ALIGNMENT_CENTER, view.x)

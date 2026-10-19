@@ -21,10 +21,12 @@ Beide Spieler können Controller und Tastatur gleichzeitig nutzen. Spieler 1 bek
 | Dash | R1 | Shift | Schrägstrich |
 | Schießen | R2 | Linke Maustaste oder F | Punkt |
 | Waffe wechseln | Dreieck | Q | M |
+| Haken (Firmware) | Quadrat | R | N |
+| Menüs | Links/Rechts, Kreuz bestätigen, Kreis zurück | A/D, Enter | Pfeile, Rechts-Alt oder \ |
 
-Die übrigen Aktionen (Klassenfähigkeit, Haken, Interagieren) sind schon belegt, haben aber noch keine Funktion.
+Interagieren (Kreis / G / L) belebt den Partner (halten). Die Klassenfähigkeit (L2) hat noch keine Funktion.
 
-Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die nächste.
+Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die nächste, F3 gibt beiden das komplette Testset (alle Waffen mit Modulen).
 
 ## Aktueller Stand
 
@@ -38,9 +40,11 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - XP und Gold fallen aus Gegnern, werden angezogen und eingesammelt. XP gehört beiden, Gold dem Einsammler
 - Level-Ups mitten im Kampf: drei Team-Perks, beide Spieler müssen dieselbe Karte bestätigen (Links/Rechts wählen, Kreuz bestätigen, Kreis zurück). Jeder Perk wirkt je nach Klasse anders
 - Elemente als Module an Waffen (Feuer, Wasser, Eis, Blitz) mit kurzen Statuseffekten und Kombos: Wasser+Blitz (x1,5, Kettenblitz), Wasser+Eis (eingefroren), Wasser+Feuer (Dampfexplosion), Feuer+Eis (schmilzt). Setzt ein anderer Spieler den Status, ist die Kombo deutlich stärker (Coop-Bonus). Zum Testen tragen die Waffen schon Module (Punkt im HUD zeigt das Element)
+- Wellen mit Zeitlimit (Standard 120 s, 10 Wellen), danach räumt sich das Feld, alle stehen auf und der Shop öffnet. Jeder kauft persönlich ein: Buffs, Elementmodule, Waffen, Bewegungs-Firmware, Reroll. Nach der letzten Welle erscheint ein Sieg-Bildschirm (der Endboss fehlt noch)
+- Bewegungs-Firmware: Doppelsprung, Wandsprung (rutschen und abspringen), Gleitschirm, Bodenstoß, Greifhaken, mehr Dash-Ladungen. Plattformen sind von unten durchlässig, mit nach unten + Sprung fällt man durch
 - Spieler-Leben mit Unverwundbarkeit nach Treffer, Wiederbeleben durch Halten von Interagieren (Kreis), Game Over wenn beide am Boden liegen
 
-Waffenwerte stehen in `scripts/data/weapons.gd`, Welche Waffen ein Spieler zum Testen hat, in `scripts/game/main.gd` (`TEST_LOADOUTS`).
+Waffenwerte stehen in `scripts/data/weapons.gd`, Das Testset steht in `scripts/game/main.gd` (`TEST_LOADOUTS`, `TEST_MODULES`). Ein normaler Lauf startet nur mit der Klassenwaffe.
 
 Welche Klassen gespielt werden, steht in `scripts/game/main.gd` (`PLAYER_CLASSES`).
 
@@ -60,6 +64,8 @@ godot --headless --path . res://tests/combat_test.tscn
 godot --headless --path . res://tests/director_test.tscn
 godot --headless --path . res://tests/progression_test.tscn
 godot --headless --path . res://tests/element_test.tscn
+godot --headless --path . res://tests/wave_test.tscn
+godot --headless --path . res://tests/movement_test.tscn
 ```
 
 Die Tests simulieren Eingaben und prüfen Bewegung, Waffen, Gegnerangriffe, Wiederbeleben, Game Over und den Director.
