@@ -77,17 +77,8 @@ func _spawn_burst() -> void:
 
 
 func _spawn_number(amount: float) -> void:
-	var label := Label.new()
-	label.text = str(int(round(amount)))
-	label.add_theme_color_override("font_color", Color(1, 1, 0.5))
-	label.add_theme_font_size_override("font_size", 22)
-	label.global_position = global_position + Vector2(randf_range(-20.0, 20.0), -half_size.y - 20.0)
-	get_parent().add_child(label)
-	var tween := label.create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(label, "position:y", label.position.y - 40.0, 0.5)
-	tween.tween_property(label, "modulate:a", 0.0, 0.5)
-	tween.chain().tween_callback(label.queue_free)
+	if Fx.instance:
+		Fx.instance.number(global_position + Vector2(0.0, -half_size.y - 10.0), amount)
 
 
 func _draw() -> void:

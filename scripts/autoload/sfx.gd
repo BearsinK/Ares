@@ -29,6 +29,14 @@ func _ready() -> void:
 	_streams["beam"] = _synth(800.0, 720.0, 0.05, "square", 0.12, 0.1)
 	_streams["sniper"] = _synth(1500.0, 90.0, 0.28, "saw", 0.4, 0.3)
 	_streams["switch"] = _synth(600.0, 900.0, 0.05, "square", 0.2, 0.0)
+	_streams["hurt"] = _synth(220.0, 70.0, 0.22, "saw", 0.45, 0.5)
+	_streams["revive"] = _synth(300.0, 900.0, 0.3, "sine", 0.4, 0.0)
+	_streams["pickup"] = _synth(700.0, 1200.0, 0.06, "sine", 0.18, 0.0)
+	_streams["coin"] = _synth(1100.0, 1700.0, 0.08, "square", 0.15, 0.0)
+	_streams["levelup"] = _synth(400.0, 1000.0, 0.4, "square", 0.3, 0.0)
+	_streams["telegraph"] = _synth(500.0, 500.0, 0.05, "sine", 0.15, 0.0)
+	_streams["enemy_shoot"] = _synth(600.0, 250.0, 0.12, "square", 0.2, 0.2)
+	_streams["slam"] = _synth(200.0, 50.0, 0.3, "saw", 0.5, 0.7)
 	_streams["kill"] = _synth(300.0, 40.0, 0.35, "saw", 0.4, 0.6)
 
 

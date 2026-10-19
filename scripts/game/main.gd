@@ -1,7 +1,7 @@
 extends Node2D
-## Testszene: eine Arena mit Plattformen, zwei Spielern, Uebungspuppen und
-## einer Kamera, die beide im Bild haelt. Alles wird im Code gebaut, damit
-## sich das Layout leicht anpassen laesst.
+## Hauptszene: Arena mit Plattformen, zwei Spielern, Gegnern (Director),
+## Kamera, HUD und Spielablauf. Alles wird im Code gebaut, damit sich das
+## Layout leicht anpassen laesst.
 
 const ARENA_SIZE := Vector2(3200.0, 1350.0)
 const FLOOR_Y := 1250.0
@@ -19,15 +19,30 @@ const TEST_LOADOUTS := [
 	["sniper", "beam", "rapid"],
 ]
 
+const DUMMY_RESPAWN_TIME := 4.0
+const RESTART_DELAY := 1.0
+
+## Tests koennen diese Werte vor dem Einhaengen der Szene setzen.
+var use_dummies := false
+var director_enabled := true
+
 var players: Array[Player] = []
 var camera: CoopCamera
 var fx: Fx
-var hud_label: Label
+var hud: Hud
+var director: Director
 var projectiles: Node2D
+var enemy_projectiles: Node2D
 
-const DUMMY_RESPAWN_TIME := 4.0
+var level := 1
+var xp := 0
+var xp_needed := 10
+var kills := 0
+var game_over := false
+var last_pad_event := "-"
+
 var _respawns: Array[Dictionary] = []
-var _last_pad_event := "-"
+var _game_over_time := 0.0
 
 
 func _ready() -> void:
@@ -35,17 +50,19 @@ func _ready() -> void:
 	_build_arena()
 	projectiles = Node2D.new()
 	add_child(projectiles)
+	enemy_projectiles = Node2D.new()
+	add_child(enemy_projectiles)
 	fx = Fx.new()
 	add_child(fx)
-	_spawn_dummies()
 	_spawn_players()
 	_setup_camera()
-	_build_hud()
+	_setup_director()
+	if use_dummies:
+		_spawn_dummies()
+	hud = Hud.new()
+	hud.main = self
+	add_child(hud)
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
-
-
-func _process(_delta: float) -> void:
-	_update_hud()
 
 
 func _physics_process(delta: float) -> void:
@@ -55,13 +72,26 @@ func _physics_process(delta: float) -> void:
 			_spawn_dummy(entry.pos)
 	_respawns = _respawns.filter(func(entry: Dictionary) -> bool: return entry.t > 0.0)
 
+	if game_over:
+		_game_over_time += delta
+		if _game_over_time >= RESTART_DELAY and _any_restart_pressed():
+			get_tree().reload_current_scene()
+
+
+func _any_restart_pressed() -> bool:
+	for i in [1, 2]:
+		for action in ["confirm", "jump", "fire"]:
+			if Input.is_action_just_pressed("p%d_%s" % [i, action]):
+				return true
+	return false
+
 
 func _input(event: InputEvent) -> void:
 	# Diagnose: zeigt im HUD, welcher Controller-Input zuletzt ankam.
 	if event is InputEventJoypadButton and event.pressed:
-		_last_pad_event = "Controller %d Taste %d" % [event.device, event.button_index]
+		last_pad_event = "Controller %d Taste %d" % [event.device, event.button_index]
 	elif event is InputEventJoypadMotion and absf(event.axis_value) > 0.5:
-		_last_pad_event = "Controller %d Achse %d (%.1f)" % [event.device, event.axis, event.axis_value]
+		last_pad_event = "Controller %d Achse %d (%.1f)" % [event.device, event.axis, event.axis_value]
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -81,6 +111,76 @@ func _cycle_weapon(index: int) -> void:
 
 func _on_joy_connection_changed(device: int, connected: bool) -> void:
 	print("Controller %d %s: %s" % [device, "verbunden" if connected else "getrennt", Input.get_joy_name(device)])
+
+
+func _spawn_players() -> void:
+	for i in 2:
+		var player := Player.new()
+		player.setup(i + 1, PLAYER_CLASSES[i])
+		player.weapons.clear()
+		for weapon_id in TEST_LOADOUTS[i]:
+			player.weapons.append(weapon_id)
+		player.position = Vector2(300.0 + i * 90.0, FLOOR_Y - 40.0)
+		player.fired.connect(_on_player_fired)
+		player.went_down.connect(_on_player_down)
+		add_child(player)
+		players.append(player)
+	players[0].partner = players[1]
+	players[1].partner = players[0]
+
+
+func _on_player_down(_player: Player) -> void:
+	for player in players:
+		if not player.downed:
+			return
+	game_over = true
+	_game_over_time = 0.0
+	Sfx.play("kill")
+
+
+func _setup_director() -> void:
+	director = Director.new()
+	director.enabled = director_enabled
+	director.arena_size = ARENA_SIZE
+	director.floor_y = FLOOR_Y
+	director.players = players
+	director.parent_node = self
+	director.enemy_spawned.connect(_on_enemy_spawned)
+	director.projectile_requested.connect(_on_enemy_projectile_requested)
+	add_child(director)
+
+
+func _on_enemy_spawned(enemy: Enemy) -> void:
+	enemy.died.connect(_on_enemy_died)
+
+
+func _on_enemy_died(_enemy: Enemy) -> void:
+	kills += 1
+
+
+func _on_enemy_projectile_requested(_enemy: Enemy, origin: Vector2, direction: Vector2, speed: float, damage: float) -> void:
+	var bullet := EnemyProjectile.new()
+	bullet.position = origin
+	bullet.direction = direction
+	bullet.speed = speed
+	bullet.damage = damage
+	enemy_projectiles.add_child(bullet)
+
+
+func _spawn_dummies() -> void:
+	for x in [1300.0, 1900.0, 2400.0]:
+		_spawn_dummy(Vector2(x, FLOOR_Y - 40.0))
+
+
+func _spawn_dummy(pos: Vector2) -> void:
+	var dummy := TestDummy.new()
+	dummy.position = pos
+	dummy.died.connect(_on_dummy_died)
+	add_child(dummy)
+
+
+func _on_dummy_died(pos: Vector2) -> void:
+	_respawns.append({"pos": pos, "t": DUMMY_RESPAWN_TIME})
 
 
 func _build_arena() -> void:
@@ -130,35 +230,6 @@ func _add_block(rect: Rect2) -> void:
 	add_child(body)
 
 
-func _spawn_players() -> void:
-	for i in 2:
-		var player := Player.new()
-		player.setup(i + 1, PLAYER_CLASSES[i])
-		player.weapons.clear()
-		for weapon_id in TEST_LOADOUTS[i]:
-			player.weapons.append(weapon_id)
-		player.position = Vector2(300.0 + i * 90.0, FLOOR_Y - 40.0)
-		player.fired.connect(_on_player_fired)
-		add_child(player)
-		players.append(player)
-
-
-func _spawn_dummies() -> void:
-	for x in [1300.0, 1900.0, 2400.0]:
-		_spawn_dummy(Vector2(x, FLOOR_Y - 40.0))
-
-
-func _spawn_dummy(pos: Vector2) -> void:
-	var dummy := TestDummy.new()
-	dummy.position = pos
-	dummy.died.connect(_on_dummy_died)
-	add_child(dummy)
-
-
-func _on_dummy_died(pos: Vector2) -> void:
-	_respawns.append({"pos": pos, "t": DUMMY_RESPAWN_TIME})
-
-
 func _setup_camera() -> void:
 	camera = CoopCamera.new()
 	camera.limit_left = 0
@@ -173,7 +244,7 @@ func _setup_camera() -> void:
 
 func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2) -> void:
 	var weapon := Weapons.get_weapon(weapon_id)
-	var damage := float(weapon.damage) * float(player.stats.damage_mult)
+	var damage := float(weapon.damage) * player.damage_mult()
 	Sfx.play(weapon.sound)
 	camera.add_shake(float(weapon.shake))
 	fx.muzzle(origin, direction, weapon.color)
@@ -196,7 +267,7 @@ func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, dire
 		bullet.color = weapon.color
 		bullet.shooter = player
 		bullet.explosion_radius = float(weapon.get("explosion_radius", 0.0))
-		bullet.explosion_damage = float(weapon.get("explosion_damage", 0.0)) * float(player.stats.damage_mult)
+		bullet.explosion_damage = float(weapon.get("explosion_damage", 0.0)) * player.damage_mult()
 		bullet.hit.connect(_on_projectile_hit)
 		projectiles.add_child(bullet)
 
@@ -246,31 +317,3 @@ func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: 
 			enemy.take_damage(damage * falloff, shooter, away)
 
 
-func _build_hud() -> void:
-	var layer := CanvasLayer.new()
-	hud_label = Label.new()
-	hud_label.position = Vector2(16.0, 12.0)
-	hud_label.add_theme_font_size_override("font_size", 18)
-	layer.add_child(hud_label)
-	add_child(layer)
-
-
-func _update_hud() -> void:
-	var lines: Array[String] = []
-	for player in players:
-		var weapon_names: Array[String] = []
-		for i in player.weapons.size():
-			var weapon_name: String = Weapons.get_weapon(player.weapons[i]).name
-			weapon_names.append("[%s]" % weapon_name if i == player.weapon_index else weapon_name)
-		lines.append("P%d %s | Dash %d/%d | %s" % [
-			player.player_index, player.stats.name, player.dash_charges, player.stats.dash_charges,
-			"  ".join(weapon_names)])
-
-	var pads := Input.get_connected_joypads()
-	if pads.is_empty():
-		lines.append("Kein Controller erkannt (Tastatur aktiv)")
-	for pad in pads:
-		lines.append("Controller %d: %s" % [pad, Input.get_joy_name(pad)])
-	lines.append("Letzter Controller-Input: %s" % _last_pad_event)
-	lines.append("FPS: %d" % Engine.get_frames_per_second())
-	hud_label.text = "\n".join(lines)

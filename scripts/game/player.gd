@@ -5,6 +5,9 @@ extends CharacterBody2D
 ## Koerperform und Farbe zeigen die Klasse, der Rand zeigt den Spieler.
 
 signal fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2)
+signal hurt(player: Player, amount: float)
+signal went_down(player: Player)
+signal revived(player: Player)
 
 const GRAVITY := 2000.0
 const FALL_GRAVITY_MULT := 1.35
@@ -20,6 +23,9 @@ const AIM_MEMORY := 0.25
 const AIM_THRESHOLD := 0.3
 const MOUSE_AIM_TIMEOUT := 3.0
 const TRAIL_LIFETIME := 0.25
+const HIT_IFRAMES := 0.8
+const REVIVE_TIME := 3.0
+const REVIVE_RANGE := 90.0
 
 var player_index := 1
 var class_id := "roomba"
@@ -30,6 +36,14 @@ var iframes := 0.0
 var dash_charges := 0
 var weapons: Array[String] = []
 var weapon_index := 0
+var hp := 100.0
+var gold := 0
+var downed := false
+var revive_progress := 0.0
+var partner: Player = null
+# Dauerhafte Boni aus Perks und Items (Anteile, ausser max_hp als fester Wert).
+var mods := {"damage": 0.0, "fire_rate": 0.0, "speed": 0.0, "max_hp": 0.0, "dmg_taken": 0.0,
+	"dash_cd": 0.0, "pickup": 0.0, "gold": 0.0}
 
 var _prefix := "p1_"
 var _coyote := 0.0
@@ -52,8 +66,74 @@ func setup(index: int, new_class_id: String) -> void:
 	stats = RobotClasses.get_stats(class_id)
 	_prefix = "p%d_" % index
 	dash_charges = stats.dash_charges
+	hp = stats.max_hp
 	for weapon_id in stats.weapons:
 		weapons.append(weapon_id)
+
+
+func max_health() -> float:
+	return float(stats.max_hp) + float(mods.max_hp)
+
+
+func move_speed() -> float:
+	return float(stats.speed) * (1.0 + float(mods.speed))
+
+
+func damage_mult() -> float:
+	return float(stats.damage_mult) * (1.0 + float(mods.damage))
+
+
+func add_mods(new_mods: Dictionary) -> void:
+	for key in new_mods:
+		mods[key] = float(mods[key]) + float(new_mods[key])
+	if new_mods.has("max_hp"):
+		hp += float(new_mods.max_hp)
+
+
+## Gibt true zurueck, wenn der Treffer ankam (nicht unverwundbar oder am Boden).
+func take_hit(amount: float, from: Vector2) -> bool:
+	if downed or iframes > 0.0:
+		return false
+	var final_amount := amount * maxf(0.1, 1.0 - float(mods.dmg_taken))
+	hp -= final_amount
+	iframes = HIT_IFRAMES
+	var away := (global_position - from).normalized()
+	velocity += Vector2(away.x * 320.0, -260.0)
+	Sfx.play("hurt")
+	hurt.emit(self, final_amount)
+	if hp <= 0.0:
+		hp = 0.0
+		downed = true
+		revive_progress = 0.0
+		velocity = Vector2(velocity.x * 0.3, velocity.y)
+		went_down.emit(self)
+	return true
+
+
+func revive(health_fraction := 0.5) -> void:
+	downed = false
+	revive_progress = 0.0
+	hp = max_health() * health_fraction
+	iframes = 1.5
+	Sfx.play("revive")
+	revived.emit(self)
+
+
+func _process_downed(delta: float) -> void:
+	velocity.x = move_toward(velocity.x, 0.0, 1500.0 * delta)
+	velocity.y = minf(velocity.y + GRAVITY * delta, MAX_FALL_SPEED)
+	move_and_slide()
+	# Der Partner belebt durch Halten von Interagieren in der Naehe.
+	var reviving := false
+	if partner != null and not partner.downed:
+		var close := partner.global_position.distance_to(global_position) <= REVIVE_RANGE
+		reviving = close and Input.is_action_pressed(partner._prefix + "interact")
+	if reviving:
+		revive_progress += delta / REVIVE_TIME
+		if revive_progress >= 1.0:
+			revive()
+	else:
+		revive_progress = maxf(0.0, revive_progress - delta * 0.5)
 
 
 func _ready() -> void:
@@ -76,6 +156,10 @@ func _input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	_update_timers(delta)
+	if downed:
+		_process_downed(delta)
+		queue_redraw()
+		return
 	_update_aim(delta)
 
 	var move := Input.get_axis(_prefix + "left", _prefix + "right")
@@ -106,7 +190,7 @@ func _update_timers(delta: float) -> void:
 
 	if dash_charges < stats.dash_charges:
 		_dash_recharge += delta
-		if _dash_recharge >= stats.dash_cooldown:
+		if _dash_recharge >= float(stats.dash_cooldown) * (1.0 - float(mods.dash_cd)):
 			_dash_recharge = 0.0
 			dash_charges += 1
 	else:
@@ -140,7 +224,7 @@ func _update_aim(delta: float) -> void:
 func _process_movement(delta: float, move: float) -> void:
 	var on_floor := is_on_floor()
 	var accel: float = stats.accel if on_floor else stats.air_accel
-	velocity.x = move_toward(velocity.x, move * stats.speed, accel * delta)
+	velocity.x = move_toward(velocity.x, move * move_speed(), accel * delta)
 
 	var gravity := GRAVITY
 	if velocity.y > 0.0:
@@ -192,7 +276,7 @@ func _process_dash(delta: float) -> void:
 		_trail.append({"pos": global_position, "t": TRAIL_LIFETIME})
 	if _dash_time_left <= 0.0:
 		# Momentum: nach dem Dash bleibt etwas Schwung erhalten.
-		velocity = _dash_dir * stats.speed * DASH_END_MOMENTUM
+		velocity = _dash_dir * move_speed() * DASH_END_MOMENTUM
 		velocity.y = minf(velocity.y, 0.0)
 
 
@@ -226,7 +310,7 @@ func _handle_fire(_delta: float) -> void:
 	if not _can_fire(weapon_id):
 		return
 	var weapon := Weapons.get_weapon(weapon_id)
-	_fire_cooldown = 1.0 / float(weapon.fire_rate)
+	_fire_cooldown = 1.0 / (float(weapon.fire_rate) * (1.0 + float(mods.fire_rate)))
 	var origin: Vector2 = global_position + aim_dir * (float(stats.radius) + float(weapon.barrel))
 	# Rueckstoss: am Boden schwaecher, in der Luft staerker.
 	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
@@ -236,6 +320,9 @@ func _handle_fire(_delta: float) -> void:
 
 
 func _draw() -> void:
+	if downed:
+		_draw_downed()
+		return
 	var alpha := 1.0
 	if iframes > 0.0 and _dash_time_left <= 0.0 and fmod(iframes, 0.1) < 0.05:
 		alpha = 0.4
@@ -254,6 +341,20 @@ func _draw() -> void:
 	_draw_face(r, alpha)
 	_draw_weapon(r, outline)
 	_draw_dash_pips(r)
+
+
+func _draw_downed() -> void:
+	var r: float = stats.radius
+	var outline: Color = RobotClasses.PLAYER_COLORS[player_index - 1]
+	draw_circle(Vector2(0.0, r * 0.3), r, Color(0.3, 0.3, 0.35))
+	draw_arc(Vector2(0.0, r * 0.3), r, 0.0, TAU, 32, outline, 3.0)
+	# Ausgeschaltete Augen (X) und Wiederbelebungs-Fortschritt.
+	for side in [-1.0, 1.0]:
+		var c := Vector2(side * r * 0.35, 0.0)
+		draw_line(c + Vector2(-4, -4), c + Vector2(4, 4), Color(0.8, 0.3, 0.3), 2.0)
+		draw_line(c + Vector2(-4, 4), c + Vector2(4, -4), Color(0.8, 0.3, 0.3), 2.0)
+	if revive_progress > 0.0:
+		draw_arc(Vector2.ZERO, r + 10.0, -PI / 2.0, -PI / 2.0 + TAU * revive_progress, 32, Color(0.4, 1.0, 0.5), 5.0)
 
 
 func _draw_body(r: float, color: Color, outline: Color) -> void:
