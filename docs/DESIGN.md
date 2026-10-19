@@ -140,6 +140,18 @@ Alle starten mit demselben Grundkit, unterscheiden sich in Hauptangriff, Klassen
 - Director-Spawning, Level-Up-System, Shop, Wiederbeleben
 - Ziel: Spielgefühl und Synergien prüfen, danach ausbauen
 
+## Boss-Typen
+
+Bosse sind nicht alle gleich. Neben Bullet-Hell-Musterbossen gibt es Umwelt-Bosse mit Verfolgungs-Charakter.
+
+**Beispiel: Laufband-Verbrennungsofen**
+- Laufband schiebt die Spieler Richtung Ofen, man muss springen, Wände zerschießen und wegrennen, während man Schaden macht
+- Elementschwäche (Vorschlag): Wasser oder Eis. Schwachpunkte: Ofentür, Heizelement
+- Fordert Bewegungs-Firmware (Doppelsprung, Dash, Wandsprung)
+- Braucht eigene Boss-Arena mit speziellem Layout und gegebenenfalls scrollender Kamera
+- Hexapod und Automat brauchen Ruhezonen oder sichere Plattformen, auf denen Stehen und Schießen möglich ist
+- Pro Boss entsteht fast ein eigenes Mini-Level, also hoher Aufwand: im Prototyp nur ein Boss
+
 ## Auswirkungen der Bullet-Hell-Bosse (Notiz)
 
 - Dash mit Iframes und gute Bewegung sind für Bosskämpfe zentral
