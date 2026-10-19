@@ -1,0 +1,29 @@
+class_name CoopCamera
+extends Camera2D
+## Kamera, die beide Spieler im Bild haelt: sie zentriert sich zwischen ihnen
+## und zoomt heraus, wenn sie weit auseinander sind. Eine harte Maximaldistanz
+## zwischen den Spielern kommt spaeter.
+
+@export var margin := Vector2(450.0, 300.0)
+@export var min_zoom := 0.5
+@export var max_zoom := 1.0
+
+var targets: Array[Node2D] = []
+
+
+func _process(delta: float) -> void:
+	if targets.is_empty():
+		return
+	var min_pos := targets[0].global_position
+	var max_pos := min_pos
+	for target in targets:
+		min_pos = min_pos.min(target.global_position)
+		max_pos = max_pos.max(target.global_position)
+
+	var center := (min_pos + max_pos) * 0.5
+	var needed := (max_pos - min_pos) + margin * 2.0
+	var view := get_viewport_rect().size
+	var zoom_value := clampf(minf(view.x / needed.x, view.y / needed.y), min_zoom, max_zoom)
+
+	zoom = zoom.lerp(Vector2(zoom_value, zoom_value), 1.0 - exp(-4.0 * delta))
+	global_position = global_position.lerp(center, 1.0 - exp(-8.0 * delta))

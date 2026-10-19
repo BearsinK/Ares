@@ -1,0 +1,100 @@
+extends SceneTree
+## Automatischer Smoke-Test: startet die Hauptszene, simuliert Eingaben und
+## prueft Bewegung, Sprung, Dash, Schuss und die Hexapod-Regel.
+## Ausfuehren: godot --headless --path . --script res://tests/smoke_test.gd
+
+var main: Node
+var failures := 0
+
+
+func _initialize() -> void:
+	main = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	_run.call_deferred()
+
+
+func _frames(count: int) -> void:
+	for i in count:
+		await physics_frame
+
+
+func _check(condition: bool, message: String) -> void:
+	if condition:
+		print("OK    ", message)
+	else:
+		print("FEHLER ", message)
+		failures += 1
+
+
+func _run() -> void:
+	await _frames(40)
+	var p1: Player = main.players[0]
+	var p2: Player = main.players[1]
+	_check(p1.is_on_floor() and p2.is_on_floor(), "Beide Spieler stehen auf dem Boden")
+
+	# Laufen
+	var x0 := p1.global_position.x
+	Input.action_press("p1_right")
+	await _frames(30)
+	Input.action_release("p1_right")
+	_check(p1.global_position.x > x0 + 80.0, "P1 laeuft nach rechts")
+	await _frames(30)
+
+	# Sprung
+	var y0 := p1.global_position.y
+	Input.action_press("p1_jump")
+	await _frames(12)
+	var y1 := p1.global_position.y
+	Input.action_release("p1_jump")
+	_check(y1 < y0 - 40.0, "P1 springt (Hoehe gewonnen: %d)" % int(y0 - y1))
+	await _frames(90)
+	_check(p1.is_on_floor(), "P1 landet wieder")
+
+	# Dash
+	p1.velocity = Vector2.ZERO
+	var dx0 := p1.global_position.x
+	var charges := p1.dash_charges
+	Input.action_press("p1_right")
+	Input.action_press("p1_dash")
+	await _frames(3)
+	Input.action_release("p1_dash")
+	await _frames(14)
+	Input.action_release("p1_right")
+	_check(p1.global_position.x > dx0 + 150.0, "P1 dasht (Strecke: %d)" % int(p1.global_position.x - dx0))
+	_check(p1.dash_charges == charges - 1, "Dash verbraucht eine Aufladung")
+	await _frames(120)
+	_check(p1.dash_charges == charges, "Dash-Aufladung regeneriert sich")
+
+	# Schuss auf Puppe
+	var dummy: TestDummy = null
+	for child in main.get_children():
+		if child is TestDummy:
+			dummy = child
+			break
+	p1.global_position = Vector2(1100.0, 1210.0)
+	p1.velocity = Vector2.ZERO
+	await _frames(5)
+	var hp_before := dummy.health
+	Input.action_press("p1_fire")
+	await _frames(60)
+	Input.action_release("p1_fire")
+	_check(dummy.health < hp_before, "P1 trifft Puppe (HP %d -> %d)" % [int(hp_before), int(dummy.health)])
+
+	# Hexapod darf in der Bewegung nicht schiessen, im Stand schon
+	var shots := [0]
+	p2.fired.connect(func(_o: Vector2, _d: Vector2, _dmg: float, _s: Player) -> void: shots[0] += 1)
+	Input.action_press("p2_right")
+	Input.action_press("p2_fire")
+	await _frames(12)
+	shots[0] = 0
+	await _frames(25)
+	_check(shots[0] == 0, "Hexapod schiesst nicht in der Bewegung")
+	Input.action_release("p2_right")
+	await _frames(30)
+	shots[0] = 0
+	await _frames(60)
+	Input.action_release("p2_fire")
+	_check(shots[0] >= 1, "Hexapod schiesst im Stand (Schuesse: %d)" % shots[0])
+
+	print("Fertig, Fehler: ", failures)
+	quit(failures)
