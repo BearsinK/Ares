@@ -19,6 +19,7 @@ Markiert mit (Vorschlag) ist, was noch nicht bestätigt wurde.
 
 - Roboter, die sich Upgrades kaufen und per Firmware neue Skills lernen
 - Humor und lustige Details kommen später
+- Ton: bunt und humorvoll
 - Optik: Platzhalter aus Formen und Farben. Wer was ist, zeigt Form und Spielerfarbe
 - Keine echten Marken oder Logos, nur erfundene
 
@@ -26,6 +27,8 @@ Markiert mit (Vorschlag) ist, was noch nicht bestätigt wurde.
 
 - Ein Run dauert etwa 40 bis 60 Minuten
 - Etwa 10 Wellen à 3 bis 5 Minuten im Wechsel mit Shop-Pause, Boss alle paar Wellen
+- Der Run endet mit einem Endboss nach der letzten Welle (Sieg). Optionaler Endlos-Modus später
+- Bosse: Bullet-Hell mit eindeutigen Mustern und Schwächen (Idee: Schwächen hängen an Elementen, was Synergien belohnt)
 - Gegner spawnen nach und nach über einen Director (Punktesystem wie in Risk of Rain), nicht alle auf einmal
 - Schwierigkeit steigt kontinuierlich mit der Zeit
 - Viele Gegner, wenig Typen: 4 bis 6 Typen plus Elites und Boss
@@ -44,6 +47,7 @@ Zwei getrennte Systeme, beide liefern Skills und Buffs.
 **Gold (pro Spieler)**
 - Gold gehört dem Spieler, der es einsammelt
 - Einkauf im Shop zwischen den Wellen, jeder wählt seine eigenen Skills und Buffs
+- Jeder Spieler bekommt 4 bis 5 Angebote, Reroll gegen Gold, Preise steigen mit der Welle
 - Bezeichnung des Golds im Setting: z.B. Schrott oder Chips (Vorschlag)
 
 **Perma-Progression**
@@ -129,6 +133,13 @@ Alle starten mit demselben Grundkit, unterscheiden sich in Hauptangriff, Klassen
 - 1 Arena, 2 Klassen (Roomba und Hexapod), etwa 15 Items, 4 Gegnertypen, 1 Boss
 - Director-Spawning, Level-Up-System, Shop, Wiederbeleben
 - Ziel: Spielgefühl und Synergien prüfen, danach ausbauen
+
+## Auswirkungen der Bullet-Hell-Bosse (Notiz)
+
+- Dash mit Iframes und gute Bewegung sind für Bosskämpfe zentral
+- Hexapod (nur im Stand schießen) und Automat (langsam) brauchen Wege, Mustern auszuweichen, z.B. Schutzschild, Teleport oder große Sicherheitszonen im Muster
+- Hitboxen der Spieler klein halten, Muster lesbar halten, auch bei viel Effektchaos
+- Boss-Schwächen als Belohnung für Elementkombos der beiden Spieler
 
 ## Offene Fragen
 
