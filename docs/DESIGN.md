@@ -66,6 +66,10 @@ Zwei getrennte Systeme, beide liefern Skills und Buffs.
 
 Elemente kommen über Module in Waffen (siehe Waffen und Waffenrad), nicht über Klassen oder ein Rad.
 
+- Statuseffekte halten nur kurz (Startwert Vorschlag: etwa 2 bis 3 Sekunden, später tunen)
+- Coop-Bonus: Wird ein Gegner von zwei verschiedenen Spielern mit zwei Elementen behandelt, ist die Kombo deutlich stärker als wenn ein Spieler beide selbst setzt
+- Ziel: Zusammenarbeit lohnt sich, Solo-Kombos durch Waffenwechsel bleiben möglich, aber schwächer
+
 Vier Elemente: Feuer, Wasser, Eis, Blitz. Status liegen auf dem Gegner, egal welcher Spieler sie gesetzt hat (Vorschlag):
 
 | Kombination | Wirkung |
@@ -77,14 +81,15 @@ Vier Elemente: Feuer, Wasser, Eis, Blitz. Status liegen auf dem Gegner, egal wel
 
 ## Waffen und Waffenrad
 
-- Jeder Spieler hat mehrere Waffen und wählt sie über ein Waffenrad (wie in GTA)
+- Jeder Spieler hat bis zu 3 Waffen
+- Statt eines Waffenrads gibt es einen Rotate-Button: Waffe 1, dann 2, dann 3, dann wieder 1
 - Das Klassenwerkzeug (Geschütz, Dosenwerfer, Drohnendrucker, Saugkegel) bleibt die Basis jeder Klasse
 - Weitere Waffen werden im Shop gekauft und liegen im Rad
 - Elemente werden nicht im Rad gewechselt. Waffen sind neutral, Elementmodule werden im Shop in eine Waffe eingebaut
 - Im Kampf wechselt man nur die Waffe, der Elementbuild bleibt eine bewusste Shop-Entscheidung
 - Maximal ein Modul pro Waffe (Tendenz, damit Coop-Synergien zwischen den Spielern wichtiger bleiben als Solo-Kombos). Zweiter Modul-Slot höchstens als seltene Belohnung (Vorschlag)
-- Risiko: Mit mehreren Waffen im Rad kann ein Spieler Elemente selbst kombinieren, indem er die Waffe wechselt. Gegenmittel: Radgröße begrenzen (Vorschlag: 3 Slots) und Statuseffekte so tunen, dass Coop-Kombos deutlich stärker sind
-- Steuerung: D-Pad oder Schultertasten, da der rechte Stick zum Zielen belegt ist (Vorschlag)
+- Risiko: Mit mehreren Waffen im Rad kann ein Spieler Elemente selbst kombinieren, indem er die Waffe wechselt. Gegenmittel (beschlossen): Maximal 3 Waffen, Statuseffekte halten nur kurz, und Coop-Kombos bekommen einen Bonus (siehe Elemente und Synergien)
+- Steuerung: eine Taste für Rotate, genaue Belegung offen (Schultertaste ist naheliegend, da der rechte Stick zum Zielen belegt ist)
 - Items: Allgemeine Stats (Schaden, Tempo) gelten global, Element-Items hängen am Modul (Vorschlag)
 
 ## Items und Stacking
@@ -177,7 +182,8 @@ Bosse sind nicht alle gleich. Neben Bullet-Hell-Musterbossen gibt es Umwelt-Boss
 
 ## Offene Fragen
 
-- Waffenrad: Wie viele Slots (Vorschlag 3), welche Waffentypen
+- Welche Waffentypen gibt es
+- Genauer Wert für Statusdauer und Coop-Bonus, später beim Testen
 - Wie fügt sich das Klassenwerkzeug (z.B. Saugkegel) in das Waffenrad ein
 
 - Steuerungsbelegung auf dem PS5-Controller (Saugen, Dash, Klassenfähigkeit)
