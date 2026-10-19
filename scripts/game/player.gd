@@ -4,7 +4,7 @@ extends CharacterBody2D
 ## (siehe input_setup.gd). Die Darstellung ist ein Platzhalter aus Formen:
 ## Koerperform und Farbe zeigen die Klasse, der Rand zeigt den Spieler.
 
-signal fired(origin: Vector2, direction: Vector2, damage: float, shooter: Player)
+signal fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2)
 
 const GRAVITY := 2000.0
 const FALL_GRAVITY_MULT := 1.35
@@ -28,6 +28,8 @@ var aim_dir := Vector2.RIGHT
 var facing := 1.0
 var iframes := 0.0
 var dash_charges := 0
+var weapons: Array[String] = []
+var weapon_index := 0
 
 var _prefix := "p1_"
 var _coyote := 0.0
@@ -37,6 +39,7 @@ var _dash_time_left := 0.0
 var _dash_dir := Vector2.RIGHT
 var _dash_recharge := 0.0
 var _fire_cooldown := 0.0
+var _switch_cooldown := 0.0
 var _aim_memory := 0.0
 var _mouse_timer := 0.0
 var _trail_timer := 0.0
@@ -49,6 +52,8 @@ func setup(index: int, new_class_id: String) -> void:
 	stats = RobotClasses.get_stats(class_id)
 	_prefix = "p%d_" % index
 	dash_charges = stats.dash_charges
+	for weapon_id in stats.weapons:
+		weapons.append(weapon_id)
 
 
 func _ready() -> void:
@@ -97,6 +102,7 @@ func _update_timers(delta: float) -> void:
 	_jump_buffer = maxf(0.0, _jump_buffer - delta)
 	_mouse_timer = maxf(0.0, _mouse_timer - delta)
 	_fire_cooldown = maxf(0.0, _fire_cooldown - delta)
+	_switch_cooldown = maxf(0.0, _switch_cooldown - delta)
 
 	if dash_charges < stats.dash_charges:
 		_dash_recharge += delta
@@ -190,21 +196,43 @@ func _process_dash(delta: float) -> void:
 		velocity.y = minf(velocity.y, 0.0)
 
 
-func _can_fire() -> bool:
-	if stats.stationary_fire:
+func current_weapon_id() -> String:
+	return weapons[weapon_index]
+
+
+func _can_fire(weapon_id: String) -> bool:
+	# Klassenregel Hexapod: Die Klassenwaffe (erste Waffe) schiesst nur im Stand.
+	if stats.stationary_fire and weapon_id == stats.weapons[0]:
 		return is_on_floor() and absf(velocity.x) < 30.0 and _dash_time_left <= 0.0
 	return true
 
 
+func _rotate_weapon() -> void:
+	if weapons.size() <= 1:
+		return
+	weapon_index = (weapon_index + 1) % weapons.size()
+	_switch_cooldown = 0.2
+	Sfx.play("switch")
+
+
 func _handle_fire(_delta: float) -> void:
+	if Input.is_action_just_pressed(_prefix + "weapon"):
+		_rotate_weapon()
 	if not Input.is_action_pressed(_prefix + "fire"):
 		return
-	if _fire_cooldown > 0.0 or not _can_fire():
+	if _fire_cooldown > 0.0 or _switch_cooldown > 0.0:
 		return
-	_fire_cooldown = 1.0 / stats.fire_rate
-	var origin: Vector2 = global_position + aim_dir * (float(stats.radius) + 6.0)
-	Sfx.play("shoot_heavy" if float(stats.damage) > 20.0 else "shoot")
-	fired.emit(origin, aim_dir, stats.damage, self)
+	var weapon_id := current_weapon_id()
+	if not _can_fire(weapon_id):
+		return
+	var weapon := Weapons.get_weapon(weapon_id)
+	_fire_cooldown = 1.0 / float(weapon.fire_rate)
+	var origin: Vector2 = global_position + aim_dir * (float(stats.radius) + float(weapon.barrel))
+	# Rueckstoss: am Boden schwaecher, in der Luft staerker.
+	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
+	if not (stats.stationary_fire and weapon_id == stats.weapons[0]):
+		velocity -= aim_dir * kick
+	fired.emit(self, weapon_id, origin, aim_dir)
 
 
 func _draw() -> void:
@@ -273,11 +301,14 @@ func _draw_face(r: float, alpha: float) -> void:
 
 
 func _draw_weapon(r: float, outline: Color) -> void:
-	var length := r + 14.0
+	var weapon_id := current_weapon_id()
+	var weapon := Weapons.get_weapon(weapon_id)
+	var length: float = r + float(weapon.barrel) - 6.0
 	var color := outline
-	if stats.stationary_fire and not _can_fire():
+	if not _can_fire(weapon_id):
 		color = Color(0.5, 0.5, 0.5, outline.a)
 	draw_line(aim_dir * (r * 0.5), aim_dir * length, color, 6.0)
+	draw_circle(aim_dir * length, 3.5, weapon.color)
 
 
 func _draw_dash_pips(r: float) -> void:

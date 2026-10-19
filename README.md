@@ -20,15 +20,22 @@ Beide Spieler können Controller und Tastatur gleichzeitig nutzen. Spieler 1 bek
 | Sprung | L1 | Leertaste | Pfeil hoch |
 | Dash | R1 | Shift | Schrägstrich |
 | Schießen | R2 | Linke Maustaste oder F | Punkt |
+| Waffe wechseln | Dreieck | Q | M |
 
-Die übrigen Aktionen (Klassenfähigkeit, Haken, Waffe wechseln, Interagieren) sind schon belegt, haben aber noch keine Funktion.
+Die übrigen Aktionen (Klassenfähigkeit, Haken, Interagieren) sind schon belegt, haben aber noch keine Funktion.
+
+Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die nächste.
 
 ## Aktueller Stand
 
 - Testarena mit Plattformen und Schacht, Kamera hält beide Spieler im Bild
 - Laufen mit Beschleunigung, Sprung (variable Höhe, Coyote-Time, Eingabepuffer), Dash mit Aufladungen, Iframes und Momentum
 - Platzhalter-Klassen Roomba und Hexapod (Hexapod schießt nur im Stand)
-- Übungspuppen mit Schadenszahlen
+- Sechs Waffen: Staubkugeln, Schnellfeuer, Schrot, Rakete (Explosion), Strahl und Sniper (Treffer entlang einer Linie, durchschlägt Gegner). Jeder Spieler hat drei zum Ausprobieren, Wechsel per Dreieck
+- Rückmeldung: Mündungsfeuer, Funken, Rückstoß, Kamerawackeln, Explosionen, eigener Sound pro Waffe
+- Übungspuppen mit Schadenszahlen, sie sterben und kommen nach 4 Sekunden zurück
+
+Waffenwerte stehen in `scripts/data/weapons.gd`, Welche Waffen ein Spieler zum Testen hat, in `scripts/game/main.gd` (`TEST_LOADOUTS`).
 
 Welche Klassen gespielt werden, steht in `scripts/game/main.gd` (`PLAYER_CLASSES`).
 

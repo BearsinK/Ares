@@ -10,8 +10,17 @@ extends Camera2D
 
 var targets: Array[Node2D] = []
 
+var _shake := 0.0
+
+
+## Schuettelt die Kamera. Der staerkste aktuelle Wert gewinnt und klingt ab.
+func add_shake(amount: float) -> void:
+	_shake = maxf(_shake, amount)
+
 
 func _process(delta: float) -> void:
+	_shake = move_toward(_shake, 0.0, 40.0 * delta)
+	offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * _shake
 	if targets.is_empty():
 		return
 	var min_pos := targets[0].global_position

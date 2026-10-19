@@ -11,8 +11,17 @@ const BG_COLOR := Color(0.08, 0.09, 0.13)
 # Welche Klassen die beiden Spieler spielen (roomba, hexapod, vending, printer).
 const PLAYER_CLASSES: Array[String] = ["roomba", "hexapod"]
 
+# Testausstattung: jeder Spieler bekommt drei Waffen zum Ausprobieren.
+# Mit Dreieck (Controller) oder der Waffen-Taste wechselt man durch.
+# Debug: F1 / F2 tauschen die aktuelle Waffe von Spieler 1 / 2 gegen die naechste.
+const TEST_LOADOUTS := [
+	["dust", "shotgun", "rocket"],
+	["sniper", "beam", "rapid"],
+]
+
 var players: Array[Player] = []
 var camera: CoopCamera
+var fx: Fx
 var hud_label: Label
 var projectiles: Node2D
 
@@ -26,6 +35,8 @@ func _ready() -> void:
 	_build_arena()
 	projectiles = Node2D.new()
 	add_child(projectiles)
+	fx = Fx.new()
+	add_child(fx)
 	_spawn_dummies()
 	_spawn_players()
 	_setup_camera()
@@ -51,6 +62,21 @@ func _input(event: InputEvent) -> void:
 		_last_pad_event = "Controller %d Taste %d" % [event.device, event.button_index]
 	elif event is InputEventJoypadMotion and absf(event.axis_value) > 0.5:
 		_last_pad_event = "Controller %d Achse %d (%.1f)" % [event.device, event.axis, event.axis_value]
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_F1:
+			_cycle_weapon(0)
+		elif event.keycode == KEY_F2:
+			_cycle_weapon(1)
+
+
+func _cycle_weapon(index: int) -> void:
+	var player := players[index]
+	var current := Weapons.ALL_IDS.find(player.current_weapon_id())
+	player.weapons[player.weapon_index] = Weapons.ALL_IDS[(current + 1) % Weapons.ALL_IDS.size()]
+	Sfx.play("switch")
 
 
 func _on_joy_connection_changed(device: int, connected: bool) -> void:
@@ -108,6 +134,9 @@ func _spawn_players() -> void:
 	for i in 2:
 		var player := Player.new()
 		player.setup(i + 1, PLAYER_CLASSES[i])
+		player.weapons.clear()
+		for weapon_id in TEST_LOADOUTS[i]:
+			player.weapons.append(weapon_id)
 		player.position = Vector2(300.0 + i * 90.0, FLOOR_Y - 40.0)
 		player.fired.connect(_on_player_fired)
 		add_child(player)
@@ -142,14 +171,79 @@ func _setup_camera() -> void:
 	camera.global_position = (players[0].global_position + players[1].global_position) * 0.5
 
 
-func _on_player_fired(origin: Vector2, direction: Vector2, damage: float, shooter: Player) -> void:
-	var bullet := Projectile.new()
-	bullet.position = origin
-	bullet.direction = direction
-	bullet.damage = damage
-	bullet.shooter = shooter
-	bullet.color = RobotClasses.PLAYER_COLORS[shooter.player_index - 1]
-	projectiles.add_child(bullet)
+func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2) -> void:
+	var weapon := Weapons.get_weapon(weapon_id)
+	var damage := float(weapon.damage) * float(player.stats.damage_mult)
+	Sfx.play(weapon.sound)
+	camera.add_shake(float(weapon.shake))
+	fx.muzzle(origin, direction, weapon.color)
+	if weapon.kind == "hitscan":
+		_fire_hitscan(player, weapon, origin, direction, damage)
+	else:
+		_fire_projectiles(player, weapon, origin, direction, damage)
+
+
+func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float) -> void:
+	for i in int(weapon.pellets):
+		var bullet := Projectile.new()
+		bullet.position = origin
+		bullet.direction = direction.rotated(randf_range(-float(weapon.spread), float(weapon.spread)))
+		bullet.speed = float(weapon.speed) * randf_range(0.9, 1.0) if weapon.pellets > 1 else float(weapon.speed)
+		bullet.damage = damage
+		bullet.lifetime = float(weapon.lifetime)
+		bullet.pierce = int(weapon.pierce)
+		bullet.size = float(weapon.size)
+		bullet.color = weapon.color
+		bullet.shooter = player
+		bullet.explosion_radius = float(weapon.get("explosion_radius", 0.0))
+		bullet.explosion_damage = float(weapon.get("explosion_damage", 0.0)) * float(player.stats.damage_mult)
+		bullet.hit.connect(_on_projectile_hit)
+		projectiles.add_child(bullet)
+
+
+func _fire_hitscan(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float) -> void:
+	var space := get_world_2d().direct_space_state
+	var target := origin + direction * float(weapon.range)
+	var end := target
+	var exclude: Array[RID] = []
+	var hits_left := int(weapon.pierce) + 1
+	while hits_left > 0:
+		var query := PhysicsRayQueryParameters2D.create(origin, target, (1 << 0) | (1 << 2))
+		query.collide_with_areas = true
+		query.collide_with_bodies = true
+		query.exclude = exclude
+		var result := space.intersect_ray(query)
+		if result.is_empty():
+			break
+		var collider: Object = result.collider
+		if collider.has_method("take_damage"):
+			collider.take_damage(damage, player, direction)
+			fx.spark(result.position, weapon.color, 4)
+			exclude.append(result.rid)
+			hits_left -= 1
+		else:
+			end = result.position
+			fx.spark(end, weapon.color, 3)
+			break
+	fx.tracer(origin, end, weapon.color, float(weapon.width), float(weapon.tracer_life))
+
+
+func _on_projectile_hit(projectile: Projectile, pos: Vector2, _target: Node) -> void:
+	fx.spark(pos, projectile.color, 4)
+	if projectile.explosion_radius > 0.0:
+		_explode(pos, projectile.explosion_radius, projectile.explosion_damage, projectile.shooter, projectile.color)
+
+
+func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: Color) -> void:
+	fx.explosion(pos, radius, color)
+	camera.add_shake(10.0)
+	Sfx.play("explosion")
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		var distance: float = enemy.global_position.distance_to(pos)
+		if distance <= radius + 25.0:
+			var falloff := 1.0 - 0.5 * clampf(distance / radius, 0.0, 1.0)
+			var away: Vector2 = (enemy.global_position - pos).normalized()
+			enemy.take_damage(damage * falloff, shooter, away)
 
 
 func _build_hud() -> void:
@@ -164,8 +258,13 @@ func _build_hud() -> void:
 func _update_hud() -> void:
 	var lines: Array[String] = []
 	for player in players:
-		lines.append("P%d %s | Dash %d/%d" % [
-			player.player_index, player.stats.name, player.dash_charges, player.stats.dash_charges])
+		var weapon_names: Array[String] = []
+		for i in player.weapons.size():
+			var weapon_name: String = Weapons.get_weapon(player.weapons[i]).name
+			weapon_names.append("[%s]" % weapon_name if i == player.weapon_index else weapon_name)
+		lines.append("P%d %s | Dash %d/%d | %s" % [
+			player.player_index, player.stats.name, player.dash_charges, player.stats.dash_charges,
+			"  ".join(weapon_names)])
 
 	var pads := Input.get_connected_joypads()
 	if pads.is_empty():

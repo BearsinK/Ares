@@ -23,6 +23,12 @@ func _ready() -> void:
 	_streams["jump"] = _synth(280.0, 620.0, 0.12, "sine", 0.35, 0.0)
 	_streams["dash"] = _synth(700.0, 150.0, 0.16, "saw", 0.2, 0.7)
 	_streams["hit"] = _synth(260.0, 120.0, 0.07, "square", 0.25, 0.4)
+	_streams["shotgun"] = _synth(320.0, 60.0, 0.2, "saw", 0.4, 0.8)
+	_streams["rocket"] = _synth(220.0, 80.0, 0.28, "saw", 0.35, 0.5)
+	_streams["explosion"] = _synth(130.0, 30.0, 0.5, "saw", 0.5, 0.9)
+	_streams["beam"] = _synth(800.0, 720.0, 0.05, "square", 0.12, 0.1)
+	_streams["sniper"] = _synth(1500.0, 90.0, 0.28, "saw", 0.4, 0.3)
+	_streams["switch"] = _synth(600.0, 900.0, 0.05, "square", 0.2, 0.0)
 	_streams["kill"] = _synth(300.0, 40.0, 0.35, "saw", 0.4, 0.6)
 
 

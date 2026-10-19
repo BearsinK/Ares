@@ -12,11 +12,13 @@ var half_size := Vector2(25.0, 40.0)
 
 var _flash := 0.0
 var _dead := false
+var _wobble := Vector2.ZERO
 
 
 func _ready() -> void:
 	collision_layer = 1 << 2
 	collision_mask = 0
+	add_to_group("enemies")
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = half_size * 2.0
@@ -28,13 +30,17 @@ func _process(delta: float) -> void:
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta)
 		queue_redraw()
+	if _wobble != Vector2.ZERO:
+		_wobble = _wobble.move_toward(Vector2.ZERO, 160.0 * delta)
+		queue_redraw()
 
 
-func take_damage(amount: float, _source: Node) -> void:
+func take_damage(amount: float, _source: Node, direction := Vector2.ZERO) -> void:
 	if _dead:
 		return
 	health -= amount
 	_flash = 0.08
+	_wobble = direction * 8.0
 	_spawn_number(amount)
 	Sfx.play("hit")
 	if health <= 0.0:
@@ -85,6 +91,7 @@ func _spawn_number(amount: float) -> void:
 
 
 func _draw() -> void:
+	draw_set_transform(_wobble)
 	var color := Color(0.8, 0.3, 0.4)
 	if _flash > 0.0:
 		color = Color.WHITE

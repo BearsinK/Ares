@@ -16,9 +16,9 @@ const DATA := {
 		"jump_speed": 900.0,
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
-		"fire_rate": 5.0,
-		"damage": 8.0,
 		"stationary_fire": false,
+		"weapons": ["dust"],
+		"damage_mult": 1.0,
 	},
 	"hexapod": {
 		"name": "Hexapod",
@@ -31,10 +31,10 @@ const DATA := {
 		"jump_speed": 900.0,
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
-		"fire_rate": 1.6,
-		"damage": 40.0,
-		# Sniper: schiesst nur im Stand.
+		# Sniper: die Klassenwaffe (erste Waffe) schiesst nur im Stand.
 		"stationary_fire": true,
+		"weapons": ["sniper"],
+		"damage_mult": 1.0,
 	},
 	"vending": {
 		"name": "Automat",
@@ -47,9 +47,9 @@ const DATA := {
 		"jump_speed": 800.0,
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
-		"fire_rate": 2.0,
-		"damage": 25.0,
 		"stationary_fire": false,
+		"weapons": ["rocket"],
+		"damage_mult": 1.2,
 	},
 	"printer": {
 		"name": "Drucker",
@@ -62,9 +62,9 @@ const DATA := {
 		"jump_speed": 900.0,
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
-		"fire_rate": 3.0,
-		"damage": 12.0,
 		"stationary_fire": false,
+		"weapons": ["rapid"],
+		"damage_mult": 1.0,
 	},
 }
 
