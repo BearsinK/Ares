@@ -3,3 +3,6 @@
 *.translation
 export_presets.cfg
 /android/
+
+# Lokale Einstellungen
+godot_path.txt
