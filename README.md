@@ -37,6 +37,7 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Director: Gegner erscheinen nach und nach, die Menge und Stärke steigen mit der Zeit
 - XP und Gold fallen aus Gegnern, werden angezogen und eingesammelt. XP gehört beiden, Gold dem Einsammler
 - Level-Ups mitten im Kampf: drei Team-Perks, beide Spieler müssen dieselbe Karte bestätigen (Links/Rechts wählen, Kreuz bestätigen, Kreis zurück). Jeder Perk wirkt je nach Klasse anders
+- Elemente als Module an Waffen (Feuer, Wasser, Eis, Blitz) mit kurzen Statuseffekten und Kombos: Wasser+Blitz (x1,5, Kettenblitz), Wasser+Eis (eingefroren), Wasser+Feuer (Dampfexplosion), Feuer+Eis (schmilzt). Setzt ein anderer Spieler den Status, ist die Kombo deutlich stärker (Coop-Bonus). Zum Testen tragen die Waffen schon Module (Punkt im HUD zeigt das Element)
 - Spieler-Leben mit Unverwundbarkeit nach Treffer, Wiederbeleben durch Halten von Interagieren (Kreis), Game Over wenn beide am Boden liegen
 
 Waffenwerte stehen in `scripts/data/weapons.gd`, Welche Waffen ein Spieler zum Testen hat, in `scripts/game/main.gd` (`TEST_LOADOUTS`).
@@ -58,6 +59,7 @@ godot --headless --path . res://tests/smoke_test.tscn
 godot --headless --path . res://tests/combat_test.tscn
 godot --headless --path . res://tests/director_test.tscn
 godot --headless --path . res://tests/progression_test.tscn
+godot --headless --path . res://tests/element_test.tscn
 ```
 
 Die Tests simulieren Eingaben und prüfen Bewegung, Waffen, Gegnerangriffe, Wiederbeleben, Game Over und den Director.

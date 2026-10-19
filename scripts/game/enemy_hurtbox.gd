@@ -6,6 +6,6 @@ extends Area2D
 var enemy: Node = null
 
 
-func take_damage(amount: float, source: Node, direction := Vector2.ZERO) -> void:
+func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element := "") -> void:
 	if is_instance_valid(enemy):
-		enemy.take_damage(amount, source, direction)
+		enemy.take_damage(amount, source, direction, element)

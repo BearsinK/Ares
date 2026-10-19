@@ -31,6 +31,7 @@ var _phase := 0.0
 var _time := 0.0
 var _dead := false
 var _slam_flash := 0.0
+var statuses: StatusEffects
 
 
 func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_players: Array[Player]) -> void:
@@ -42,6 +43,7 @@ func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_playe
 	players = new_players
 	_phase = randf() * TAU
 	_cooldown = randf_range(0.3, 1.2)
+	statuses = StatusEffects.new(self)
 
 
 func _ready() -> void:
@@ -66,15 +68,21 @@ func _ready() -> void:
 	add_child(hurtbox)
 
 
-func take_damage(amount: float, _source: Node, direction := Vector2.ZERO) -> void:
+## element: Element der Waffe ("" = neutral). from_effect: Schaden aus einem Status
+## oder einer Kombo, loest selbst keine weiteren Element-Effekte aus.
+func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element := "", from_effect := false) -> void:
 	if _dead:
 		return
+	if element != "" and not from_effect:
+		amount = statuses.process_hit(element, source, amount)
+		if _dead:
+			return
 	hp -= amount
 	_flash = 0.08
 	velocity += direction * 140.0 * float(data.knockback)
 	Sfx.play("hit")
 	if Fx.instance:
-		Fx.instance.number(global_position + Vector2(0.0, -float(data.radius) - 8.0), amount)
+		Fx.instance.number(global_position + Vector2(0.0, -float(data.radius) - 8.0), amount, Elements.color_of(element, Color(1, 1, 0.5)))
 	if hp <= 0.0:
 		_die()
 
@@ -93,7 +101,13 @@ func _physics_process(delta: float) -> void:
 	_flash = maxf(0.0, _flash - delta)
 	_slam_flash = maxf(0.0, _slam_flash - delta)
 	_cooldown = maxf(0.0, _cooldown - delta)
+	statuses.update(delta)
+	if _dead:
+		return
 	_pick_target()
+	if statuses.is_frozen():
+		_frozen_physics(delta)
+		return
 
 	if data.movement == "fly":
 		_fly_movement(delta)
@@ -101,6 +115,20 @@ func _physics_process(delta: float) -> void:
 		_ground_movement(delta)
 	_apply_separation(delta)
 	_update_attack(delta)
+	move_and_slide()
+	queue_redraw()
+
+
+func _frozen_physics(delta: float) -> void:
+	# Eingefroren: steht still, ein laufender Angriff wird abgebrochen.
+	if _state == State.WINDUP:
+		_state = State.COOLDOWN
+		_cooldown = float(data.cooldown) * 0.5
+	if data.movement == "fly":
+		velocity = velocity.lerp(Vector2.ZERO, 1.0 - exp(-8.0 * delta))
+	else:
+		velocity.x = move_toward(velocity.x, 0.0, 2500.0 * delta)
+		velocity.y = minf(velocity.y + GRAVITY * delta, MAX_FALL_SPEED)
 	move_and_slide()
 	queue_redraw()
 
@@ -137,7 +165,7 @@ func _ground_movement(delta: float) -> void:
 			var player_above := offset.y < -70.0 and distance < 280.0
 			if is_on_wall() or player_above:
 				velocity.y = -float(data.jump)
-	velocity.x = move_toward(velocity.x, desired * float(data.speed), 1400.0 * delta)
+	velocity.x = move_toward(velocity.x, desired * float(data.speed) * statuses.speed_factor(), 1400.0 * delta)
 
 
 func _fly_movement(delta: float) -> void:
@@ -146,7 +174,7 @@ func _fly_movement(delta: float) -> void:
 		var keep: float = data.keep_distance
 		var orbit := Vector2(sin(_time * 0.8 + _phase) * keep, -170.0 + cos(_time * 1.3 + _phase) * 50.0)
 		var goal := _target.global_position + orbit
-		desired = (goal - global_position).limit_length(float(data.speed))
+		desired = (goal - global_position).limit_length(float(data.speed) * statuses.speed_factor())
 	velocity = velocity.lerp(desired, 1.0 - exp(-4.0 * delta))
 
 
@@ -230,6 +258,7 @@ func _draw() -> void:
 	if _flash > 0.0:
 		color = Color.WHITE
 	_draw_telegraph(r)
+	statuses.draw_overlay(self, r, _time)
 	match kind:
 		"flyer":
 			var points := PackedVector2Array([Vector2(0, -r), Vector2(r, 0), Vector2(0, r), Vector2(-r, 0)])

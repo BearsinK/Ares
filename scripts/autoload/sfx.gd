@@ -37,6 +37,9 @@ func _ready() -> void:
 	_streams["telegraph"] = _synth(500.0, 500.0, 0.05, "sine", 0.15, 0.0)
 	_streams["enemy_shoot"] = _synth(600.0, 250.0, 0.12, "square", 0.2, 0.2)
 	_streams["slam"] = _synth(200.0, 50.0, 0.3, "saw", 0.5, 0.7)
+	_streams["steam"] = _synth(900.0, 300.0, 0.3, "saw", 0.3, 0.95)
+	_streams["freeze"] = _synth(1600.0, 800.0, 0.2, "sine", 0.3, 0.2)
+	_streams["zap"] = _synth(1400.0, 300.0, 0.15, "square", 0.25, 0.5)
 	_streams["kill"] = _synth(300.0, 40.0, 0.35, "saw", 0.4, 0.6)
 
 

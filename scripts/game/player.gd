@@ -36,6 +36,8 @@ var iframes := 0.0
 var dash_charges := 0
 var weapons: Array[String] = []
 var weapon_index := 0
+# Elementmodul pro Waffe (gleicher Index wie weapons), "" = kein Modul.
+var modules: Array[String] = []
 var hp := 100.0
 var gold := 0
 var downed := false
@@ -69,6 +71,7 @@ func setup(index: int, new_class_id: String) -> void:
 	hp = stats.max_hp
 	for weapon_id in stats.weapons:
 		weapons.append(weapon_id)
+		modules.append("")
 
 
 func max_health() -> float:
@@ -282,6 +285,10 @@ func _process_dash(delta: float) -> void:
 
 func current_weapon_id() -> String:
 	return weapons[weapon_index]
+
+
+func current_module() -> String:
+	return modules[weapon_index] if weapon_index < modules.size() else ""
 
 
 func _can_fire(weapon_id: String) -> bool:

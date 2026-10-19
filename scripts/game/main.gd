@@ -18,6 +18,12 @@ const TEST_LOADOUTS := [
 	["dust", "shotgun", "rocket"],
 	["sniper", "beam", "rapid"],
 ]
+# Elementmodule der Testwaffen (gleiche Reihenfolge). Spaeter kauft man sie im Shop.
+# Beispiel Coop: P1 macht mit Staubkugeln nass, P2 schockt mit dem Sniper.
+const TEST_MODULES := [
+	["water", "ice", "fire"],
+	["lightning", "fire", "water"],
+]
 
 const DUMMY_RESPAWN_TIME := 4.0
 const RESTART_DELAY := 1.0
@@ -126,8 +132,10 @@ func _spawn_players() -> void:
 		var player := Player.new()
 		player.setup(i + 1, PLAYER_CLASSES[i])
 		player.weapons.clear()
-		for weapon_id in TEST_LOADOUTS[i]:
-			player.weapons.append(weapon_id)
+		player.modules.clear()
+		for j in TEST_LOADOUTS[i].size():
+			player.weapons.append(TEST_LOADOUTS[i][j])
+			player.modules.append(TEST_MODULES[i][j])
 		player.position = Vector2(300.0 + i * 90.0, FLOOR_Y - 40.0)
 		player.fired.connect(_on_player_fired)
 		player.went_down.connect(_on_player_down)
@@ -298,16 +306,18 @@ func _setup_camera() -> void:
 func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2) -> void:
 	var weapon := Weapons.get_weapon(weapon_id)
 	var damage := float(weapon.damage) * player.damage_mult()
+	var element := player.current_module()
+	var color := Elements.color_of(element, weapon.color)
 	Sfx.play(weapon.sound)
 	camera.add_shake(float(weapon.shake))
-	fx.muzzle(origin, direction, weapon.color)
+	fx.muzzle(origin, direction, color)
 	if weapon.kind == "hitscan":
-		_fire_hitscan(player, weapon, origin, direction, damage)
+		_fire_hitscan(player, weapon, origin, direction, damage, element, color)
 	else:
-		_fire_projectiles(player, weapon, origin, direction, damage)
+		_fire_projectiles(player, weapon, origin, direction, damage, element, color)
 
 
-func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float) -> void:
+func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
 	for i in int(weapon.pellets):
 		var bullet := Projectile.new()
 		bullet.position = origin
@@ -317,7 +327,8 @@ func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, dire
 		bullet.lifetime = float(weapon.lifetime)
 		bullet.pierce = int(weapon.pierce)
 		bullet.size = float(weapon.size)
-		bullet.color = weapon.color
+		bullet.color = color
+		bullet.element = element
 		bullet.shooter = player
 		bullet.explosion_radius = float(weapon.get("explosion_radius", 0.0))
 		bullet.explosion_damage = float(weapon.get("explosion_damage", 0.0)) * player.damage_mult()
@@ -325,7 +336,7 @@ func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, dire
 		projectiles.add_child(bullet)
 
 
-func _fire_hitscan(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float) -> void:
+func _fire_hitscan(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
 	var space := get_world_2d().direct_space_state
 	var target := origin + direction * float(weapon.range)
 	var end := target
@@ -341,24 +352,24 @@ func _fire_hitscan(player: Player, weapon: Dictionary, origin: Vector2, directio
 			break
 		var collider: Object = result.collider
 		if collider.has_method("take_damage"):
-			collider.take_damage(damage, player, direction)
-			fx.spark(result.position, weapon.color, 4)
+			collider.take_damage(damage, player, direction, element)
+			fx.spark(result.position, color, 4)
 			exclude.append(result.rid)
 			hits_left -= 1
 		else:
 			end = result.position
-			fx.spark(end, weapon.color, 3)
+			fx.spark(end, color, 3)
 			break
-	fx.tracer(origin, end, weapon.color, float(weapon.width), float(weapon.tracer_life))
+	fx.tracer(origin, end, color, float(weapon.width), float(weapon.tracer_life))
 
 
 func _on_projectile_hit(projectile: Projectile, pos: Vector2, _target: Node) -> void:
 	fx.spark(pos, projectile.color, 4)
 	if projectile.explosion_radius > 0.0:
-		_explode(pos, projectile.explosion_radius, projectile.explosion_damage, projectile.shooter, projectile.color)
+		_explode(pos, projectile.explosion_radius, projectile.explosion_damage, projectile.shooter, projectile.color, projectile.element)
 
 
-func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: Color) -> void:
+func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: Color, element := "") -> void:
 	fx.explosion(pos, radius, color)
 	camera.add_shake(10.0)
 	Sfx.play("explosion")
@@ -367,6 +378,6 @@ func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: 
 		if distance <= radius + 25.0:
 			var falloff := 1.0 - 0.5 * clampf(distance / radius, 0.0, 1.0)
 			var away: Vector2 = (enemy.global_position - pos).normalized()
-			enemy.take_damage(damage * falloff, shooter, away)
+			enemy.take_damage(damage * falloff, shooter, away, element)
 
 

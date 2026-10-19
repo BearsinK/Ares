@@ -16,6 +16,7 @@ var color := Color.WHITE
 var shooter: Node = null
 var explosion_radius := 0.0
 var explosion_damage := 0.0
+var element := ""
 
 var _hit_targets: Array[Node] = []
 
@@ -55,7 +56,7 @@ func _on_area_entered(area: Area2D) -> void:
 	if not area.has_method("take_damage") or area in _hit_targets:
 		return
 	_hit_targets.append(area)
-	area.take_damage(damage, shooter, direction)
+	area.take_damage(damage, shooter, direction, element)
 	hit.emit(self, global_position, area)
 	if pierce <= 0:
 		queue_free()

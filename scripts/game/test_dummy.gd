@@ -13,12 +13,15 @@ var half_size := Vector2(25.0, 40.0)
 var _flash := 0.0
 var _dead := false
 var _wobble := Vector2.ZERO
+var _time := 0.0
+var statuses: StatusEffects
 
 
 func _ready() -> void:
 	collision_layer = 1 << 2
 	collision_mask = 0
 	add_to_group("enemies")
+	statuses = StatusEffects.new(self)
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = half_size * 2.0
@@ -27,6 +30,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_time += delta
+	statuses.update(delta)
+	if _dead:
+		return
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta)
 		queue_redraw()
@@ -35,13 +42,15 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
-func take_damage(amount: float, _source: Node, direction := Vector2.ZERO) -> void:
+func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element := "", from_effect := false) -> void:
 	if _dead:
 		return
+	if element != "" and not from_effect:
+		amount = statuses.process_hit(element, source, amount)
 	health -= amount
 	_flash = 0.08
 	_wobble = direction * 8.0
-	_spawn_number(amount)
+	_spawn_number(amount, element)
 	Sfx.play("hit")
 	if health <= 0.0:
 		_die()
@@ -76,13 +85,14 @@ func _spawn_burst() -> void:
 	timer.timeout.connect(burst.queue_free)
 
 
-func _spawn_number(amount: float) -> void:
+func _spawn_number(amount: float, element := "") -> void:
 	if Fx.instance:
-		Fx.instance.number(global_position + Vector2(0.0, -half_size.y - 10.0), amount)
+		Fx.instance.number(global_position + Vector2(0.0, -half_size.y - 10.0), amount, Elements.color_of(element, Color(1, 1, 0.5)))
 
 
 func _draw() -> void:
 	draw_set_transform(_wobble)
+	statuses.draw_overlay(self, 30.0, _time)
 	var color := Color(0.8, 0.3, 0.4)
 	if _flash > 0.0:
 		color = Color.WHITE

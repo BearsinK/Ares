@@ -61,6 +61,10 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 		var weapon_name: String = Weapons.get_weapon(player.weapons[i]).name
 		var active := i == player.weapon_index
 		var label := "[%s]" % weapon_name if active else weapon_name
+		var module: String = player.modules[i]
+		if module != "":
+			_canvas.draw_circle(origin + Vector2(x + 5, 77), 5.0, Elements.COLORS[module])
+			x += 14.0
 		_text(origin + Vector2(x, 82), label, 16, Color.WHITE if active else Color(0.65, 0.65, 0.7))
 		x += 16.0 + label.length() * 8.0
 
