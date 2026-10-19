@@ -42,6 +42,14 @@ Erste Gegnertypen für den Prototyp (Namen im Fabrikthema sind Vorschlag):
 - Elites sind keine reinen Stat-Boosts, sondern bekommen ein Element und eine Mechanik (z.B. brennend, geladen, schildtragend)
 - Offen: Haben Gegner Elementschwächen, sind Elites saugbar
 
+## Kampfkollision
+
+- Kein Kontaktschaden: Gegner verletzen nur über Angriffs-Hitboxen (Schlag, Projektil), nicht durch Berühren
+- Normale Gegner haben keine Körperkollision mit Spielern, man läuft und dasht durch sie hindurch
+- Große Gegner (Brute, Elites, Bosse) sind fest und blockieren Wege. Der Dash geht durch sie hindurch (Iframes), manchmal muss man das tun, um an ihnen vorbeizukommen
+- Folge: Nahkampf-Gegner brauchen echte Angriffsanimationen mit Vorwarnung, nicht nur Berührung
+- Gefahr: Hunderte Nahkämpfer in einem Haufen greifen gleichzeitig an. Lösung (Vorschlag): Angriffs-Cooldowns und begrenzte Zahl gleichzeitiger Angreifer
+
 ## Run-Struktur
 
 - Ein Run dauert etwa 40 bis 60 Minuten
