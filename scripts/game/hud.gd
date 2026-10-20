@@ -14,6 +14,8 @@ var _flash_time := 0.0
 
 func _ready() -> void:
 	layer = 10
+	# Laeuft auch bei Pause weiter, damit die Anzeige zu den Menues passt.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_canvas = Node2D.new()
 	_canvas.draw.connect(_draw_hud)
 	add_child(_canvas)
@@ -44,7 +46,7 @@ func _draw_hud() -> void:
 	_draw_flash(view)
 	_draw_player_panel(main.players[0], Vector2(24.0, 16.0))
 	_draw_player_panel(main.players[1], Vector2(view.x - PANEL_WIDTH - 24.0, 16.0))
-	if not main.shop_menu.is_open:
+	if not main.shop_menu.is_open and not main.levelup_menu.is_open:
 		_draw_top_center(view)
 	_draw_xp_bar(view)
 	_draw_debug(view)

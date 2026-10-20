@@ -16,6 +16,7 @@ var player: Player
 var data: Dictionary = {}
 var cooldown := 0.0
 var time := 0.0
+var cooldown_total := 1.0
 
 var _tick := 0.0
 var _was_ready := true
@@ -40,13 +41,14 @@ func is_ready() -> bool:
 
 ## 0 = gerade benutzt, 1 = wieder bereit.
 func readiness() -> float:
-	return 1.0 - clampf(cooldown / float(data.cooldown), 0.0, 1.0)
+	return 1.0 - clampf(cooldown / cooldown_total, 0.0, 1.0)
 
 
 func try_use() -> bool:
 	if player.downed or cooldown > 0.0:
 		return false
-	cooldown = float(data.cooldown)
+	cooldown_total = float(data.cooldown) * maxf(0.3, 1.0 - float(player.mods.ability_cd))
+	cooldown = cooldown_total
 	time = float(data.duration)
 	_tick = 0.0
 	_was_ready = false

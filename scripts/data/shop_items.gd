@@ -80,7 +80,7 @@ static func _random_offer(player: Player, wave: int) -> Dictionary:
 			var weapon_id: String = candidates[randi() % candidates.size()]
 			var slot_text := "neuer Slot" if player.weapons.size() < MAX_WEAPONS else "ersetzt aktive Waffe"
 			return {"type": "weapon", "id": weapon_id, "name": Weapons.get_weapon(weapon_id).name,
-				"text": slot_text, "price": price_for("weapon", wave), "bought": false,
+				"text": "%s\n%s" % [Weapons.summary(weapon_id), slot_text], "price": price_for("weapon", wave), "bought": false,
 				"color": Weapons.get_weapon(weapon_id).color}
 		_:
 			var perk_id: String = Perks.DATA.keys()[randi() % Perks.DATA.size()]

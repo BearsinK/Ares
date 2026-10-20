@@ -354,6 +354,10 @@ static func draw_enemy(c: CanvasItem, kind: String, s: Dictionary, offset := Vec
 			_flyer(c, s)
 		"brute":
 			_brute(c, s)
+		"charger":
+			_charger(c, s)
+		"mortar":
+			_mortar(c, s)
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
@@ -443,6 +447,85 @@ static func _flyer(c: CanvasItem, s: Dictionary) -> void:
 	if windup >= 0.0:
 		var aim_local := Vector2(float(s.aim.x) * float(s.facing), float(s.aim.y))
 		Art.glow(c, aim_local * 12.0, 7.0 + 6.0 * windup, Color(1.0, 0.3, 0.3))
+
+
+static func _charger(c: CanvasItem, s: Dictionary) -> void:
+	var t: float = s.t
+	var windup: float = s.windup
+	var charging: bool = s.slam
+	var body := _tint(Color(0.9, 0.5, 0.15), s)
+	var dark := _tint(Color(0.25, 0.2, 0.2), s)
+	# Beim Anlauf duckt er sich nach hinten, beim Ansturm lehnt er nach vorn.
+	var lean := -windup * 3.0 if windup >= 0.0 else (3.0 if charging else 0.0)
+	var shake := Vector2(randf_range(-1.0, 1.0), 0.0) * windup * 1.2 if windup >= 0.0 else Vector2.ZERO
+	var base := Vector2(lean, 0.0) + shake
+	Art.shadow(c, Vector2(0, 19), 20.0, 3.0, 0.35)
+	if charging:
+		for i in 3:
+			c.draw_line(Vector2(-22 - i * 8, -6 + i * 6), Vector2(-40 - i * 8, -6 + i * 6), Color(1.0, 0.8, 0.5, 0.5 - i * 0.12), 2.5, true)
+	# Raeder.
+	var spin := float(s.walk) * 1.2 + (t * 20.0 if charging else 0.0)
+	for x in [-11.0, 11.0]:
+		Art.disc(c, base + Vector2(x, 11), 8.5, dark)
+		for i in 3:
+			var a := spin + i * TAU / 3.0
+			c.draw_line(base + Vector2(x, 11), base + Vector2(x, 11) + Vector2(cos(a), sin(a)) * 7.0, Color(0.65, 0.55, 0.5), 1.8, true)
+	# Rumpf mit Warnstreifen.
+	Art.panel(c, Rect2(base + Vector2(-19, -12), Vector2(36, 22)), body, 6.0)
+	for i in 4:
+		var x := -16.0 + i * 8.0
+		c.draw_colored_polygon(PackedVector2Array([base + Vector2(x, 4), base + Vector2(x + 4, 4), base + Vector2(x + 7, 8), base + Vector2(x + 3, 8)]), _tint(Color(0.1, 0.1, 0.13), s))
+	Art.rivet(c, base + Vector2(-15, -8))
+	# Rammschild vorn.
+	var plow := PackedVector2Array([base + Vector2(17, -14), base + Vector2(30, -2), base + Vector2(30, 12), base + Vector2(17, 10)])
+	c.draw_colored_polygon(plow, _tint(Color(0.55, 0.57, 0.66), s))
+	c.draw_polyline(PackedVector2Array([plow[0], plow[1], plow[2], plow[3], plow[0]]), Art.OUTLINE, 1.5, true)
+	c.draw_line(base + Vector2(19, -8), base + Vector2(28, 0), Color(1.0, 0.75, 0.1), 3.0, true)
+	c.draw_line(base + Vector2(19, 0), base + Vector2(28, 8), Color(1.0, 0.75, 0.1), 3.0, true)
+	# Kopf mit Gesicht.
+	Art.panel(c, Rect2(base + Vector2(-7, -23), Vector2(20, 12)), _tint(Color(0.35, 0.36, 0.45), s), 4.0)
+	var look := Vector2(float(s.aim.x) * float(s.facing), float(s.aim.y))
+	Art.face(c, base + Vector2(3, -17), Vector2(15, 7), Color(1.0, 0.2, 0.15), look, "angry", t)
+	# Auspuff.
+	Art.rrect(c, Rect2(base + Vector2(-17, -20), Vector2(5, 9)), dark, 2.0)
+	for k in 2:
+		var life := fposmod(t * 1.5 + k * 0.5, 1.0)
+		c.draw_circle(base + Vector2(-15 - life * 6.0, -22 - life * 12.0), 2.0 + life * 3.5, Color(0.6, 0.6, 0.66, 0.3 * (1.0 - life)))
+	if windup >= 0.0:
+		Art.glow(c, base + Vector2(8, -4), 26.0 + 10.0 * windup, Color(1.0, 0.3, 0.2))
+
+
+static func _mortar(c: CanvasItem, s: Dictionary) -> void:
+	var t: float = s.t
+	var windup: float = s.windup
+	var body := _tint(Color(0.3, 0.7, 0.6), s)
+	var dark := _tint(Color(0.2, 0.25, 0.28), s)
+	Art.shadow(c, Vector2(0, 17), 18.0, 2.8, 0.3)
+	# Kettenlaufwerk.
+	Art.panel(c, Rect2(-17, 7, 34, 10), dark, 5.0)
+	for i in 5:
+		var x := -13.0 + i * 6.5
+		Art.disc(c, Vector2(x, 12), 2.4, _tint(Color(0.55, 0.6, 0.65), s), Art.OUTLINE)
+	# Rohr: neigt sich nach oben und rueckt beim Abschuss zurueck.
+	var angle := -1.15
+	var recoil := 0.0
+	if windup >= 0.0:
+		recoil = -4.0 * sin(windup * PI)
+	var dir := Vector2(cos(angle), sin(angle))
+	var pivot := Vector2(4, -3)
+	var tip := pivot + dir * (24.0 + recoil)
+	Art.bar(c, pivot, tip, 8.0, _tint(Color(0.38, 0.4, 0.5), s))
+	Art.bar(c, tip - dir * 4.0, tip, 10.0, dark)
+	if windup >= 0.0:
+		Art.glow(c, tip, 10.0 + 12.0 * windup, Color(1.0, 0.55, 0.25))
+	# Rumpf mit Kopf.
+	Art.panel(c, Rect2(-14, -9, 26, 17), body, 6.0)
+	Art.rrect(c, Rect2(-14, 1, 26, 3), _tint(Color(1.0, 0.65, 0.15), s), 1.0)
+	Art.panel(c, Rect2(-13, -18, 17, 10), _tint(Color(0.35, 0.36, 0.45), s), 4.0)
+	var look := Vector2(float(s.aim.x) * float(s.facing), float(s.aim.y))
+	Art.face(c, Vector2(-4, -13), Vector2(13, 6), Color(1.0, 0.2, 0.15), look, "angry", t)
+	c.draw_line(Vector2(-10, -18), Vector2(-12, -23), Color(0.6, 0.6, 0.7), 1.5, true)
+	Art.led(c, Vector2(-12, -23), 1.3, Color(1.0, 0.3, 0.2), fmod(t, 1.0) < 0.5)
 
 
 static func _brute(c: CanvasItem, s: Dictionary) -> void:

@@ -65,5 +65,23 @@ const DATA := {
 }
 
 
+## Kurzbeschreibung fuer Shop-Karten: Waffenart und grober Schaden pro Sekunde.
+static func summary(weapon_id: String) -> String:
+	var weapon: Dictionary = DATA[weapon_id]
+	var damage := float(weapon.damage) * float(weapon.get("pellets", 1))
+	var kind := "Projektil"
+	if weapon.kind == "hitscan":
+		kind = "Strahl, trifft sofort"
+	elif weapon.kind == "lob":
+		kind = "Wurf, schuetteln = Explosion"
+		damage = float(weapon.explosion_damage)
+	elif weapon.has("explosion_radius"):
+		kind = "Explosiv"
+		damage = float(weapon.explosion_damage)
+	elif int(weapon.get("pellets", 1)) > 1:
+		kind = "Streuschuss"
+	return "%s, ca. %d Schaden/s" % [kind, int(round(damage * float(weapon.fire_rate)))]
+
+
 static func get_weapon(id: String) -> Dictionary:
 	return DATA[id]

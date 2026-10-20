@@ -31,17 +31,17 @@ func _draw() -> void:
 				s[key] = variants[i][key]
 		s["facing"] = 1.0
 		RobotArt.draw_player(self, variants[i]["class"], s, Vector2(160 + i * 300, 470), scale_factor)
-	var kinds := ["walker", "shooter", "flyer", "brute"]
-	for i in 4:
+	var kinds := ["walker", "shooter", "flyer", "brute", "charger", "mortar"]
+	for i in 6:
 		var s := {"facing": 1.0, "aim": Vector2(1, 0), "t": t, "walk": t * 4.0, "flash": false, "windup": -1.0, "slam": false}
-		if i == 0 or i == 3:
+		if i == 0 or i == 3 or i == 4 or i == 5:
 			s["windup"] = 0.8
-		RobotArt.draw_enemy(self, kinds[i], s, Vector2(160 + i * 300, 700), scale_factor)
+		RobotArt.draw_enemy(self, kinds[i], s, Vector2(120 + i * 250, 700), scale_factor)
 		var s2 := s.duplicate()
 		s2["facing"] = -1.0
 		s2["aim"] = Vector2(-1, 0)
 		s2["windup"] = -1.0
-		RobotArt.draw_enemy(self, kinds[i], s2, Vector2(160 + i * 300, 860), 1.0)
+		RobotArt.draw_enemy(self, kinds[i], s2, Vector2(120 + i * 250, 860), 1.0)
 
 
 func _state(mood: String) -> Dictionary:

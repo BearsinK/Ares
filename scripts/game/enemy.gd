@@ -6,8 +6,9 @@ extends CharacterBody2D
 
 signal died(enemy: Enemy)
 signal fire_projectile(enemy: Enemy, origin: Vector2, direction: Vector2, speed: float, damage: float)
+signal strike_requested(enemy: Enemy, position: Vector2, radius: float, delay: float, damage: float)
 
-enum State { CHASE, WINDUP, COOLDOWN }
+enum State { CHASE, WINDUP, COOLDOWN, CHARGE }
 
 const GRAVITY := 2000.0
 const MAX_FALL_SPEED := 1400.0
@@ -39,6 +40,8 @@ var _slam_flash := 0.0
 var statuses: StatusEffects
 var _facing := 1.0
 var _walk_phase := 0.0
+var _charge_dir := 1.0
+var _charge_hit: Array[Player] = []
 
 
 func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_players: Array[Player], new_elite := false) -> void:
@@ -128,7 +131,7 @@ func _physics_process(delta: float) -> void:
 		var to_target := _target.global_position - global_position
 		if absf(to_target.x) > 4.0:
 			_facing = signf(to_target.x)
-		if _state != State.WINDUP:
+		if _state != State.WINDUP and _state != State.CHARGE:
 			_aim = to_target.normalized()
 	_walk_phase += velocity.x * _facing * delta * 0.12
 	if statuses.is_frozen():
@@ -147,7 +150,7 @@ func _physics_process(delta: float) -> void:
 
 func _frozen_physics(delta: float) -> void:
 	# Eingefroren: steht still, ein laufender Angriff wird abgebrochen.
-	if _state == State.WINDUP:
+	if _state == State.WINDUP or _state == State.CHARGE:
 		_state = State.COOLDOWN
 		_cooldown = float(data.cooldown) * 0.5
 	if data.movement == "fly":
@@ -173,12 +176,15 @@ func _pick_target() -> void:
 
 func _ground_movement(delta: float) -> void:
 	velocity.y = minf(velocity.y + GRAVITY * delta, MAX_FALL_SPEED)
+	if _state == State.CHARGE:
+		velocity.x = _charge_dir * float(data.charge_speed)
+		return
 	var desired := 0.0
 	if _target != null and _state != State.WINDUP:
 		var offset := _target.global_position - global_position
 		var direction := signf(offset.x)
 		var distance := absf(offset.x)
-		if data.attack == "ranged":
+		if data.attack != "melee":
 			var keep: float = data.keep_distance
 			if distance > keep + 40.0:
 				desired = direction
@@ -240,10 +246,15 @@ func _update_attack(delta: float) -> void:
 			if _target != null and _state_time > lock:
 				_aim = (_target.global_position - global_position).normalized()
 			if _state_time <= 0.0:
+				if data.attack == "charge":
+					_start_charge()
+					return
 				_execute_attack()
 				_state = State.COOLDOWN
 				_cooldown = float(data.cooldown)
 				_state_time = 0.0
+		State.CHARGE:
+			_update_charge(delta)
 		State.COOLDOWN:
 			if _cooldown <= 0.0:
 				_state = State.CHASE
@@ -253,11 +264,49 @@ func _in_attack_range() -> bool:
 	var distance := global_position.distance_to(_target.global_position)
 	if data.attack == "melee":
 		return distance <= reach() + 10.0
+	if data.attack == "charge":
+		# Nur, wenn der Spieler ungefaehr auf gleicher Hoehe steht.
+		return distance <= float(data.range) and absf(_target.global_position.y - global_position.y) < 110.0
 	return distance <= float(data.range)
+
+
+func _start_charge() -> void:
+	_state = State.CHARGE
+	_state_time = float(data.charge_time)
+	_charge_dir = signf(_aim.x) if absf(_aim.x) > 0.01 else _facing
+	_facing = _charge_dir
+	_charge_hit.clear()
+	Sfx.play("dash")
+
+
+func _update_charge(delta: float) -> void:
+	_state_time -= delta
+	var damage := float(data.damage) * damage_scale
+	for player in players:
+		if player.downed or _charge_hit.has(player):
+			continue
+		var offset := player.global_position - global_position
+		if absf(offset.x) <= radius() + float(player.stats.size.x) * 0.5 + 4.0 and absf(offset.y) <= radius() + float(player.stats.size.y) * 0.5:
+			_charge_hit.append(player)
+			player.take_hit(damage, global_position)
+	if Fx.instance and fmod(_time, 0.06) < delta:
+		Fx.instance.spark(global_position + Vector2(-_charge_dir * radius(), radius() * 0.8), Color(1.0, 0.7, 0.3), 2, 160.0)
+	# Gegen eine Wand zu laufen beendet den Ansturm sofort.
+	if _state_time <= 0.0 or is_on_wall():
+		_state = State.COOLDOWN
+		_cooldown = float(data.cooldown)
+		velocity.x *= 0.2
 
 
 func _execute_attack() -> void:
 	var damage := float(data.damage) * damage_scale
+	if data.attack == "strike":
+		Sfx.play("enemy_shoot")
+		# Zielt leicht vor den Spieler, damit stehenbleiben bestraft wird.
+		var lead := _target.velocity * 0.35 if _target != null else Vector2.ZERO
+		var spot := (_target.global_position if _target != null else global_position + _aim * 300.0) + Vector2(lead.x, 0.0)
+		strike_requested.emit(self, spot, float(data.strike_radius), float(data.strike_delay), damage)
+		return
 	if data.attack == "ranged":
 		Sfx.play("enemy_shoot")
 		fire_projectile.emit(self, global_position + _aim * (radius() + 6.0), _aim, float(data.projectile_speed), damage)
@@ -285,11 +334,12 @@ func _draw() -> void:
 	var windup := -1.0
 	if _state == State.WINDUP:
 		windup = 1.0 - _state_time / float(data.windup)
+	var charging := _state == State.CHARGE
 	if elite:
 		_draw_elite_aura(r)
 	RobotArt.draw_enemy(self, kind, {
 		"facing": _facing, "aim": _aim, "t": _time, "walk": _walk_phase,
-		"flash": _flash > 0.0, "windup": windup, "slam": _slam_flash > 0.0,
+		"flash": _flash > 0.0, "windup": windup, "slam": _slam_flash > 0.0 or charging,
 	}, Vector2.ZERO, body_scale)
 	if elite:
 		_draw_crown(r)
@@ -319,7 +369,15 @@ func _draw_telegraph(r: float) -> void:
 	if _state != State.WINDUP:
 		return
 	var progress := 1.0 - _state_time / float(data.windup)
-	if data.attack == "ranged":
+	if data.attack == "charge":
+		var dir := Vector2(signf(_aim.x) if absf(_aim.x) > 0.01 else _facing, 0.0)
+		var length := float(data.charge_speed) * float(data.charge_time)
+		var rect := Rect2(Vector2(0.0 if dir.x > 0.0 else -length, -r * 0.9), Vector2(length, r * 1.8))
+		draw_rect(rect, Color(1.0, 0.3, 0.2, 0.08 + 0.2 * progress))
+		draw_rect(rect, Color(1.0, 0.35, 0.25, 0.4 + 0.4 * progress), false, 2.0)
+	elif data.attack == "strike":
+		return
+	elif data.attack == "ranged":
 		# Schusslinie, die kurz vor dem Schuss aufleuchtet.
 		var length := float(data.range)
 		var alpha := 0.1 + 0.5 * progress

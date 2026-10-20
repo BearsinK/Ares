@@ -27,6 +27,22 @@ const DATA := {
 		"projectile_speed": 480.0, "knockback": 1.5,
 		"xp": 2, "gold_chance": 0.5, "cost": 2.0, "from_time": 45.0,
 	},
+	"charger": {
+		"name": "Rammbock", "color": Color(0.9, 0.5, 0.15), "radius": 18.0,
+		"hp": 70.0, "speed": 110.0, "movement": "ground", "jump": 600.0,
+		"attack": "charge", "keep_distance": 280.0, "range": 480.0,
+		"windup": 0.8, "lock_time": 0.2, "cooldown": 2.6, "damage": 18.0,
+		"charge_speed": 820.0, "charge_time": 0.5, "knockback": 0.5,
+		"xp": 3, "gold_chance": 0.7, "cost": 3.0, "from_time": 40.0,
+	},
+	"mortar": {
+		"name": "Moerser", "color": Color(0.3, 0.7, 0.6), "radius": 16.0,
+		"hp": 45.0, "speed": 60.0, "movement": "ground", "jump": 500.0,
+		"attack": "strike", "keep_distance": 650.0, "range": 1000.0,
+		"windup": 0.6, "lock_time": 0.0, "cooldown": 3.8, "damage": 20.0,
+		"strike_radius": 95.0, "strike_delay": 1.2, "knockback": 0.8,
+		"xp": 3, "gold_chance": 0.7, "cost": 4.0, "from_time": 75.0,
+	},
 	"brute": {
 		"name": "Brute", "color": Color(0.55, 0.2, 0.25), "radius": 26.0,
 		"hp": 240.0, "speed": 65.0, "movement": "ground", "jump": 650.0,

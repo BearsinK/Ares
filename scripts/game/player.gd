@@ -65,7 +65,8 @@ var hook_anchor := Vector2.ZERO
 var shake_charge := 0.0
 # Dauerhafte Boni aus Perks und Items (Anteile, ausser max_hp als fester Wert).
 var mods := {"damage": 0.0, "fire_rate": 0.0, "speed": 0.0, "max_hp": 0.0, "dmg_taken": 0.0,
-	"dash_cd": 0.0, "pickup": 0.0, "gold": 0.0}
+	"dash_cd": 0.0, "pickup": 0.0, "gold": 0.0, "ability_cd": 0.0, "crit": 0.0, "kill_heal": 0.0,
+	"pierce": 0.0, "death_blast": 0.0}
 
 var _prefix := "p1_"
 var _coyote := 0.0

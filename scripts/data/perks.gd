@@ -60,6 +60,41 @@ const DATA := {
 			"vending": {"dmg_taken": 0.2},
 		},
 	},
+	"chillloop": {
+		"name": "Kuehlkreislauf",
+		"mods": {
+			"default": {"ability_cd": 0.2},
+			"hexapod": {"ability_cd": 0.25},
+		},
+	},
+	"luckychip": {
+		"name": "Glueckschip",
+		"mods": {
+			"default": {"crit": 0.12},
+			"hexapod": {"crit": 0.2},
+		},
+	},
+	"scavenger": {
+		"name": "Notstrom",
+		"mods": {
+			"default": {"kill_heal": 1.0},
+			"vending": {"kill_heal": 1.5},
+		},
+	},
+	"piercer": {
+		"name": "Durchschlag",
+		"mods": {
+			"default": {"pierce": 1.0},
+			"hexapod": {"pierce": 2.0},
+		},
+	},
+	"boomchip": {
+		"name": "Sprengkapsel",
+		"mods": {
+			"default": {"death_blast": 10.0},
+			"printer": {"death_blast": 14.0},
+		},
+	},
 	"sharpchip": {
 		"name": "Scharfer Chip",
 		"mods": {
@@ -73,6 +108,8 @@ const LABELS := {
 	"damage": "Schaden", "fire_rate": "Feuerrate", "speed": "Tempo",
 	"dash_cd": "Dash-Ladezeit", "pickup": "Sammelradius", "gold": "Gold",
 	"dmg_taken": "weniger Schaden", "max_hp": "Leben",
+	"ability_cd": "Faehigkeits-Ladezeit", "crit": "Crit-Chance", "kill_heal": "Leben pro Kill",
+	"pierce": "Durchschlag", "death_blast": "Explosionsschaden",
 }
 
 
@@ -88,8 +125,14 @@ static func describe(perk_id: String, class_id: String) -> String:
 		var value: float = mods[key]
 		if key == "max_hp":
 			parts.append("+%d %s" % [int(value), LABELS[key]])
-		elif key == "dash_cd":
+		elif key == "dash_cd" or key == "ability_cd":
 			parts.append("-%d%% %s" % [int(value * 100.0), LABELS[key]])
+		elif key == "kill_heal":
+			parts.append("+%s %s" % [("%.1f" % value).trim_suffix(".0"), LABELS[key]])
+		elif key == "pierce":
+			parts.append("Schuesse durchschlagen +%d Gegner" % int(value))
+		elif key == "death_blast":
+			parts.append("Besiegte Gegner explodieren (%d Schaden)" % int(value))
 		elif key == "dmg_taken":
 			parts.append("%d%% %s" % [int(value * 100.0), LABELS[key]])
 		else:

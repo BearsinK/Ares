@@ -7,7 +7,7 @@ extends CanvasLayer
 signal closed
 
 const CARD_WIDTH := 168.0
-const CARD_HEIGHT := 230.0
+const CARD_HEIGHT := 262.0
 const CARD_GAP := 12.0
 const GRACE_TIME := 0.5
 const READY_SLOT := 5
@@ -132,11 +132,10 @@ func _draw_menu() -> void:
 	var view := _canvas.get_viewport_rect().size
 	var font := ThemeDB.fallback_font
 	_canvas.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.78))
-	_canvas.draw_string(font, Vector2(0, 90), "SHOP  nach Welle %d" % wave, HORIZONTAL_ALIGNMENT_CENTER, view.x, 44, Color(1.0, 0.9, 0.4))
-	_canvas.draw_string(font, Vector2(0, 124), "Links/Rechts waehlen, Bestaetigen kauft. Rechts aussen: Reroll und Fertig. Wenn beide fertig sind, geht es weiter.",
-		HORIZONTAL_ALIGNMENT_CENTER, view.x, 16, Color(0.8, 0.8, 0.9))
+	UiKit.text(_canvas, Vector2(0, 110), "SHOP  nach Welle %d" % wave, 48, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_canvas, Vector2(0, 144), "Links/Rechts: waehlen, Kreuz: kaufen. Wenn beide FERTIG sind, geht es weiter.", 17, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	for i in 2:
-		_draw_player_column(i, Vector2(40.0 + i * (view.x * 0.5), 170.0), view.x * 0.5 - 80.0, font)
+		_draw_player_column(i, Vector2(40.0 + i * (view.x * 0.5), 190.0), view.x * 0.5 - 80.0, font)
 
 
 func _draw_player_column(i: int, origin: Vector2, width: float, font: Font) -> void:
@@ -177,13 +176,33 @@ func _draw_offer(i: int, slot: int, pos: Vector2, offer: Dictionary, font: Font)
 		_canvas.draw_string(font, pos + Vector2(0, 120), "GEKAUFT", HORIZONTAL_ALIGNMENT_CENTER, CARD_WIDTH, 22, Color(0.5, 1.0, 0.5))
 		return
 	var type_labels := {"perk": "BUFF", "module": "MODUL", "weapon": "WAFFE", "firmware": "FIRMWARE"}
-	_canvas.draw_string(font, pos + Vector2(10, 22), type_labels[offer.type], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, offer.color)
-	_canvas.draw_circle(pos + Vector2(CARD_WIDTH - 16, 16), 7.0, offer.color)
-	_canvas.draw_string(font, pos + Vector2(0, 70), offer.name, HORIZONTAL_ALIGNMENT_CENTER, CARD_WIDTH, 20, Color.WHITE)
-	_canvas.draw_string(font, pos + Vector2(10, 110), offer.text, HORIZONTAL_ALIGNMENT_LEFT, CARD_WIDTH - 20.0, 15, Color(0.85, 0.85, 0.9))
+	var accent: Color = PerkArt.color_of(offer.id) if offer.type == "perk" else offer.color
+	_canvas.draw_rect(Rect2(pos + Vector2(12, 0), Vector2(48, 4)), accent)
+	UiKit.text(_canvas, pos + Vector2(12, 24), type_labels[offer.type], 13, accent)
+	_draw_offer_icon(offer, pos + Vector2(CARD_WIDTH * 0.5, 66.0), accent)
+	UiKit.text(_canvas, pos + Vector2(0, 124), offer.name, 19, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, CARD_WIDTH)
+	UiKit.text(_canvas, pos + Vector2(12, 150), offer.text, 14, Color(0.85, 0.86, 0.92), HORIZONTAL_ALIGNMENT_LEFT, CARD_WIDTH - 24.0, true)
 	var affordable: bool = players[i].gold >= offer.price
 	_canvas.draw_string(font, pos + Vector2(0, CARD_HEIGHT - 16), "%d Gold" % offer.price, HORIZONTAL_ALIGNMENT_CENTER, CARD_WIDTH, 22,
 		Color(1.0, 0.85, 0.3) if affordable else Color(0.6, 0.4, 0.4))
+
+
+func _draw_offer_icon(offer: Dictionary, center: Vector2, accent: Color) -> void:
+	match offer.type:
+		"perk":
+			PerkArt.draw(_canvas, offer.id, center, 54.0)
+		"module":
+			Art.glow(_canvas, center, 40.0, accent)
+			Art.disc(_canvas, center, 20.0, accent.darkened(0.1), Color(1, 1, 1, 0.8))
+			_canvas.draw_circle(center + Vector2(-6, -7), 6.0, Color(1, 1, 1, 0.55))
+		"weapon":
+			Art.glow(_canvas, center, 40.0, accent)
+			Art.rrect(_canvas, Rect2(center + Vector2(-24, -8), Vector2(48, 16)), Color(0.35, 0.38, 0.48), 5.0)
+			Art.rrect(_canvas, Rect2(center + Vector2(10, -5), Vector2(22, 10)), accent, 4.0)
+			Art.rrect(_canvas, Rect2(center + Vector2(-20, 6), Vector2(12, 14)), Color(0.28, 0.3, 0.4), 4.0)
+		_:
+			Art.glow(_canvas, center, 40.0, accent)
+			PerkArt.draw_firmware(_canvas, offer.id, center, 54.0, accent)
 
 
 func _draw_button(i: int, slot: int, pos: Vector2, size: Vector2, text: String, font: Font) -> void:

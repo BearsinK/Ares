@@ -70,6 +70,7 @@ var last_pad_event := "-"
 var _respawns: Array[Dictionary] = []
 var _game_over_time := 0.0
 var _clear_time := 0.0
+var _blast_depth := 0
 
 
 func _ready() -> void:
@@ -296,6 +297,7 @@ func _setup_director() -> void:
 	director.parent_node = self
 	director.enemy_spawned.connect(_on_enemy_spawned)
 	director.projectile_requested.connect(_on_enemy_projectile_requested)
+	director.strike_requested.connect(_on_strike_requested)
 	add_child(director)
 
 
@@ -313,11 +315,33 @@ func _on_enemy_died(enemy: Enemy) -> void:
 		coins += 3
 	for i in coins:
 		_spawn_pickup("gold", gold_value, enemy.global_position)
+	for player in players:
+		if not player.downed and float(player.mods.kill_heal) > 0.0:
+			player.hp = minf(player.max_health(), player.hp + float(player.mods.kill_heal))
+	var blast := 0.0
+	for player in players:
+		blast = maxf(blast, float(player.mods.death_blast))
+	if blast > 0.0:
+		_death_blast(enemy.global_position, blast)
 	if enemy.elite or randf() < HEALTH_DROP_CHANCE:
 		_spawn_pickup("hp", 1, enemy.global_position)
 	if enemy.elite:
 		hitstop(0.09)
 		camera.add_shake(12.0)
+
+
+## Kleine Kettenexplosion beim Tod eines Gegners (Perk Sprengkapsel).
+func _death_blast(pos: Vector2, damage: float) -> void:
+	if _blast_depth >= 5:
+		return
+	_blast_depth += 1
+	if Fx.instance:
+		Fx.instance.ring(pos, 80.0, Color(1.0, 0.6, 0.25))
+		Fx.instance.spark(pos, Color(1.0, 0.6, 0.25), 6, 300.0)
+	for other in get_tree().get_nodes_in_group("enemies"):
+		if other.global_position.distance_to(pos) <= 85.0:
+			other.take_damage(damage, null, (other.global_position - pos).normalized(), "", true)
+	_blast_depth -= 1
 
 
 func _spawn_pickup(kind: String, value: int, pos: Vector2) -> void:
@@ -373,6 +397,19 @@ func _on_enemy_projectile_requested(_enemy: Enemy, origin: Vector2, direction: V
 	bullet.speed = speed
 	bullet.damage = damage
 	enemy_projectiles.add_child(bullet)
+
+
+func _on_strike_requested(_enemy: Enemy, pos: Vector2, radius: float, delay: float, damage: float) -> void:
+	var strike := AreaStrike.new()
+	strike.position = pos
+	strike.radius = radius
+	strike.delay = delay
+	strike.damage = damage
+	strike.players = players
+	strike.exploded.connect(func(_at: Vector2) -> void:
+		camera.add_shake(7.0)
+		Sfx.play("explosion"))
+	enemy_projectiles.add_child(strike)
 
 
 func _spawn_dummies() -> void:
@@ -467,6 +504,8 @@ func _setup_camera() -> void:
 func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2, charge := 0.0) -> void:
 	var weapon := Weapons.get_weapon(weapon_id)
 	var damage := float(weapon.damage) * player.damage_mult()
+	if randf() < float(player.mods.crit):
+		damage *= 2.0
 	var element := player.current_module()
 	var color := Elements.color_of(element, weapon.color)
 	Sfx.play(weapon.sound)
@@ -511,7 +550,7 @@ func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, dire
 		bullet.speed = float(weapon.speed) * randf_range(0.9, 1.0) if weapon.pellets > 1 else float(weapon.speed)
 		bullet.damage = damage
 		bullet.lifetime = float(weapon.lifetime)
-		bullet.pierce = int(weapon.pierce)
+		bullet.pierce = int(weapon.pierce) + int(player.mods.pierce)
 		bullet.size = float(weapon.size)
 		bullet.color = color
 		bullet.element = element
@@ -544,7 +583,7 @@ func _fire_hitscan(player: Player, weapon: Dictionary, origin: Vector2, directio
 	var target := origin + direction * float(weapon.range)
 	var end := target
 	var exclude: Array[RID] = []
-	var hits_left := int(weapon.pierce) + 1
+	var hits_left := int(weapon.pierce) + int(player.mods.pierce) + 1
 	while hits_left > 0:
 		var query := PhysicsRayQueryParameters2D.create(origin, target, (1 << 0) | (1 << 2))
 		query.collide_with_areas = true

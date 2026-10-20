@@ -6,6 +6,7 @@ extends Node
 
 signal enemy_spawned(enemy: Enemy)
 signal projectile_requested(enemy: Enemy, origin: Vector2, direction: Vector2, speed: float, damage: float)
+signal strike_requested(enemy: Enemy, position: Vector2, radius: float, delay: float, damage: float)
 
 const SPAWN_INTERVAL := 0.35
 const MIN_SPAWN_DISTANCE := 500.0
@@ -46,7 +47,10 @@ func alive_count() -> int:
 
 
 func _physics_process(delta: float) -> void:
-	enemies = enemies.filter(func(e: Enemy) -> bool: return is_instance_valid(e) and not e.is_queued_for_deletion())
+	# In place, damit die Listen der Gegner (siblings) dieselbe Instanz behalten.
+	for i in range(enemies.size() - 1, -1, -1):
+		if not is_instance_valid(enemies[i]) or enemies[i].is_queued_for_deletion():
+			enemies.remove_at(i)
 	if not enabled:
 		return
 	time += delta
@@ -95,6 +99,7 @@ func spawn(kind: String, at: Variant = null, elite := false) -> Enemy:
 	enemy.siblings = enemies
 	enemy.position = at if at != null else _spawn_position(kind)
 	enemy.fire_projectile.connect(projectile_requested.emit)
+	enemy.strike_requested.connect(strike_requested.emit)
 	enemies.append(enemy)
 	parent_node.add_child(enemy)
 	enemy_spawned.emit(enemy)
