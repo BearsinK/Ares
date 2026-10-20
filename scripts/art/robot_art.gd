@@ -84,10 +84,21 @@ static func _nozzle(c: CanvasItem, from: Vector2, direction: Vector2, length: fl
 
 static func _roomba(c: CanvasItem, s: Dictionary) -> void:
 	var t: float = s.t
-	var bob := sin(t * 3.0) * 0.4
 	var accent: Color = s.accent
 	var silver := Color(0.78, 0.81, 0.9)
-	Art.shadow(c, Vector2(0, 13), 34.0, 3.2, 0.35 * (1.0 - float(s.get("down", 0.0))))
+	var recoil := float(s.get("recoil", 0.0))
+	var heat := float(s.get("heat", 0.0))
+	var hurt := float(s.get("hurt", 0.0))
+	var down := float(s.get("down", 0.0))
+	var low := float(s.get("low", 0.0))
+	var vortex := float(s.get("overdrive", 0.0))
+	var firing := float(s.firing)
+	var alive := down < 0.5
+	var lights_on := alive and (hurt <= 0.0 or fmod(t, 0.12) < 0.06)
+	var speed_factor := clampf(absf(float(s.vx)) / 300.0, 0.0, 1.0) if bool(s.grounded) else 0.0
+	# Die Scheibe schwebt knapp ueber dem Boden: leichtes Atmen, Brummen im Wirbel, Zucken bei Treffern, Rueckstoss.
+	var bob := sin(t * 3.0) * 0.4 * (1.0 - speed_factor) + sin(t * 90.0) * 0.35 * vortex + recoil * 0.8 + randf_range(-1.0, 1.0) * 1.6 * hurt
+	Art.shadow(c, Vector2(0, 13), 34.0, 3.2, 0.35 * (1.0 - down))
 
 	# Antriebsrad, zur Haelfte unter der Schuerze verborgen.
 	var spin := float(s.walk) * 0.9
@@ -99,17 +110,26 @@ static func _roomba(c: CanvasItem, s: Dictionary) -> void:
 	# Flache Scheibe: dunkle Schuerze, Gehaeuse mit Silberring, Deckel, grosser Knopf.
 	Art.rrect(c, Rect2(-33, 4 + bob, 66, 8), Color(0.08, 0.09, 0.12), 4.0)
 	Art.panel(c, Rect2(-34, -7 + bob, 68, 17), Color(0.4, 0.42, 0.52), 8.5)
-	c.draw_line(Vector2(-29, 2.5 + bob), Vector2(29, 2.5 + bob), silver, 2.0, true)
+	# Im Wirbel laeuft ein Lichtband ueber den Silberring.
+	c.draw_line(Vector2(-29, 2.5 + bob), Vector2(29, 2.5 + bob), silver.lerp(Color(0.5, 1.0, 0.95), vortex * (0.6 + 0.4 * sin(t * 14.0))), 2.0, true)
 	c.draw_line(Vector2(-29, 4.0 + bob), Vector2(29, 4.0 + bob), Color(0, 0, 0, 0.4), 1.0, true)
 	Art.rrect(c, Rect2(-29, 8 + bob, 58, 2), accent, 1.0)
 	Art.panel(c, Rect2(-28, -11 + bob, 56, 7), Color(0.5, 0.52, 0.62), 3.5)
-	# Der typische runde Knopf auf dem Deckel.
+	# Der typische runde Knopf auf dem Deckel: im Wirbel drehen sich helle Segmente darauf.
+	var button_color: Color = s.eye_color.darkened(0.15) if alive else Color(0.16, 0.17, 0.2)
 	Art.ellipse(c, Vector2(-4, -11.5 + bob), 9.0, 3.2, Color(0.12, 0.13, 0.17))
-	Art.ellipse(c, Vector2(-4, -11.8 + bob), 7.0, 2.3, s.eye_color.darkened(0.15))
-	Art.glow(c, Vector2(-4, -12 + bob), 9.0, s.eye_color)
-	# LiDAR-Turm und Statusleuchte.
+	Art.ellipse(c, Vector2(-4, -11.8 + bob), 7.0, 2.3, button_color)
+	if vortex > 0.0:
+		for k in 3:
+			var ang := t * 16.0 + k * TAU / 3.0
+			c.draw_line(Vector2(-4 + cos(ang) * 6.0, -11.8 + bob + sin(ang) * 1.9), Vector2(-4 + cos(ang + 0.7) * 6.0, -11.8 + bob + sin(ang + 0.7) * 1.9), Color(0.7, 1.0, 0.95, vortex), 1.4, true)
+	if alive:
+		Art.glow(c, Vector2(-4, -12 + bob), 9.0 + 4.0 * vortex, s.eye_color.lerp(Color(0.5, 1.0, 0.95), vortex))
+	# LiDAR-Turm mit rotierendem Laserkopf und Statusleuchte.
 	Art.rrect(c, Rect2(-26, -15 + bob, 10, 5), Color(0.12, 0.13, 0.17), 2.0)
-	Art.led(c, Vector2(-21, -12.5 + bob), 1.4, Color(1.0, 0.35, 0.3), fmod(t, 1.2) < 0.6)
+	var lidar := -21.0 + sin(t * (3.0 if alive else 0.0)) * 3.0
+	c.draw_line(Vector2(lidar, -15 + bob), Vector2(lidar, -18 + bob), Color(0.4, 0.42, 0.5), 1.4, true)
+	Art.led(c, Vector2(-21, -12.5 + bob), 1.4, Color(1.0, 0.35, 0.3), lights_on and fmod(t, 1.2) < 0.6)
 	# Griffmulde und Lueftung am Heck.
 	for i in 3:
 		c.draw_line(Vector2(-30 + i * 3.5, -4 + bob), Vector2(-30 + i * 3.5, 0 + bob), Color(0, 0, 0, 0.5), 1.5, true)
@@ -120,16 +140,29 @@ static func _roomba(c: CanvasItem, s: Dictionary) -> void:
 	c.draw_line(Vector2(25, -3 + bob), Vector2(25, 7 + bob), Color(0, 0, 0, 0.5), 1.5)
 	var la := _local_aim(s)
 	Art.face(c, Vector2(13, -1.5 + bob), Vector2(20, 9), s.eye_color, la, s.mood, t)
-	Art.led(c, Vector2(31, 1.5 + bob), 1.1, Color(0.4, 1.0, 0.5))
-	# Grosse Seitenbuerste vorn unter der Stossstange: Nabe und sechs drehende Borsten.
+	Art.led(c, Vector2(31, 1.5 + bob), 1.1, Color(0.4, 1.0, 0.5), lights_on)
+	# Grosse Seitenbuerste vorn unter der Stossstange: Nabe und sechs Borsten. Sie dreht sich beim
+	# Fahren, im Leerlauf langsam und im Wirbel rasend.
 	var brush := Vector2(37, 9)
+	var brush_spin := (-spin * 2.2 - t * (1.2 + 34.0 * vortex)) if alive else 0.0
 	Art.disc(c, brush, 3.0, Color(0.25, 0.26, 0.32))
-	for i in 6:
-		var a := -spin * 2.2 + i * TAU / 6.0
+	if vortex > 0.0:
+		Art.ellipse(c, brush, 12.0, 5.5, Color(0.6, 1.0, 0.95, 0.25 * vortex))
+	for i in 8:
+		var a := brush_spin + i * TAU / 8.0
+		var root := brush + Vector2(cos(a) * 3.0, sin(a) * 1.4)
 		var tip := brush + Vector2(cos(a) * 11.0, sin(a) * 5.0)
-		c.draw_line(brush, tip, Color(0.15, 0.15, 0.1), 3.2, true)
-		c.draw_line(brush, tip, Color(0.98, 0.85, 0.25), 2.0, true)
-		c.draw_circle(tip, 1.7, Color(1.0, 0.95, 0.5))
+		# Hintere Borsten (oben im Kreis) dunkler als vordere.
+		var shade := 0.55 if sin(a) < 0.0 else 1.0
+		c.draw_line(root, tip, Color(0.12, 0.12, 0.14), 2.2, true)
+		c.draw_line(root, root.lerp(tip, 0.55), Color(0.3, 0.3, 0.34) * shade, 1.4, true)
+		c.draw_line(root.lerp(tip, 0.55), tip, Color(0.98, 0.85, 0.25) * shade, 1.6, true)
+	# Im Wirbel zeigen Saugstreifen vor der Stossstange nach innen.
+	if vortex > 0.0:
+		for k in 3:
+			var phase := fposmod(t * 3.0 + k / 3.0, 1.0)
+			var x := 62.0 - phase * 26.0
+			c.draw_line(Vector2(x, -3.0 + k * 6.0 + bob), Vector2(x + 8.0 * (1.0 - phase), -3.0 + k * 6.0 + bob), Color(0.6, 1.0, 0.95, 0.7 * vortex * (1.0 - phase)), 1.6, true)
 
 	# Ausklappbarer Roboterarm vom Heck: eingeklappt liegt er flach auf dem Deckel, beim
 	# Schiessen klappt er aus und zielt. Starre Segmente mit Hydraulikkolben.
@@ -139,7 +172,8 @@ static func _roomba(c: CanvasItem, s: Dictionary) -> void:
 	Art.panel(c, Rect2(-31, -18 + bob, 12, 6), Color(0.55, 0.58, 0.68), 2.5)
 	var stow_elbow := shoulder + Vector2(15, -1.5)
 	var stow_wrist := shoulder + Vector2(1, -4.5)
-	var reach := 27.0
+	# Beim Schuss stoesst der Arm zurueck: die Reichweite schrumpft kurz.
+	var reach := 27.0 - 4.0 * recoil
 	var joints := Art.ik(shoulder, shoulder + la * reach, 14.0, 14.0, -1.0 if la.x >= 0.0 else 1.0)
 	var elbow: Vector2 = stow_elbow.lerp(joints[0], deploy)
 	var wrist: Vector2 = stow_wrist.lerp(joints[1], deploy)
@@ -154,7 +188,23 @@ static func _roomba(c: CanvasItem, s: Dictionary) -> void:
 	Art.disc(c, elbow, 3.4, Color(0.9, 0.92, 1.0))
 	var stow_dir := Vector2(-1.0, 0.25).normalized()
 	var nozzle_dir := stow_dir.slerp(la, deploy)
-	_nozzle(c, wrist, nozzle_dir, 11.0, 11.0, Color(0.14, 0.15, 0.2), s.weapon_color, float(s.firing) * deploy)
+	var nozzle_color := Color(0.14, 0.15, 0.2).lerp(Color(0.8, 0.3, 0.12), clampf(heat * 0.8, 0.0, 0.8))
+	_nozzle(c, wrist, nozzle_dir, 11.0 - 3.0 * recoil, 11.0, nozzle_color, s.weapon_color, firing * deploy)
+	# Hitze: Dampf am Duesenmund nach Dauerfeuer.
+	if heat > 0.5 and deploy > 0.5:
+		var mouth := wrist + nozzle_dir * 11.0
+		for k in 2:
+			var life := fposmod(t * 1.5 + k * 0.5, 1.0)
+			c.draw_circle(mouth + Vector2(0.0, -3.0 - life * 10.0), 1.4 + life * 2.0, Color(0.85, 0.87, 0.92, 0.35 * (1.0 - life)))
+
+	# Rauch aus dem Deckel bei wenig Leben, Funken kurz vor dem Ausfall.
+	if low > 0.0:
+		for k in 3:
+			var life := fposmod(t * 0.9 + k * 0.33, 1.0)
+			c.draw_circle(Vector2(6.0 + sin(t * 3.0 + k) * 3.0, -14.0 - life * 20.0 + bob), 3.0 + life * 5.0, Color(0.22, 0.22, 0.25, 0.5 * (1.0 - life) * low))
+		if low > 0.5 and fmod(t, 0.8) < 0.08:
+			c.draw_line(Vector2(10, -12 + bob), Vector2(16, -7 + bob), Color(1.0, 0.85, 0.4), 1.5, true)
+			c.draw_line(Vector2(16, -7 + bob), Vector2(12, -3 + bob), Color(1.0, 0.85, 0.4), 1.5, true)
 
 
 # ---------------------------------------------------------------- Hexapod

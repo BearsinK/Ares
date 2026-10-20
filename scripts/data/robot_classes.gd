@@ -22,6 +22,7 @@ const DATA := {
 		"stationary_fire": false,
 		"weapons": ["dust"],
 		"pickup_bonus": 0.5,
+		"step": "glide",
 		"damage_mult": 1.0,
 		"ability": {"id": "suck", "name": "Vortex", "cooldown": 9.0, "duration": 1.4},
 	},

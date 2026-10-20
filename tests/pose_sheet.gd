@@ -55,8 +55,32 @@ func _draw() -> void:
 	if cls == "down":
 		_draw_down_sheet()
 		return
-	var poses: Array = _hexapod_poses() if cls == "hexapod" else (_printer_poses() if cls == "printer" else _vending_poses())
+	var poses: Array = _hexapod_poses()
+	match cls:
+		"printer":
+			poses = _printer_poses()
+		"vending":
+			poses = _vending_poses()
+		"roomba":
+			poses = _roomba_poses()
 	_draw_poses(cls, poses)
+
+
+func _roomba_poses() -> Array:
+	return [
+		["Idle", {}],
+		["Fahren 1", {"vx": 300.0, "walk": 0.0}],
+		["Fahren 2", {"vx": 300.0, "walk": 3.0}],
+		["Schuss", {"arm": 1.0, "firing": 1.0, "recoil": 1.0, "heat": 0.4, "mood": "focus", "aim": Vector2(1, -0.3)}],
+		["Dauerfeuer", {"arm": 1.0, "firing": 0.5, "heat": 1.0, "mood": "angry", "aim": Vector2(1, 0.1)}],
+		["Wirbel", {"overdrive": 1.0, "mood": "focus", "walk": 2.0}],
+		["Sprung", {"grounded": false, "squash": Vector2(0.95, 1.06)}],
+		["Landung", {"squash": Vector2(1.2, 0.78)}],
+		["Treffer", {"mood": "hurt", "hurt": 1.0}],
+		["Wenig Leben", {"low": 1.0}],
+		["Münze", {"coin": 1.0, "mood": "happy"}],
+		["Am Boden", {"mood": "dead", "downed": true, "down": 1.0}],
+	]
 
 
 func _hexapod_poses() -> Array:

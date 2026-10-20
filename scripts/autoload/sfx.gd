@@ -49,6 +49,7 @@ func _ready() -> void:
 	_streams["tread"] = _synth(120.0, 70.0, 0.05, "square", 0.1, 0.7)
 	_streams["deploy"] = _synth(320.0, 110.0, 0.09, "saw", 0.28, 0.5)
 	_streams["step"] = _synth(1000.0, 520.0, 0.03, "square", 0.07, 0.5)
+	_streams["glide"] = _synth(260.0, 200.0, 0.05, "sine", 0.08, 0.6)
 	_streams["land"] = _synth(170.0, 60.0, 0.09, "sine", 0.3, 0.3)
 	_streams["ability"] = _synth(200.0, 700.0, 0.3, "saw", 0.35, 0.3)
 	_streams["ready"] = _synth(900.0, 1300.0, 0.08, "sine", 0.2, 0.0)
