@@ -756,6 +756,10 @@ static func draw_enemy(c: CanvasItem, kind: String, s: Dictionary, offset := Vec
 			_charger(c, s)
 		"mortar":
 			_mortar(c, s)
+		"bomber":
+			_bomber(c, s)
+		"medic":
+			_medic(c, s)
 	# Schwer beschaedigt: Rauch und Funken.
 	var low := 1.0 - clampf(float(s.get("hp_frac", 1.0)) / 0.35, 0.0, 1.0)
 	if low > 0.0:
@@ -836,6 +840,71 @@ static func _walker(c: CanvasItem, s: Dictionary) -> void:
 	if bool(s.slam):
 		# Schlagbogen des Stocks.
 		c.draw_arc(shoulder, 21.0, -1.9, 1.5, 12, Color(1.0, 0.9, 0.7, 0.75), 2.5, true)
+
+
+static func _bomber(c: CanvasItem, s: Dictionary) -> void:
+	var t: float = s.t
+	var windup: float = s.windup
+	var body := _tint(Color(0.95, 0.5, 0.15), s)
+	Art.shadow(c, Vector2(0, 12), 11.0, 2.5, 0.3)
+	# Kleine Fuesse, die schnell tippeln.
+	var run := float(s.walk) * 1.4
+	for side in [-1.0, 1.0]:
+		var lift := maxf(0.0, sin(run + (0.0 if side < 0.0 else PI))) * 3.0
+		Art.bar(c, Vector2(side * 4.0, 8.0), Vector2(side * 5.0, 12.0 - lift), 3.2, _tint(Color(0.2, 0.2, 0.26), s))
+	# Rumpf: Kugel mit Warnband, blinkt in der Vorwarnung immer schneller.
+	var pulse := 0.0 if windup < 0.0 else 0.5 + 0.5 * sin(t * (24.0 + 26.0 * windup))
+	var fill := body.lerp(Color(1.0, 0.95, 0.7), pulse * 0.65)
+	Art.disc(c, Vector2(0, 0), 11.0, fill, Art.OUTLINE)
+	c.draw_rect(Rect2(-9.5, -1.5, 19.0, 4.0), _tint(Color(0.12, 0.12, 0.16), s))
+	for k in 4:
+		c.draw_rect(Rect2(-8.0 + k * 5.0, -1.5, 2.5, 4.0), _tint(Color(0.95, 0.75, 0.12), s))
+	Art.rivet(c, Vector2(-5.5, -6.0))
+	Art.rivet(c, Vector2(5.5, -6.0))
+	# Zuendschnur mit Funken, die in der Vorwarnung groesser wird.
+	var fuse_top := Vector2(3.0, -17.0)
+	c.draw_polyline(PackedVector2Array([Vector2(0, -10.5), Vector2(-3.0, -14.0), fuse_top]), _tint(Color(0.35, 0.28, 0.2), s), 2.2, true)
+	var spark := 1.0 + (2.0 * windup if windup >= 0.0 else 0.0)
+	Art.glow(c, fuse_top, 4.0 + 3.0 * spark, Color(1.0, 0.8, 0.3))
+	for k in 3:
+		var a := t * 13.0 + k * 2.1
+		c.draw_line(fuse_top, fuse_top + Vector2(cos(a), sin(a)) * (3.0 + spark * 1.5), Color(1.0, 0.9, 0.5), 1.4, true)
+	# Weit aufgerissene Augen.
+	var look := Vector2(float(s.aim.x) * float(s.facing), float(s.aim.y))
+	Art.face(c, Vector2(0, -4.5), Vector2(14, 7), Color(1.0, 0.95, 0.5), look, "angry", t)
+
+
+static func _medic(c: CanvasItem, s: Dictionary) -> void:
+	var t: float = s.t
+	var windup: float = s.windup
+	var white := _tint(Color(0.86, 0.93, 0.9), s)
+	var green := Color(0.4, 1.0, 0.55)
+	Art.shadow(c, Vector2(0, 14), 12.0, 2.5, 0.3)
+	# Rad und Rumpf.
+	Art.disc(c, Vector2(0, 9), 6.5, _tint(Color(0.15, 0.17, 0.2), s))
+	for i in 4:
+		var a := float(s.walk) * 0.7 + i * PI / 2.0
+		c.draw_line(Vector2(0, 9), Vector2(0, 9) + Vector2(cos(a), sin(a)) * 5.0, Color(0.5, 0.6, 0.55), 1.4, true)
+	Art.panel(c, Rect2(-9, -9, 18, 19), white, 7.0)
+	# Rotes-Kreuz-Zeichen in Gruen, pulsiert beim Heilen.
+	var glow := 0.55 + 0.45 * sin(t * 4.0) if windup < 0.0 else 1.0
+	var cross := green.lerp(Color.WHITE, 0.5 * maxf(windup, 0.0))
+	c.draw_rect(Rect2(-5.5, -3.0, 11.0, 4.0), Color(cross, glow))
+	c.draw_rect(Rect2(-2.0, -6.5, 4.0, 11.0), Color(cross, glow))
+	# Kopfkuppel mit Gesicht und Antenne.
+	Art.panel(c, Rect2(-7, -19, 14, 11), _tint(Color(0.36, 0.4, 0.42), s), 5.0)
+	var look := Vector2(float(s.aim.x) * float(s.facing), float(s.aim.y))
+	Art.face(c, Vector2(1, -13.5), Vector2(11, 6), green, look, "normal", t)
+	c.draw_line(Vector2(0, -19), Vector2(0, -25), Color(0.6, 0.7, 0.65), 1.4, true)
+	Art.led(c, Vector2(0, -25), 1.7, green, fmod(t, 1.0) < 0.6 or windup >= 0.0)
+	# Arme: heben sich beim Heilen und leuchten.
+	var arm := lerpf(0.5, -1.2, maxf(windup, 0.0))
+	for side in [-1.0, 1.0]:
+		var shoulder := Vector2(side * 9.0, -3.0)
+		var hand := shoulder + Vector2(cos(arm) * side * 8.0, sin(arm) * 8.0)
+		Art.bar(c, shoulder, hand, 3.0, _tint(Color(0.5, 0.55, 0.56), s))
+		if windup >= 0.0:
+			Art.glow(c, hand, 6.0 + 5.0 * windup, green)
 
 
 static func _shooter(c: CanvasItem, s: Dictionary) -> void:

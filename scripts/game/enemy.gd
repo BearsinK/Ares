@@ -30,6 +30,8 @@ var damage_scale := 1.0
 var elite := false
 ## Waechter: Elite mit eigener Lebensleiste im HUD und garantierter Belohnung.
 var champion := false
+## Hat sich selbst gesprengt (Sprengi): keine Beute.
+var suicide := false
 ## Art der Elite (fire, shield, storm, frost), siehe EnemyTypes.ELITE_KINDS.
 var elite_kind := ""
 var shield := 0.0
@@ -318,6 +320,11 @@ func _ground_movement(delta: float) -> void:
 				desired = direction
 			elif distance < keep - 100.0:
 				desired = -direction
+			if data.attack == "heal":
+				# Medic: zu verwundeten Verbuendeten laufen, solange der Spieler nicht zu nah ist.
+				var patient := _nearest_wounded(900.0)
+				if patient != null and absf(patient.global_position.x - global_position.x) > float(data.range) * 0.55 and distance > keep - 220.0:
+					desired = signf(patient.global_position.x - global_position.x)
 		elif distance > reach() * 0.7:
 			desired = direction
 		# Springen: ueber Hindernisse und zu hoeher liegenden Spielern.
@@ -432,6 +439,8 @@ func _update_elite(delta: float) -> void:
 
 
 func _in_attack_range() -> bool:
+	if data.attack == "heal":
+		return not _wounded_allies().is_empty()
 	var distance := global_position.distance_to(_target.global_position)
 	if data.attack == "melee":
 		return distance <= reach() + 10.0
@@ -471,8 +480,46 @@ func _update_charge(delta: float) -> void:
 			Fx.instance.spark(global_position + Vector2(_charge_dir * radius() * 0.6, radius() * 0.9), Color(0.8, 0.78, 0.72, 0.8), 8, 220.0)
 
 
+## Verwundete Verbuendete in Reichweite (ohne mich selbst), die meisten fehlenden Leben zuerst.
+func _wounded_allies() -> Array[Enemy]:
+	var result: Array[Enemy] = []
+	for other in siblings:
+		if other == self or not is_instance_valid(other) or other._dead or other.hp >= other.max_hp * 0.8:
+			continue
+		if other.global_position.distance_to(global_position) <= float(data.range):
+			result.append(other)
+	result.sort_custom(func(a: Enemy, b: Enemy) -> bool: return a.max_hp - a.hp > b.max_hp - b.hp)
+	return result.slice(0, int(data.heal_targets))
+
+
+func _nearest_wounded(max_distance: float) -> Enemy:
+	var best: Enemy = null
+	var best_distance := max_distance
+	for other in siblings:
+		if other == self or not is_instance_valid(other) or other._dead or other.hp >= other.max_hp * 0.8:
+			continue
+		var distance := other.global_position.distance_to(global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = other
+	return best
+
+
 func _execute_attack() -> void:
 	var damage := float(data.damage) * damage_scale
+	if data.attack == "heal":
+		Sfx.play("revive")
+		_fire_flash = 1.0
+		for ally in _wounded_allies():
+			var amount := ally.max_hp * float(data.heal_amount) * (0.35 if ally.champion else 1.0)
+			ally.hp = minf(ally.max_hp, ally.hp + amount)
+			ally._flash = 0.1
+			if Fx.instance:
+				Fx.instance.tracer(global_position + Vector2(0.0, -radius() * 0.5), ally.global_position, Color(0.4, 1.0, 0.55), 3.0, 0.3)
+				Fx.instance.number(ally.global_position + Vector2(0.0, -ally.radius() - 14.0), amount, Color(0.5, 1.0, 0.6))
+		if Fx.instance:
+			Fx.instance.ring(global_position, float(data.range) * 0.5, Color(0.4, 1.0, 0.55))
+		return
 	if data.attack == "strike":
 		Sfx.play("enemy_shoot")
 		# Zielt leicht vor den Spieler, damit stehenbleiben bestraft wird.
@@ -500,6 +547,13 @@ func _execute_attack() -> void:
 			player.take_hit(damage, global_position)
 	if Fx.instance:
 		Fx.instance.ring(global_position + _aim * 20.0, reach(), Color(data.color, 0.9))
+	if bool(data.get("suicide", false)):
+		# Sprengi: Selbstsprengung, dabei fliegen die Teile.
+		suicide = true
+		if Fx.instance:
+			Fx.instance.explosion(global_position, reach(), Color(1.0, 0.6, 0.2))
+		Sfx.play("explosion", 0.1)
+		_die()
 
 
 func _draw() -> void:
@@ -522,7 +576,7 @@ func _draw() -> void:
 	}, Vector2.ZERO, body_scale * maxf(grow, 0.05))
 	if elite:
 		_draw_crown(r)
-	if windup >= 0.0 and stunned_time <= 0.0 and data.attack != "strike":
+	if windup >= 0.0 and stunned_time <= 0.0 and data.attack != "strike" and data.attack != "heal":
 		_draw_alert(r, windup)
 	if stunned_time > 0.0:
 		# Betaeubt: drei Sterne kreisen ueber dem Kopf.
@@ -607,6 +661,15 @@ func _draw_telegraph(r: float) -> void:
 		draw_rect(rect, Color(1.0, 0.35, 0.25, 0.4 + 0.4 * progress), false, 2.0)
 	elif data.attack == "strike":
 		return
+	elif data.attack == "heal":
+		# Heilkreis waechst, gruene Linien zu den Verbuendeten, die gleich geheilt werden.
+		var heal_range := float(data.range)
+		draw_arc(Vector2.ZERO, heal_range * progress, 0.0, TAU, 40, Color(0.4, 1.0, 0.55, 0.35 + 0.4 * progress), 3.0, true)
+		for ally in _wounded_allies():
+			draw_line(Vector2(0.0, -r * 0.5), to_local(ally.global_position), Color(0.4, 1.0, 0.55, 0.25 + 0.45 * progress), 2.5, true)
+		var plus := Vector2(0.0, -r - 30.0 - 4.0 * sin(_time * 10.0))
+		draw_rect(Rect2(plus + Vector2(-9, -3), Vector2(18, 6)), Color(0.4, 1.0, 0.55))
+		draw_rect(Rect2(plus + Vector2(-3, -9), Vector2(6, 18)), Color(0.4, 1.0, 0.55))
 	elif data.attack == "ranged":
 		# Schusslinie in der Farbe der Geschosse: wird kraeftiger, kurz vor dem Schuss weiss (Ziel verriegelt).
 		var length := minf(float(data.range), 900.0)

@@ -729,6 +729,9 @@ func _on_enemy_spawned(enemy: Enemy) -> void:
 
 
 func _on_enemy_died(enemy: Enemy) -> void:
+	if enemy.suicide:
+		# Selbstgesprengt: keine Beute und kein Kill, die Gefahr ist vorbei.
+		return
 	kills += 1
 	var info: Dictionary = enemy.data
 	_spawn_pickup("xp", int(info.xp) * (3 if enemy.elite else 1), enemy.global_position)

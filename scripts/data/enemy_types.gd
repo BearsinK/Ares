@@ -50,6 +50,22 @@ const DATA := {
 		"windup": 0.9, "cooldown": 2.6, "damage": 25.0, "knockback": 0.2,
 		"xp": 6, "gold_chance": 1.0, "cost": 6.0, "from_time": 150.0,
 	},
+	# Sprengi: rennt los und sprengt sich nach kurzer Warnung selbst. Ohne Beute, wenn er sich sprengt: abschiessen, bevor er da ist.
+	"bomber": {
+		"name": "Sprengi", "color": Color(0.95, 0.55, 0.15), "radius": 12.0,
+		"hp": 22.0, "speed": 215.0, "movement": "ground", "jump": 640.0,
+		"attack": "melee", "melee_shape": "circle", "reach": 80.0, "suicide": true,
+		"windup": 0.55, "cooldown": 1.0, "damage": 22.0, "knockback": 1.0,
+		"xp": 2, "gold_chance": 0.6, "cost": 2.0, "from_time": 90.0,
+	},
+	# Medic: haelt Abstand und heilt verwundete Gegner in der Naehe. Zuerst ausschalten.
+	"medic": {
+		"name": "Medic", "color": Color(0.4, 0.85, 0.55), "radius": 14.0,
+		"hp": 40.0, "speed": 85.0, "movement": "ground", "jump": 560.0,
+		"attack": "heal", "keep_distance": 560.0, "range": 340.0, "heal_amount": 0.3, "heal_targets": 5,
+		"windup": 0.9, "cooldown": 4.5, "damage": 0.0, "knockback": 1.0,
+		"xp": 4, "gold_chance": 0.9, "cost": 4.0, "from_time": 170.0,
+	},
 }
 
 
