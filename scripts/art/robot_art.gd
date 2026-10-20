@@ -81,17 +81,40 @@ static func _roomba(c: CanvasItem, s: Dictionary) -> void:
 	var la := _local_aim(s)
 	Art.face(c, Vector2(13, -1.5 + bob), Vector2(20, 9), s.eye_color, la, s.mood, t)
 	Art.led(c, Vector2(31, 1.5 + bob), 1.1, Color(0.4, 1.0, 0.5))
-	for i in 3:
-		var a := -spin * 1.7 + i * TAU / 3.0
-		c.draw_line(Vector2(32, 11), Vector2(32, 11) + Vector2(cos(a) * 5.0, sin(a) * 2.0), Color(0.9, 0.85, 0.4), 1.5, true)
+	# Grosse Seitenbuerste vorn unter der Stossstange: Nabe und sechs drehende Borsten.
+	var brush := Vector2(37, 9)
+	Art.disc(c, brush, 3.0, Color(0.25, 0.26, 0.32))
+	for i in 6:
+		var a := -spin * 2.2 + i * TAU / 6.0
+		var tip := brush + Vector2(cos(a) * 11.0, sin(a) * 5.0)
+		c.draw_line(brush, tip, Color(0.15, 0.15, 0.1), 3.2, true)
+		c.draw_line(brush, tip, Color(0.98, 0.85, 0.25), 2.0, true)
+		c.draw_circle(tip, 1.7, Color(1.0, 0.95, 0.5))
 
-	# Roboterarm vom Heck, zeigt in Zielrichtung, mit Absaugduese.
+	# Ausklappbarer Roboterarm vom Heck: eingeklappt liegt er flach auf dem Deckel, beim
+	# Schiessen klappt er aus und zielt. Starre Segmente mit Hydraulikkolben.
+	var deploy := clampf(float(s.arm), 0.0, 1.0)
+	deploy = deploy * deploy * (3.0 - 2.0 * deploy)
 	var shoulder := Vector2(-25, -14 + bob)
 	Art.panel(c, Rect2(-31, -18 + bob, 12, 6), Color(0.55, 0.58, 0.68), 2.5)
-	Art.disc(c, shoulder, 4.2, silver)
-	var wrist := Art.limb(c, shoulder, shoulder + la * 25.0, 14.0, 14.0, 5.0, Color(0.5, 0.54, 0.66), -1.0 if la.x >= 0.0 else 1.0, Color(0.95, 0.97, 1.0))
-	_nozzle(c, wrist, la, 11.0, 11.0, Color(0.14, 0.15, 0.2), s.weapon_color, float(s.firing))
-	Art.rivet(c, wrist, 1.6)
+	var stow_elbow := shoulder + Vector2(15, -1.5)
+	var stow_wrist := shoulder + Vector2(1, -4.5)
+	var reach := 27.0
+	var joints := Art.ik(shoulder, shoulder + la * reach, 14.0, 14.0, -1.0 if la.x >= 0.0 else 1.0)
+	var elbow: Vector2 = stow_elbow.lerp(joints[0], deploy)
+	var wrist: Vector2 = stow_wrist.lerp(joints[1], deploy)
+	var arm_color := Color(0.62, 0.66, 0.78)
+	Art.plate(c, shoulder, elbow, 5.5, arm_color)
+	# Kolben parallel zum Oberarm.
+	var side := (elbow - shoulder).orthogonal().normalized()
+	c.draw_line(shoulder + side * 3.5 + (elbow - shoulder) * 0.2, shoulder + side * 3.5 + (elbow - shoulder) * 0.7, Color(0.85, 0.87, 0.95), 1.6, true)
+	c.draw_line(shoulder + side * 3.5 + (elbow - shoulder) * 0.7, shoulder + side * 3.5 + (elbow - shoulder) * 0.9, Color(0.2, 0.22, 0.28), 2.4, true)
+	Art.plate(c, elbow, wrist, 4.8, arm_color.darkened(0.08))
+	Art.disc(c, shoulder, 3.6, Color(0.9, 0.92, 1.0))
+	Art.disc(c, elbow, 3.4, Color(0.9, 0.92, 1.0))
+	var stow_dir := Vector2(-1.0, 0.25).normalized()
+	var nozzle_dir := stow_dir.slerp(la, deploy)
+	_nozzle(c, wrist, nozzle_dir, 11.0, 11.0, Color(0.14, 0.15, 0.2), s.weapon_color, float(s.firing) * deploy)
 
 
 # ---------------------------------------------------------------- Hexapod

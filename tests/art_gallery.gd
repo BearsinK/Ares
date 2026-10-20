@@ -15,10 +15,11 @@ func _draw() -> void:
 	var moods := ["normal", "focus", "hurt", "happy"]
 	for i in 4:
 		var s := _state(moods[i])
+		s["arm"] = 0.0 if i == 0 else (0.5 if i == 1 else 1.0)
 		RobotArt.draw_player(self, classes[i], s, Vector2(160 + i * 300, 190), scale_factor)
 	# Zustaende: gehend, aufgebaut/klettern, schuettelnd, feuernd, in der Luft
 	var variants := [
-		{"class": "roomba", "vx": 300.0, "firing": 1.0, "aim": Vector2(0.8, -0.6)},
+		{"class": "roomba", "vx": 300.0, "firing": 1.0, "arm": 1.0, "aim": Vector2(0.8, -0.6)},
 		{"class": "printer", "vx": 300.0, "aim": Vector2(1, -0.2)},
 		{"class": "vending", "charge": 0.8, "aim": Vector2(0.7, -0.7)},
 		{"class": "vending", "firing": 1.0, "aim": Vector2(1, 0.3)},
@@ -46,7 +47,7 @@ func _draw() -> void:
 func _state(mood: String) -> Dictionary:
 	return {
 		"facing": 1.0, "aim": Vector2(1, 0), "t": t, "vx": 0.0, "walk": t * 3.0, "grounded": true,
-		"clinging": false, "cling_dir": 0.0, "planted": false, "mood": mood, "firing": 0.0, "charge": 0.0,
+		"clinging": false, "cling_dir": 0.0, "planted": false, "mood": mood, "firing": 0.0, "charge": 0.0, "arm": 1.0,
 		"weapon_color": Color(0.8, 0.92, 1.0), "accent": Color(0.3, 0.7, 1.0), "eye_color": Color(0.4, 1.0, 0.5),
 	}
 

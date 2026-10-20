@@ -95,6 +95,7 @@ var _walk_phase := 0.0
 var _fire_flash := 0.0
 var _hurt_timer := 0.0
 var _happy_timer := 0.0
+var _arm_deploy := 0.0
 
 
 func setup(index: int, new_class_id: String) -> void:
@@ -265,6 +266,8 @@ func _update_timers(delta: float) -> void:
 	_fire_flash = maxf(0.0, _fire_flash - delta * 6.0)
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	_happy_timer = maxf(0.0, _happy_timer - delta)
+	var arm_target := 1.0 if (Input.is_action_pressed(_prefix + "fire") or _fire_flash > 0.05) and not downed else 0.0
+	_arm_deploy = move_toward(_arm_deploy, arm_target, delta * 8.0)
 	_walk_phase += velocity.x * facing * delta * 0.12 if is_on_floor() or _clinging else 0.0
 
 	if dash_charges < dash_max():
@@ -595,7 +598,7 @@ func _art_state() -> Dictionary:
 		"facing": facing, "aim": aim_dir, "t": _art_time, "vx": 0.0 if downed else velocity.x,
 		"walk": _walk_phase, "grounded": is_on_floor(), "clinging": _clinging, "cling_dir": _cling_dir,
 		"planted": bool(stats.stationary_fire) and _stand_time >= DEPLOY_TIME,
-		"mood": mood, "firing": _fire_flash, "charge": shake_charge,
+		"mood": mood, "firing": _fire_flash, "charge": shake_charge, "arm": _arm_deploy,
 		"weapon_color": weapon_color, "accent": RobotClasses.PLAYER_COLORS[player_index - 1],
 		"eye_color": stats.eye_color,
 	}

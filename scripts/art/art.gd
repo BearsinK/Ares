@@ -152,3 +152,27 @@ static func face(c: CanvasItem, center: Vector2, size: Vector2, color: Color, lo
 	# Glanz auf dem Display.
 	c.draw_line(screen.position + Vector2(2, 2), screen.position + Vector2(size.x * 0.5, 2), Color(1, 1, 1, 0.25), 1.5, true)
 	rrect_line(c, screen, Color(0.3, 0.33, 0.4), 3.0, 1.5)
+
+
+## Starres Armsegment (Platte mit Kontur, Highlight und Schrauben an den Enden).
+static func plate(c: CanvasItem, a: Vector2, b: Vector2, width: float, color: Color) -> void:
+	var direction := (b - a).normalized() if a.distance_to(b) > 0.001 else Vector2.RIGHT
+	var side := direction.orthogonal() * width * 0.5
+	var points := PackedVector2Array([a + side, b + side, b - side, a - side])
+	var outline := PackedVector2Array([a + side * 1.25, b + side * 1.25, b - side * 1.25, a - side * 1.25])
+	c.draw_colored_polygon(outline, OUTLINE)
+	var colors := PackedColorArray([color.lightened(0.25), color.lightened(0.25), color.darkened(0.2), color.darkened(0.2)])
+	c.draw_polygon(points, colors)
+	c.draw_line(a + side * 0.55, b + side * 0.55, Color(1, 1, 1, 0.35), 1.2, true)
+	rivet(c, a + direction * width * 0.55, 1.2)
+	rivet(c, b - direction * width * 0.55, 1.2)
+
+
+## Gelenk eines zweigliedrigen Arms ohne zu zeichnen. Gibt [Gelenk, Ende] zurueck.
+static func ik(shoulder: Vector2, target: Vector2, upper: float, lower: float, bend: float) -> Array:
+	var to := target - shoulder
+	var distance := clampf(to.length(), absf(upper - lower) + 0.01, upper + lower - 0.01)
+	var direction := to.normalized() if to.length() > 0.001 else Vector2.RIGHT
+	var along := (upper * upper - lower * lower + distance * distance) / (2.0 * distance)
+	var height := sqrt(maxf(upper * upper - along * along, 0.0))
+	return [shoulder + direction * along + direction.orthogonal() * height * bend, shoulder + direction * distance]
