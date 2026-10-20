@@ -102,6 +102,8 @@ func _draw_wave_banner(view: Vector2) -> void:
 		var pop := _ease_out((elapsed - 0.5) / 0.35)
 		_text(Vector2(0, view.y * 0.26 + 56.0), String(info.name), int(36.0 + 14.0 * pop), Color(1.0, 0.65, 0.25, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 		_text(Vector2(0, view.y * 0.26 + 92.0), String(info.text), 22, Color(0.95, 0.95, 1.0, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		if float(info.get("bonus", 0.0)) > 0.0:
+			_text(Vector2(0, view.y * 0.26 + 122.0), "Prämie: +%d%% Gold" % int(round(float(info.bonus) * 100.0)), 22, Color(1.0, 0.85, 0.3, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	# Countdown: jede Zahl poppt gross auf und schrumpft.
 	if main.wave_intro <= 3.0:
 		var number := int(ceil(main.wave_intro))

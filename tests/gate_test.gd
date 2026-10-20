@@ -50,6 +50,8 @@ func _run() -> void:
 
 	var wave_before: int = main.wave
 	main.shop_menu._finish()
+	_check(main.contract_menu.is_open and gates.is_closed, "Nach dem Shop kommt die Vertragswahl, die Tore bleiben zu")
+	main.contract_menu._finish("normal")
 	_check(not gates.is_closed and gates.visible, "Beim Weitergehen oeffnen sich die Tore")
 	_check(main.wave == wave_before + 1 and main.phase == main.Phase.WAVE, "Naechste Welle laeuft")
 	await _until(func() -> bool: return not gates.visible)
@@ -67,6 +69,7 @@ func _run() -> void:
 	await _until(func() -> bool: return main.shop_menu.is_open)
 	_check(main.shop_menu.is_open and main.phase == main.Phase.SHOP, "Nach dem Level-Up oeffnet sich der Shop")
 	main.shop_menu._finish()
+	main.contract_menu._finish("normal")
 	await _until(func() -> bool: return not gates.visible)
 
 	# Game Over waehrend die Tore zu sind: Tore werden sofort weggeraeumt.

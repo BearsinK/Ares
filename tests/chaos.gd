@@ -53,6 +53,10 @@ func _physics_process(delta: float) -> void:
 		var menu: LevelUpMenu = main.levelup_menu
 		menu._finish(menu.perk_ids[randi() % menu.perk_ids.size()])
 		return
+	if main.contract_menu.is_open:
+		var contracts: ContractMenu = main.contract_menu
+		contracts._finish(contracts.perk_ids[randi() % contracts.perk_ids.size()])
+		return
 	if main.shop_menu.is_open:
 		main.shop_menu._finish()
 		return

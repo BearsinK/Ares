@@ -67,6 +67,9 @@ var projectiles: Node2D
 var enemy_projectiles: Node2D
 var pickups: Node2D
 var levelup_menu: LevelUpMenu
+var contract_menu: ContractMenu
+## Vertragswahl vor jeder Welle ab Welle 2 (nur mit Wellen-Einstieg, damit alte Tests unveraendert laufen).
+var contracts_enabled := true
 var shop_menu: ShopMenu
 var boss: Boss
 var boss_arena: BossArena
@@ -154,6 +157,9 @@ func _ready() -> void:
 	levelup_menu = LevelUpMenu.new()
 	levelup_menu.chosen.connect(_on_perk_chosen)
 	add_child(levelup_menu)
+	contract_menu = ContractMenu.new()
+	contract_menu.chosen.connect(_on_contract_chosen)
+	add_child(contract_menu)
 	gates = GateOverlay.new()
 	add_child(gates)
 	add_child(Vignette.new())
@@ -390,16 +396,32 @@ func _open_shop() -> void:
 
 
 func _on_shop_closed() -> void:
-	if gates != null and gates.is_closed:
-		gates.open()
 	if wave >= max_waves:
+		if gates != null and gates.is_closed:
+			gates.open()
 		_start_boss()
 		return
 	wave += 1
 	wave_time_left = wave_duration
 	if stage_id != "classic" and (wave - 1) % Stages.WAVES_PER_STAGE == 0:
+		# Hinter den geschlossenen Toren: neue Karte aufbauen.
 		_change_stage()
-	_apply_modifier()
+	if contracts_enabled and intro_enabled and wave >= 2 and wave < max_waves:
+		# Vertragswahl: erst entscheiden, dann oeffnen sich die Tore.
+		contract_menu.open_contracts(players, WaveModifiers.offers(wave_modifier), wave)
+		return
+	_begin_new_wave("")
+
+
+func _on_contract_chosen(contract_id: String) -> void:
+	_begin_new_wave(contract_id)
+
+
+## Die neue Welle beginnt: Tore auf, Modifikator (gewaehlt oder zufaellig), Gegner, Kisten.
+func _begin_new_wave(contract_id: String) -> void:
+	if gates != null and gates.is_closed:
+		gates.open()
+	_apply_modifier(contract_id)
 	phase = Phase.WAVE
 	director.enabled = director_enabled
 	_guardian_spawned = false
@@ -470,8 +492,8 @@ func _on_boss_died() -> void:
 			player.revive(0.5)
 
 
-func _apply_modifier() -> void:
-	wave_modifier = WaveModifiers.pick(wave, max_waves, wave_modifier)
+func _apply_modifier(forced := "") -> void:
+	wave_modifier = forced if forced != "" else WaveModifiers.pick(wave, max_waves, wave_modifier)
 	director.start_wave(wave, WaveModifiers.DATA[wave_modifier])
 	wave_banner_time = 3.5 if wave_modifier != "normal" else 0.0
 	if wave_modifier != "normal":
@@ -714,7 +736,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	var coins := int(float(info.gold_chance)) + (1 if randf() < fmod(float(info.gold_chance), 1.0) else 0)
 	if enemy.elite:
 		coins += 3
-	coins = int(round(float(coins) * float(WaveModifiers.DATA[wave_modifier].get("gold", 1.0))))
+	coins = int(round(float(coins) * WaveModifiers.gold_factor(wave_modifier)))
 	for i in coins:
 		_spawn_pickup("gold", gold_value, enemy.global_position)
 	for player in players:

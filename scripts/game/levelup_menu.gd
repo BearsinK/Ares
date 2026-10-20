@@ -33,6 +33,7 @@ var _roulette_end := 0.0
 const ROULETTE_HOLD := 1.5
 var _split_message := ""
 var _title := ""
+var _hint := "Beide wählen dieselbe Karte. Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück"
 var _canvas: Node2D
 
 
@@ -54,6 +55,7 @@ func open(new_players: Array[Player], new_perk_ids: Array[String], level: int) -
 	_split_time = 0.0
 	_roulette = false
 	_title = "LEVEL UP!  Stufe %d" % level
+	_hint = "Beide wählen dieselbe Karte. Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück"
 	is_open = true
 	visible = true
 	get_tree().paused = true
@@ -153,7 +155,7 @@ func _draw_menu() -> void:
 	var view := _canvas.get_viewport_rect().size
 	_canvas.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.74))
 	UiKit.text(_canvas, Vector2(0, 150), _title, 56, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	UiKit.text(_canvas, Vector2(0, 192), "Beide wählen dieselbe Karte. Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück", 20, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_canvas, Vector2(0, 192), _hint, 20, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	if _roulette:
 		UiKit.text(_canvas, Vector2(0, 222), "Der Zufall entscheidet ..." if _roulette_t < _roulette_end else "Der Zufall hat entschieden!", 26, Color(1.0, 0.8, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	elif _locked[0] != -1 and _locked[1] != -1 and _locked[0] != _locked[1]:
@@ -166,10 +168,28 @@ func _draw_menu() -> void:
 		_draw_card(pos, perk_ids[index], index)
 
 
+## Farbe einer Karte (Unterklassen tauschen den Inhalt, etwa der Vertrag-Dialog).
+func _card_color(id: String) -> Color:
+	return PerkArt.color_of(id)
+
+
+## Symbol, Name und Wirkung je Spieler auf einer Karte im Rechteck rect.
+func _draw_card_content(rect: Rect2, perk_id: String) -> void:
+	PerkArt.draw(_canvas, perk_id, rect.position + Vector2(CARD_SIZE.x * 0.5, 84.0), 88.0)
+	UiKit.text(_canvas, rect.position + Vector2(0, 176), Perks.DATA[perk_id].name, 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, CARD_SIZE.x)
+	_canvas.draw_line(rect.position + Vector2(30, 196), rect.position + Vector2(CARD_SIZE.x - 30, 196), Color(1, 1, 1, 0.15), 2.0)
+	var y := 228.0
+	for player in players:
+		var color: Color = RobotClasses.PLAYER_COLORS[player.player_index - 1]
+		UiKit.text(_canvas, rect.position + Vector2(24, y), "P%d  %s" % [player.player_index, player.stats.name], 18, color)
+		UiKit.text(_canvas, rect.position + Vector2(24, y + 24), Perks.describe(perk_id, player.class_id), 17, Color(0.92, 0.93, 0.98), HORIZONTAL_ALIGNMENT_LEFT, CARD_SIZE.x - 48.0, true)
+		y += 92.0
+
+
 func _draw_card(pos: Vector2, perk_id: String, index: int) -> void:
 	var highlighted: bool = _cursor[0] == index or _cursor[1] == index
 	var both: bool = _cursor[0] == index and _cursor[1] == index
-	var perk_color := PerkArt.color_of(perk_id)
+	var perk_color := _card_color(perk_id)
 	var flash := 0.0
 	if _roulette:
 		# Roulette: nur die gerade leuchtende Karte ist hell, am Ende blinkt der Gewinner.
@@ -193,16 +213,7 @@ func _draw_card(pos: Vector2, perk_id: String, index: int) -> void:
 	if _roulette and _roulette_t >= _roulette_end and index == _roulette_winner:
 		UiKit.text(_canvas, rect.position + Vector2(0, -16.0), "GEWONNEN!", 30, Color(1.0, 0.95, 0.5, 0.6 + 0.4 * flash), HORIZONTAL_ALIGNMENT_CENTER, CARD_SIZE.x)
 	_canvas.draw_rect(Rect2(rect.position + Vector2(20, 0), Vector2(80, 5)), perk_color)
-	PerkArt.draw(_canvas, perk_id, rect.position + Vector2(CARD_SIZE.x * 0.5, 84.0), 88.0)
-	UiKit.text(_canvas, rect.position + Vector2(0, 176), Perks.DATA[perk_id].name, 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, CARD_SIZE.x)
-	_canvas.draw_line(rect.position + Vector2(30, 196), rect.position + Vector2(CARD_SIZE.x - 30, 196), Color(1, 1, 1, 0.15), 2.0)
-
-	var y := 228.0
-	for player in players:
-		var color: Color = RobotClasses.PLAYER_COLORS[player.player_index - 1]
-		UiKit.text(_canvas, rect.position + Vector2(24, y), "P%d  %s" % [player.player_index, player.stats.name], 18, color)
-		UiKit.text(_canvas, rect.position + Vector2(24, y + 24), Perks.describe(perk_id, player.class_id), 17, Color(0.92, 0.93, 0.98), HORIZONTAL_ALIGNMENT_LEFT, CARD_SIZE.x - 48.0, true)
-		y += 92.0
+	_draw_card_content(rect, perk_id)
 
 	# Cursor- und Sperr-Markierungen der Spieler.
 	for i in 2:
