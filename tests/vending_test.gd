@@ -55,7 +55,7 @@ func _run() -> void:
 	await _frames(40)
 	p1 = main.players[0]
 	main.players[1].global_position = Vector2(100.0, 1210.0)
-	p1.global_position = Vector2(500.0, 1210.0)
+	p1.global_position = Vector2(500.0, 1194.0)
 	await _frames(10)
 	_check(p1.class_id == "vending" and p1.current_weapon_id() == "can", "Der Automat startet mit der Dose")
 
@@ -104,7 +104,7 @@ func _run() -> void:
 	await _clear()
 
 	# Explosion beim Aufprall verletzt Gegner im Radius (Wurf schraeg nach oben rechts)
-	p1.global_position = Vector2(300.0, 1210.0)
+	p1.global_position = Vector2(300.0, 1194.0)
 	p1.velocity = Vector2.ZERO
 	var near := _dummy(300.0 + 700.0)
 	await _frames(20)
@@ -122,7 +122,7 @@ func _run() -> void:
 
 	# Ungeschuettelte Dose macht nur kleinen Direktschaden und keine Flaechenwirkung
 	near.health = near.max_health
-	p1.global_position = Vector2(300.0, 1210.0)
+	p1.global_position = Vector2(300.0, 1194.0)
 	p1.velocity = Vector2.ZERO
 	var close := _dummy(300.0 + 330.0)
 	await _frames(40)

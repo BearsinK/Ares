@@ -136,7 +136,7 @@ func _run() -> void:
 
 	# Mantle: am Schacht hochklettern und auf die Plattform oben hopsen
 	hexapod.weapon_index = 0
-	_place(hexapod, Vector2(2574.0, 1210.0))
+	_place(hexapod, Vector2(2566.0, 1210.0))
 	await _frames(10)
 	Input.action_press("p2_right")
 	Input.action_press("p2_up")

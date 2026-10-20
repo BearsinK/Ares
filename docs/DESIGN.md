@@ -25,7 +25,7 @@ Markiert mit (Vorschlag) ist, was noch nicht bestätigt wurde.
 - Bosse: Fabrikbereiche und ihre Wächter, z.B. Presse, Schweißarm, Kühlanlage, Serverraum, am Ende die Fabrik-KI oder der Chef (Vorschlag)
 - Item-Idee: Firmware-Updates, Perma-Währung (Name offen, z.B. Gesichts-Chips oder Wackelaugen)
 - Ton: bunt und humorvoll
-- Optik: Platzhalter aus Formen und Farben. Wer was ist, zeigt Form und Spielerfarbe
+- Optik: im Code gezeichnete Sprites in Seitenansicht (kein Asset-Import). Wer was ist, zeigt Form, Farbe, LCD-Gesicht und Spielermarke über dem Kopf. Roomba flach, Automat groß
 - Keine echten Marken oder Logos, nur erfundene
 
 ## Gegner

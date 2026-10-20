@@ -32,6 +32,8 @@ var _time := 0.0
 var _dead := false
 var _slam_flash := 0.0
 var statuses: StatusEffects
+var _facing := 1.0
+var _walk_phase := 0.0
 
 
 func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_players: Array[Player]) -> void:
@@ -105,6 +107,13 @@ func _physics_process(delta: float) -> void:
 	if _dead:
 		return
 	_pick_target()
+	if _target != null:
+		var to_target := _target.global_position - global_position
+		if absf(to_target.x) > 4.0:
+			_facing = signf(to_target.x)
+		if _state != State.WINDUP:
+			_aim = to_target.normalized()
+	_walk_phase += velocity.x * _facing * delta * 0.12
 	if statuses.is_frozen():
 		_frozen_physics(delta)
 		return
@@ -254,32 +263,21 @@ func _execute_attack() -> void:
 
 func _draw() -> void:
 	var r: float = data.radius
-	var color: Color = data.color
-	if _flash > 0.0:
-		color = Color.WHITE
 	_draw_telegraph(r)
 	statuses.draw_overlay(self, r, _time)
-	match kind:
-		"flyer":
-			var points := PackedVector2Array([Vector2(0, -r), Vector2(r, 0), Vector2(0, r), Vector2(-r, 0)])
-			draw_colored_polygon(points, color)
-			var wing := sin(_time * 40.0) * 4.0
-			draw_line(Vector2(-r - 6.0, -r * 0.6 + wing), Vector2(r + 6.0, -r * 0.6 - wing), Color(1, 1, 1, 0.6), 2.0)
-		"brute":
-			draw_rect(Rect2(-r, -r, r * 2.0, r * 2.0), color)
-			draw_rect(Rect2(-r, -r, r * 2.0, r * 2.0), Color(0.25, 0.05, 0.1), false, 4.0)
-		_:
-			draw_circle(Vector2.ZERO, r, color)
-			if kind == "shooter":
-				draw_line(Vector2.ZERO, _aim * (r + 10.0), Color(0.3, 0.1, 0.4), 5.0)
-	# Boese Augen der Fabrik-Roboter.
-	var eye_dir := Vector2(signf(_aim.x) * 2.0, 0.0)
-	draw_circle(Vector2(-r * 0.35, -r * 0.2) + eye_dir, r * 0.15, Color(1.0, 0.15, 0.15))
-	draw_circle(Vector2(r * 0.35, -r * 0.2) + eye_dir, r * 0.15, Color(1.0, 0.15, 0.15))
+	var windup := -1.0
+	if _state == State.WINDUP:
+		windup = 1.0 - _state_time / float(data.windup)
+	RobotArt.draw_enemy(self, kind, {
+		"facing": _facing, "aim": _aim, "t": _time, "walk": _walk_phase,
+		"flash": _flash > 0.0, "windup": windup, "slam": _slam_flash > 0.0,
+	})
 	if hp < max_hp and (kind == "brute" or hp < max_hp * 0.99):
-		var width := r * 2.0
-		draw_rect(Rect2(-r, -r - 12.0, width, 4.0), Color(0.15, 0.15, 0.15))
-		draw_rect(Rect2(-r, -r - 12.0, width * clampf(hp / max_hp, 0.0, 1.0), 4.0), Color(0.9, 0.3, 0.3))
+		var width := maxf(r * 2.0, 30.0)
+		var top := -r - (22.0 if kind == "brute" else 14.0)
+		draw_rect(Rect2(-width * 0.5, top, width, 5.0), Color(0.08, 0.08, 0.1, 0.85))
+		draw_rect(Rect2(-width * 0.5, top, width * clampf(hp / max_hp, 0.0, 1.0), 5.0), Color(0.9, 0.3, 0.3))
+		draw_rect(Rect2(-width * 0.5, top, width, 5.0), Color(1, 1, 1, 0.3), false, 1.0)
 
 
 func _draw_telegraph(r: float) -> void:
@@ -289,8 +287,8 @@ func _draw_telegraph(r: float) -> void:
 	if data.attack == "ranged":
 		# Schusslinie, die kurz vor dem Schuss aufleuchtet.
 		var length := float(data.range)
-		var alpha := 0.2 + 0.6 * progress
-		draw_line(_aim * r, _aim * length, Color(1.0, 0.3, 0.3, alpha), 2.0 + 3.0 * progress)
+		var alpha := 0.1 + 0.5 * progress
+		draw_line(_aim * r, _aim * length, Color(1.0, 0.3, 0.3, alpha), 1.5 + 2.5 * progress, true)
 	elif data.melee_shape == "circle":
 		var reach: float = data.reach
 		draw_circle(Vector2.ZERO, reach * progress, Color(1.0, 0.2, 0.2, 0.25))

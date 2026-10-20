@@ -46,6 +46,7 @@ var players: Array[Player] = []
 var camera: CoopCamera
 var fx: Fx
 var hud: Hud
+var backdrop: Backdrop
 var director: Director
 var projectiles: Node2D
 var enemy_projectiles: Node2D
@@ -81,6 +82,7 @@ func _ready() -> void:
 	add_child(fx)
 	_spawn_players()
 	_setup_camera()
+	backdrop.camera = camera
 	_setup_director()
 	if use_dummies:
 		_spawn_dummies()
@@ -91,6 +93,7 @@ func _ready() -> void:
 	levelup_menu = LevelUpMenu.new()
 	levelup_menu.chosen.connect(_on_perk_chosen)
 	add_child(levelup_menu)
+	add_child(Vignette.new())
 	hud = Hud.new()
 	hud.main = self
 	add_child(hud)
@@ -238,7 +241,7 @@ func _spawn_players() -> void:
 			for j in TEST_LOADOUTS[i].size():
 				player.weapons.append(TEST_LOADOUTS[i][j])
 				player.modules.append(TEST_MODULES[i][j])
-		player.position = Vector2(300.0 + i * 90.0, FLOOR_Y - 40.0)
+		player.position = Vector2(300.0 + i * 110.0, FLOOR_Y - float(player.stats.size.y) * 0.5 - 2.0)
 		player.fired.connect(_on_player_fired)
 		player.went_down.connect(_on_player_down)
 		player.slam_landed.connect(_on_slam_landed)
@@ -354,31 +357,46 @@ func _on_dummy_died(pos: Vector2) -> void:
 
 func _build_arena() -> void:
 	# Boden, Waende, Decke.
-	_add_block(Rect2(0.0, FLOOR_Y, ARENA_SIZE.x, 100.0))
-	_add_block(Rect2(-100.0, -100.0, 100.0, ARENA_SIZE.y + 200.0))
-	_add_block(Rect2(ARENA_SIZE.x, -100.0, 100.0, ARENA_SIZE.y + 200.0))
-	_add_block(Rect2(0.0, -100.0, ARENA_SIZE.x, 100.0))
+	_add_block(Rect2(0.0, FLOOR_Y, ARENA_SIZE.x, 100.0), "floor")
+	_add_block(Rect2(-100.0, -100.0, 100.0, ARENA_SIZE.y + 200.0), "wall")
+	_add_block(Rect2(ARENA_SIZE.x, -100.0, 100.0, ARENA_SIZE.y + 200.0), "wall")
+	_add_block(Rect2(0.0, -100.0, ARENA_SIZE.x, 100.0), "ceiling")
 
-	# Plattformen in versetzten Hoehen fuer Sprung und spaeter Doppelsprung.
+	# Stege. Links eine Treppe aus Plattformen, in der Mitte mehrere Ebenen,
+	# rechts der Schacht. Alle sind von unten durchlaessig.
 	var platforms: Array[Rect2] = [
-		Rect2(350.0, 1120.0, 300.0, 24.0),
-		Rect2(800.0, 990.0, 300.0, 24.0),
-		Rect2(1250.0, 860.0, 300.0, 24.0),
-		Rect2(1700.0, 990.0, 300.0, 24.0),
-		Rect2(2150.0, 1120.0, 300.0, 24.0),
+		Rect2(110.0, 1130.0, 280.0, 24.0),
+		Rect2(470.0, 1010.0, 260.0, 24.0),
+		Rect2(150.0, 890.0, 260.0, 24.0),
+		Rect2(520.0, 770.0, 240.0, 24.0),
+		Rect2(1000.0, 1100.0, 1100.0, 24.0),
+		Rect2(1200.0, 930.0, 320.0, 24.0),
+		Rect2(1680.0, 930.0, 320.0, 24.0),
+		Rect2(1440.0, 760.0, 320.0, 24.0),
+		Rect2(2250.0, 1120.0, 260.0, 24.0),
+		Rect2(2330.0, 970.0, 220.0, 24.0),
+		Rect2(2920.0, 1010.0, 240.0, 24.0),
+		Rect2(2960.0, 820.0, 200.0, 24.0),
 	]
 	for rect in platforms:
-		_add_block(rect, true)
+		_add_block(rect, "platform")
 
-	# Hoher Schacht mit Belohnungs-Plattform: gedacht fuer Wandsprung und Haken.
-	_add_block(Rect2(2600.0, 700.0, 40.0, 550.0))
-	_add_block(Rect2(2840.0, 700.0, 40.0, 550.0))
-	_add_block(Rect2(2580.0, 676.0, 320.0, 24.0), true)
+	# Hoher Schacht mit Belohnungs-Plattform: gedacht fuer Wandsprung, Klettern und Haken.
+	_add_block(Rect2(2600.0, 600.0, 40.0, 650.0), "wall")
+	_add_block(Rect2(2840.0, 600.0, 40.0, 650.0), "wall")
+	_add_block(Rect2(2570.0, 600.0, 340.0, 24.0), "platform")
+
+	var props := Props.new()
+	props.shaft = Rect2(2640.0, 600.0, 200.0, 650.0)
+	add_child(props)
+	backdrop = Backdrop.new()
+	add_child(backdrop)
 
 
-func _add_block(rect: Rect2, one_way := false) -> void:
+func _add_block(rect: Rect2, kind := "platform") -> void:
+	var one_way := kind == "platform"
 	var body := StaticBody2D.new()
-	# Plattformen (one_way) liegen auf Ebene 6 und lassen sich von unten durchspringen.
+	# Plattformen liegen auf Ebene 6 und lassen sich von unten durchspringen.
 	body.collision_layer = (1 << 5) if one_way else (1 << 0)
 	body.collision_mask = 0
 	body.position = rect.get_center()
@@ -391,14 +409,10 @@ func _add_block(rect: Rect2, one_way := false) -> void:
 	shape.one_way_collision_margin = 10.0
 	body.add_child(shape)
 
-	var half := rect.size * 0.5
-	var visual := Polygon2D.new()
-	visual.color = WORLD_COLOR
-	visual.polygon = PackedVector2Array([
-		Vector2(-half.x, -half.y), Vector2(half.x, -half.y),
-		Vector2(half.x, half.y), Vector2(-half.x, half.y),
-	])
-	body.add_child(visual)
+	var art := BlockArt.new()
+	art.kind = kind
+	art.size = rect.size
+	body.add_child(art)
 	add_child(body)
 
 

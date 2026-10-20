@@ -77,9 +77,10 @@ func _spawn_burst() -> void:
 	burst.initial_velocity_min = 150.0
 	burst.initial_velocity_max = 400.0
 	burst.gravity = Vector2(0.0, 900.0)
-	burst.scale_amount_min = 3.0
-	burst.scale_amount_max = 6.0
+	burst.scale_amount_min = 0.08
+	burst.scale_amount_max = 0.16
 	burst.color = Color(1.0, 0.4, 0.4)
+	burst.texture = Props.soft_texture()
 	get_parent().add_child(burst)
 	var timer := burst.get_tree().create_timer(1.0)
 	timer.timeout.connect(burst.queue_free)

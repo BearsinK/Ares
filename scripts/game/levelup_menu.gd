@@ -98,8 +98,7 @@ func _draw_menu() -> void:
 
 func _draw_card(pos: Vector2, perk_id: String, index: int, font: Font) -> void:
 	var highlighted: bool = _cursor[0] == index or _cursor[1] == index
-	_canvas.draw_rect(Rect2(pos, CARD_SIZE), Color(0.14, 0.15, 0.22) if not highlighted else Color(0.2, 0.22, 0.32))
-	_canvas.draw_rect(Rect2(pos, CARD_SIZE), Color(1, 1, 1, 0.3), false, 2.0)
+	Art.panel(_canvas, Rect2(pos, CARD_SIZE), Color(0.2, 0.22, 0.32) if highlighted else Color(0.14, 0.15, 0.22), 14.0, Color(1, 1, 1, 0.3))
 	_canvas.draw_string(font, pos + Vector2(0, 50), Perks.DATA[perk_id].name, HORIZONTAL_ALIGNMENT_CENTER, CARD_SIZE.x, 30, Color.WHITE)
 
 	var y := 110.0
@@ -114,8 +113,8 @@ func _draw_card(pos: Vector2, perk_id: String, index: int, font: Font) -> void:
 		var marker_color: Color = RobotClasses.PLAYER_COLORS[i]
 		var x := pos.x + 20.0 + i * 120.0
 		if _locked[i] == index:
-			_canvas.draw_rect(Rect2(Vector2(x, pos.y + CARD_SIZE.y + 10.0), Vector2(100.0, 28.0)), marker_color)
+			Art.rrect(_canvas, Rect2(Vector2(x, pos.y + CARD_SIZE.y + 10.0), Vector2(100.0, 28.0)), marker_color, 8.0)
 			_canvas.draw_string(font, Vector2(x, pos.y + CARD_SIZE.y + 30.0), "P%d bereit" % (i + 1), HORIZONTAL_ALIGNMENT_CENTER, 100.0, 16, Color.BLACK)
 		elif _cursor[i] == index:
-			_canvas.draw_rect(Rect2(Vector2(x, pos.y + CARD_SIZE.y + 10.0), Vector2(100.0, 28.0)), marker_color, false, 2.0)
+			Art.rrect_line(_canvas, Rect2(Vector2(x, pos.y + CARD_SIZE.y + 10.0), Vector2(100.0, 28.0)), marker_color, 8.0, 2.0)
 			_canvas.draw_string(font, Vector2(x, pos.y + CARD_SIZE.y + 30.0), "P%d" % (i + 1), HORIZONTAL_ALIGNMENT_CENTER, 100.0, 16, marker_color)

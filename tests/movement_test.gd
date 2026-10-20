@@ -70,12 +70,12 @@ func _run() -> void:
 	await _frames(120)
 
 	# Gleiten: Fallgeschwindigkeit begrenzt, solange Sprung gehalten wird
-	_place(Vector2(600.0, 500.0))
+	_place(Vector2(880.0, 500.0))
 	await _frames(40)
 	var fall_fast := p1.velocity.y
 	_check(fall_fast > 400.0, "Ohne Gleiten faellt man schnell (%.0f)" % fall_fast)
 	p1.add_firmware("glide")
-	_place(Vector2(600.0, 500.0))
+	_place(Vector2(880.0, 500.0))
 	await _frames(5)
 	Input.action_press("p1_jump")
 	await _frames(40)
@@ -101,7 +101,7 @@ func _run() -> void:
 	# Bodenstoss: Aufprall macht Flaechenschaden
 	p1.add_firmware("slam")
 	var dummy := TestDummy.new()
-	dummy.position = Vector2(200.0, 1210.0)
+	dummy.position = Vector2(900.0, 1210.0)
 	dummy.max_health = 100000.0
 	dummy.health = 100000.0
 	main.add_child(dummy)
@@ -119,12 +119,13 @@ func _run() -> void:
 	await _frames(60)
 
 	# Plattformen sind von unten durchlaessig und tragen von oben
-	_place(Vector2(500.0, 1210.0))
+	_place(Vector2(250.0, 1210.0))
 	await _frames(20)
 	await _tap("p1_jump", 25)
 	await _frames(90)
-	_check(is_equal_approx(p1.global_position.y, 1120.0 - 24.0 / 2.0 - float(p1.stats.radius)) or p1.global_position.y < 1100.0,
-		"Spieler springt durch die Plattform und landet darauf (y=%.0f)" % p1.global_position.y)
+	var stand_y := 1130.0 - float(p1.stats.size.y) * 0.5
+	_check(absf(p1.global_position.y - stand_y) < 4.0,
+		"Spieler springt durch die Plattform und landet darauf (y=%.0f, erwartet %.0f)" % [p1.global_position.y, stand_y])
 
 	# Durchfallen: unten + Sprung auf einer Plattform
 	var on_platform_y := p1.global_position.y
@@ -136,8 +137,9 @@ func _run() -> void:
 	await _frames(60)
 
 	# Haken: zieht zum Ankerpunkt (Plattformunterseite), ohne Firmware passiert nichts
-	_place(Vector2(1400.0, 1210.0))
+	_place(Vector2(1100.0, 1210.0))
 	await _frames(15)
+	var hook_start_y := p1.global_position.y
 	Input.action_press("p1_aim_up")
 	await _frames(3)
 	await _tap("p1_hook", 3)
@@ -145,9 +147,9 @@ func _run() -> void:
 	p1.add_firmware("hook")
 	await _tap("p1_hook", 3)
 	_check(p1.hook_active, "Haken trifft die Plattform und haengt")
-	await _frames(20)
+	await _frames(12)
 	Input.action_release("p1_aim_up")
-	_check(p1.global_position.y < 1100.0, "Haken zieht den Spieler nach oben (y=%.0f)" % p1.global_position.y)
+	_check(p1.global_position.y < hook_start_y - 40.0, "Haken zieht den Spieler nach oben (y=%.0f)" % p1.global_position.y)
 	await _frames(100)
 
 	print("Fertig, Fehler: ", failures)

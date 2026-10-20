@@ -169,9 +169,8 @@ func _draw_player_column(i: int, origin: Vector2, width: float, font: Font) -> v
 func _draw_offer(i: int, slot: int, pos: Vector2, offer: Dictionary, font: Font) -> void:
 	var selected: bool = _cursor[i] == slot and not _ready_flags[i]
 	var rect := Rect2(pos, Vector2(CARD_WIDTH, CARD_HEIGHT))
-	_canvas.draw_rect(rect, Color(0.2, 0.22, 0.32) if selected else Color(0.12, 0.13, 0.19))
 	var border: Color = RobotClasses.PLAYER_COLORS[i] if selected else Color(1, 1, 1, 0.2)
-	_canvas.draw_rect(rect, border, false, 3.0 if selected else 1.0)
+	Art.panel(_canvas, rect, Color(0.2, 0.22, 0.32) if selected else Color(0.12, 0.13, 0.19), 12.0, border)
 	if offer.is_empty():
 		return
 	if offer.bought:
@@ -191,7 +190,6 @@ func _draw_button(i: int, slot: int, pos: Vector2, size: Vector2, text: String, 
 	var selected: bool = _cursor[i] == slot
 	var active: bool = slot == READY_SLOT and _ready_flags[i]
 	var fill := Color(0.2, 0.5, 0.3) if active else (Color(0.2, 0.22, 0.32) if selected else Color(0.12, 0.13, 0.19))
-	_canvas.draw_rect(Rect2(pos, size), fill)
 	var border: Color = RobotClasses.PLAYER_COLORS[i] if selected else Color(1, 1, 1, 0.2)
-	_canvas.draw_rect(Rect2(pos, size), border, false, 3.0 if selected else 1.0)
+	Art.panel(_canvas, Rect2(pos, size), fill, 12.0, border)
 	_canvas.draw_string(font, pos + Vector2(0, 33), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 20, Color.WHITE)

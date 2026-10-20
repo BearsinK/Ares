@@ -90,6 +90,11 @@ var _clinging := false
 var _cling_dir := 0.0
 var _stand_time := 0.0
 var _shake_tick := 0.0
+var _art_time := 0.0
+var _walk_phase := 0.0
+var _fire_flash := 0.0
+var _hurt_timer := 0.0
+var _happy_timer := 0.0
 
 
 func setup(index: int, new_class_id: String) -> void:
@@ -146,6 +151,7 @@ func take_hit(amount: float, from: Vector2) -> bool:
 	var final_amount := amount * maxf(0.1, 1.0 - float(mods.dmg_taken))
 	hp -= final_amount
 	iframes = HIT_IFRAMES
+	_hurt_timer = 0.45
 	var away := (global_position - from).normalized()
 	velocity += Vector2(away.x * 320.0, -260.0)
 	Sfx.play("hurt")
@@ -166,6 +172,7 @@ func revive(health_fraction := 0.5) -> void:
 	revive_progress = 0.0
 	hp = max_health() * health_fraction
 	iframes = 1.5
+	_happy_timer = 1.5
 	Sfx.play("revive")
 	revived.emit(self)
 
@@ -193,9 +200,9 @@ func _ready() -> void:
 	collision_mask = WORLD_MASK
 	floor_snap_length = 8.0
 	var shape := CollisionShape2D.new()
-	var circle := CircleShape2D.new()
-	circle.radius = stats.radius
-	shape.shape = circle
+	var rect := RectangleShape2D.new()
+	rect.size = stats.size
+	shape.shape = rect
 	add_child(shape)
 
 
@@ -254,6 +261,11 @@ func _update_timers(delta: float) -> void:
 	_drop_time = maxf(0.0, _drop_time - delta)
 	collision_mask = (1 << 0) if _drop_time > 0.0 else WORLD_MASK
 	_switch_cooldown = maxf(0.0, _switch_cooldown - delta)
+	_art_time += delta
+	_fire_flash = maxf(0.0, _fire_flash - delta * 6.0)
+	_hurt_timer = maxf(0.0, _hurt_timer - delta)
+	_happy_timer = maxf(0.0, _happy_timer - delta)
+	_walk_phase += velocity.x * facing * delta * 0.12 if is_on_floor() or _clinging else 0.0
 
 	if dash_charges < dash_max():
 		_dash_recharge += delta
@@ -300,7 +312,7 @@ func _process_movement(delta: float, move: float) -> void:
 		velocity.y = SLAM_SPEED
 		if on_floor:
 			_slamming = false
-			slam_landed.emit(self, global_position + Vector2(0.0, float(stats.radius)))
+			slam_landed.emit(self, global_position + Vector2(0.0, float(stats.size.y) * 0.5))
 		return
 	if _wall_lock <= 0.0:
 		velocity.x = move_toward(velocity.x, move * move_speed(), accel * delta)
@@ -526,10 +538,11 @@ func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 	elif _lob_charging and not held:
 		_lob_charging = false
 		_fire_cooldown = 1.0 / (float(weapon.fire_rate) * (1.0 + float(mods.fire_rate)))
-		var origin: Vector2 = global_position + aim_dir * (float(stats.radius) + float(weapon.barrel))
+		var origin: Vector2 = global_position + _muzzle_offset() + aim_dir * float(weapon.barrel)
 		velocity -= aim_dir * float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
 		var thrown_charge := shake_charge
 		shake_charge = 0.0
+		_fire_flash = 1.0
 		fired.emit(self, weapon_id, origin, aim_dir, thrown_charge)
 	elif not held:
 		shake_charge = 0.0
@@ -554,129 +567,108 @@ func _handle_fire(_delta: float) -> void:
 	if weapon.kind == "lob":
 		return
 	_fire_cooldown = 1.0 / (float(weapon.fire_rate) * (1.0 + float(mods.fire_rate)))
-	var origin: Vector2 = global_position + aim_dir * (float(stats.radius) + float(weapon.barrel))
+	var origin: Vector2 = global_position + _muzzle_offset() + aim_dir * float(weapon.barrel)
 	# Rueckstoss: am Boden schwaecher, in der Luft staerker.
 	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
 	if not (stats.stationary_fire and weapon_id == stats.weapons[0]):
 		velocity -= aim_dir * kick
+	_fire_flash = 1.0
 	fired.emit(self, weapon_id, origin, aim_dir, 0.0)
 
 
-func _draw() -> void:
+## Zustand fuer die Zeichenfunktionen (siehe RobotArt).
+func _art_state() -> Dictionary:
+	var weapon_color: Color = Weapons.get_weapon(current_weapon_id()).color
+	var element := current_module()
+	if element != "":
+		weapon_color = Elements.COLORS[element]
+	var mood := "normal"
 	if downed:
-		_draw_downed()
-		return
-	var alpha := 1.0
-	if iframes > 0.0 and _dash_time_left <= 0.0 and fmod(iframes, 0.1) < 0.05:
-		alpha = 0.4
-	var r: float = stats.radius
-	var body_color: Color = stats.color
-	body_color.a = alpha
-	var outline: Color = RobotClasses.PLAYER_COLORS[player_index - 1]
-	outline.a = alpha
+		mood = "dead"
+	elif _hurt_timer > 0.0:
+		mood = "hurt"
+	elif _fire_flash > 0.3 or shake_charge > 0.0:
+		mood = "focus"
+	elif _happy_timer > 0.0:
+		mood = "happy"
+	return {
+		"facing": facing, "aim": aim_dir, "t": _art_time, "vx": 0.0 if downed else velocity.x,
+		"walk": _walk_phase, "grounded": is_on_floor(), "clinging": _clinging, "cling_dir": _cling_dir,
+		"planted": bool(stats.stationary_fire) and _stand_time >= DEPLOY_TIME,
+		"mood": mood, "firing": _fire_flash, "charge": shake_charge,
+		"weapon_color": weapon_color, "accent": RobotClasses.PLAYER_COLORS[player_index - 1],
+		"eye_color": stats.eye_color,
+	}
 
+
+func _draw() -> void:
+	var size: Vector2 = stats.size
+	var accent: Color = RobotClasses.PLAYER_COLORS[player_index - 1]
+
+	# Nachbilder vom Dash.
 	for entry in _trail:
-		var ghost := body_color
-		ghost.a = 0.35 * (entry.t / TRAIL_LIFETIME)
-		draw_circle(to_local(entry.pos), r * 0.8, ghost)
+		var ghost := accent
+		ghost.a = 0.3 * (entry.t / TRAIL_LIFETIME)
+		draw_rect(Rect2(to_local(entry.pos) - size * 0.5, size), ghost)
 
 	if hook_active:
-		draw_line(Vector2.ZERO, to_local(hook_anchor), Color(0.9, 0.9, 0.5), 2.0)
-		draw_circle(to_local(hook_anchor), 5.0, Color(0.9, 0.9, 0.5))
+		draw_line(Vector2.ZERO, to_local(hook_anchor), Color(0.95, 0.9, 0.5), 2.5, true)
+		draw_circle(to_local(hook_anchor), 5.0, Color(0.95, 0.9, 0.5))
+		draw_arc(to_local(hook_anchor), 8.0, 0.0, TAU, 12, Color(1, 1, 1, 0.6), 1.5, true)
+
+	# Blinken waehrend der Unverwundbarkeit nach einem Treffer.
+	var blink := iframes > 0.0 and _dash_time_left <= 0.0 and not downed and fmod(iframes, 0.12) < 0.06
+	modulate = Color(1, 1, 1, 0.45) if blink else (Color(0.6, 0.6, 0.66) if downed else Color.WHITE)
+
 	if shake_charge > 0.0:
-		draw_set_transform(Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * shake_charge * 4.0)
-	_draw_body(r, body_color, outline)
-	_draw_face(r, alpha)
-	_draw_weapon(r, outline)
+		draw_set_transform(Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * shake_charge * 3.0)
+	RobotArt.draw_player(self, class_id, _art_state())
 	draw_set_transform(Vector2.ZERO)
-	_draw_dash_pips(r)
+
+	if downed:
+		_draw_downed(size)
+		return
+	_draw_marker(size, accent)
 	if shake_charge > 0.0:
-		_draw_lob_preview(r)
+		_draw_lob_preview(size)
 
 
-func _draw_downed() -> void:
-	var r: float = stats.radius
-	var outline: Color = RobotClasses.PLAYER_COLORS[player_index - 1]
-	draw_circle(Vector2(0.0, r * 0.3), r, Color(0.3, 0.3, 0.35))
-	draw_arc(Vector2(0.0, r * 0.3), r, 0.0, TAU, 32, outline, 3.0)
-	# Ausgeschaltete Augen (X) und Wiederbelebungs-Fortschritt.
-	for side in [-1.0, 1.0]:
-		var c := Vector2(side * r * 0.35, 0.0)
-		draw_line(c + Vector2(-4, -4), c + Vector2(4, 4), Color(0.8, 0.3, 0.3), 2.0)
-		draw_line(c + Vector2(-4, 4), c + Vector2(4, -4), Color(0.8, 0.3, 0.3), 2.0)
+func _draw_marker(size: Vector2, accent: Color) -> void:
+	# Spielermarke ueber dem Kopf und Dash-Aufladungen.
+	var y := -size.y * 0.5 - 20.0
+	var font := ThemeDB.fallback_font
+	draw_colored_polygon(PackedVector2Array([Vector2(-6, y - 6), Vector2(6, y - 6), Vector2(0, y + 3)]), accent)
+	draw_polyline(PackedVector2Array([Vector2(-6, y - 6), Vector2(6, y - 6), Vector2(0, y + 3), Vector2(-6, y - 6)]), Art.OUTLINE, 1.5, true)
+	draw_string(font, Vector2(-20, y - 9), "P%d" % player_index, HORIZONTAL_ALIGNMENT_CENTER, 40.0, 12, Color(1, 1, 1, 0.9))
+	var total := dash_max()
+	for i in total:
+		var pos := Vector2((i - (total - 1) * 0.5) * 11.0, -size.y * 0.5 - 8.0)
+		var filled := i < dash_charges
+		draw_circle(pos, 3.5, Color(1, 1, 1, 0.9) if filled else Color(1, 1, 1, 0.18))
+		if filled:
+			draw_arc(pos, 3.5, 0.0, TAU, 10, accent, 1.2, true)
+
+
+func _draw_downed(size: Vector2) -> void:
+	# Ausgeschaltet: Rauch steigt auf, der Wiederbelebungs-Ring fuellt sich.
+	for i in 3:
+		var life := fposmod(_art_time * 0.8 + i * 0.33, 1.0)
+		draw_circle(Vector2(sin(_art_time * 2.0 + i) * 6.0, -size.y * 0.5 - life * 28.0), 3.0 + life * 5.0, Color(0.7, 0.7, 0.75, 0.4 * (1.0 - life)))
+	var ring_radius := maxf(size.x, size.y) * 0.5 + 8.0
+	draw_arc(Vector2.ZERO, ring_radius, 0.0, TAU, 40, Color(1, 1, 1, 0.15), 3.0, true)
 	if revive_progress > 0.0:
-		draw_arc(Vector2.ZERO, r + 10.0, -PI / 2.0, -PI / 2.0 + TAU * revive_progress, 32, Color(0.4, 1.0, 0.5), 5.0)
+		draw_arc(Vector2.ZERO, ring_radius, -PI / 2.0, -PI / 2.0 + TAU * revive_progress, 40, Color(0.4, 1.0, 0.5), 5.0, true)
 
 
-func _draw_body(r: float, color: Color, outline: Color) -> void:
-	match class_id:
-		"roomba":
-			# Flache Scheibe mit Arm.
-			draw_circle(Vector2.ZERO, r, color)
-			draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, outline, 3.0)
-			draw_line(Vector2(-facing * 4.0, -r * 0.6), Vector2(-facing * 16.0, -r * 1.5), outline, 4.0)
-		"hexapod":
-			# Sechseck mit Beinen. Aufgebaut (stehend) stehen die Beine weiter auseinander,
-			# an der Wand greifen sie in Wandrichtung.
-			var planted := _stand_time >= DEPLOY_TIME
-			for i in 6:
-				var angle := i * TAU / 6.0 + PI / 6.0
-				var leg_end := Vector2(cos(angle), sin(angle) * 0.5 + 0.7) * (r * (1.8 if planted else 1.5))
-				if _clinging:
-					leg_end = Vector2(_cling_dir * r * 1.7, (i - 2.5) * 9.0)
-				draw_line(Vector2.ZERO, leg_end, outline, 3.0)
-				if planted and not _clinging:
-					draw_circle(leg_end, 3.0, outline)
-			var points := PackedVector2Array()
-			for i in 6:
-				var angle := i * TAU / 6.0
-				points.append(Vector2(cos(angle), sin(angle)) * r)
-			draw_colored_polygon(points, color)
-			points.append(points[0])
-			draw_polyline(points, outline, 3.0)
-		"vending":
-			var rect := Rect2(Vector2(-r, -r * 1.4), Vector2(r * 2.0, r * 2.4))
-			draw_rect(rect, color)
-			draw_rect(rect, outline, false, 3.0)
-			draw_rect(Rect2(Vector2(-r * 1.2, r * 0.7), Vector2(r * 2.4, r * 0.7)), Color(0.15, 0.15, 0.15, color.a))
-		"printer":
-			var rect := Rect2(Vector2(-r, -r), Vector2(r * 2.0, r * 2.0))
-			draw_rect(rect, color)
-			draw_rect(rect, outline, false, 3.0)
-			draw_rect(Rect2(Vector2(r * 0.4, -r), Vector2(r * 0.6, r * 2.0)), Color(1.0, 0.55, 0.2, color.a))
-		_:
-			draw_circle(Vector2.ZERO, r, color)
-
-
-func _draw_face(r: float, alpha: float) -> void:
-	# LCD-Gesicht: zwei leuchtende Augen, die in Zielrichtung schauen.
-	var eye_color: Color = stats.eye_color
-	eye_color.a = alpha
-	var look := Vector2(aim_dir.x * 2.0, aim_dir.y * 2.0)
-	var eye_y := -r * 0.15
-	draw_circle(Vector2(-r * 0.35, eye_y) + look, r * 0.14, eye_color)
-	draw_circle(Vector2(r * 0.35, eye_y) + look, r * 0.14, eye_color)
-
-
-func _draw_weapon(r: float, outline: Color) -> void:
-	var weapon_id := current_weapon_id()
-	var weapon := Weapons.get_weapon(weapon_id)
-	var length: float = r + float(weapon.barrel) - 6.0
-	var color := outline
-	if not _can_fire(weapon_id):
-		color = Color(0.5, 0.5, 0.5, outline.a)
-	draw_line(aim_dir * (r * 0.5), aim_dir * length, color, 6.0)
-	draw_circle(aim_dir * length, 3.5, weapon.color)
-
-
-func _draw_lob_preview(r: float) -> void:
+func _draw_lob_preview(size: Vector2) -> void:
 	# Ladering und gepunktete Flugbahn der Dose.
 	var weapon := Weapons.get_weapon(current_weapon_id())
 	var ring_color := Color(0.4, 0.95, 0.55).lerp(Color(1, 1, 1), shake_charge)
-	draw_arc(Vector2.ZERO, r + 14.0, -PI / 2.0, -PI / 2.0 + TAU * shake_charge, 32, ring_color, 4.0)
+	var ring_radius := maxf(size.x, size.y) * 0.5 + 10.0
+	draw_arc(Vector2.ZERO, ring_radius, -PI / 2.0, -PI / 2.0 + TAU * shake_charge, 40, ring_color, 4.0, true)
 	var speed := lerpf(float(weapon.speed), float(weapon.speed_max), shake_charge)
 	var gravity: float = weapon.gravity
-	var pos := aim_dir * (r + float(weapon.barrel))
+	var pos := _muzzle_offset() + aim_dir * float(weapon.barrel)
 	var vel := aim_dir * speed
 	var step := 0.06
 	for i in 24:
@@ -687,10 +679,7 @@ func _draw_lob_preview(r: float) -> void:
 		draw_circle(pos, 3.0, Color(ring_color, 0.55))
 
 
-func _draw_dash_pips(r: float) -> void:
-	var total: int = dash_max()
-	for i in total:
-		var x := (i - (total - 1) * 0.5) * 12.0
-		var pos := Vector2(x, -r * 1.9)
-		var filled := i < dash_charges
-		draw_circle(pos, 4.0, Color(1, 1, 1, 0.9 if filled else 0.2))
+## Position des Waffenansatzes relativ zum Koerpermittelpunkt (beruecksichtigt die Blickrichtung).
+func _muzzle_offset() -> Vector2:
+	var muzzle: Vector2 = stats.muzzle
+	return Vector2(muzzle.x * facing, muzzle.y)

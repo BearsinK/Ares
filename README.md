@@ -52,12 +52,17 @@ Waffenwerte stehen in `scripts/data/weapons.gd`, Das Testset steht in `scripts/g
 
 Welche Klassen gespielt werden, steht in `scripts/game/main.gd` (`PLAYER_CLASSES`).
 
+## Optik
+
+Alles wird im Code gezeichnet (kein Asset-Import). `scripts/art/` enthält die Zeichenhilfen (`art.gd`), die Roboter und Gegner (`robot_art.gd`), Level-Blöcke (`block_art.gd`), den Parallax-Hintergrund (`backdrop.gd`), Requisiten und Dampf (`props.gd`) und die Vignette. Mit der Szene `tests/art_gallery.tscn` kannst du alle Figuren nebeneinander ansehen. Die Roboter sind für die Seitenansicht gebaut: Roomba flach (64x30), Hexapod mit Beinen, Automat groß (68x108), Drucker mit Fenster und Drohnen.
+
 ## Struktur
 
 - `scenes/` Szenen
 - `scripts/autoload/` globale Skripte (Eingabe)
 - `scripts/data/` Werte und Daten (Klassen)
-- `scripts/game/` Spiellogik (Spieler, Projektile, Kamera, Hauptszene)
+- `scripts/game/` Spiellogik (Spieler, Gegner, Director, Menüs, HUD, Hauptszene)
+- `scripts/art/` Zeichencode für Figuren, Level und Effekte
 - `tests/` automatischer Test
 
 ## Automatischer Test
