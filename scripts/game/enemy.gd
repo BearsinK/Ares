@@ -32,7 +32,7 @@ var elite := false
 var champion := false
 ## Hat sich selbst gesprengt (Sprengi): keine Beute.
 var suicide := false
-var _wounded_cache: Array[Enemy] = []
+var _wounded_cache: Array = []
 var _wounded_stamp := -1000
 ## Art der Elite (fire, shield, storm, frost), siehe EnemyTypes.ELITE_KINDS.
 var elite_kind := ""
@@ -495,7 +495,12 @@ func _wounded_allies() -> Array[Enemy]:
 func _wounded_list() -> Array[Enemy]:
 	var now := Time.get_ticks_msec()
 	if now - _wounded_stamp < 250:
-		return _wounded_cache.filter(func(e: Enemy) -> bool: return is_instance_valid(e) and not e._dead)
+		# Zwischen zwei Suchen koennen Eintraege gestorben und freigegeben sein.
+		var alive: Array[Enemy] = []
+		for cached in _wounded_cache:
+			if is_instance_valid(cached) and not cached._dead:
+				alive.append(cached)
+		return alive
 	_wounded_stamp = now
 	var found: Array[Enemy] = []
 	for other in siblings:
@@ -504,7 +509,7 @@ func _wounded_list() -> Array[Enemy]:
 		if other.global_position.distance_to(global_position) <= 900.0:
 			found.append(other)
 	found.sort_custom(func(a: Enemy, b: Enemy) -> bool: return a.max_hp - a.hp > b.max_hp - b.hp)
-	_wounded_cache = found
+	_wounded_cache = found.duplicate()
 	return found
 
 

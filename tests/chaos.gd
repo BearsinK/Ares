@@ -12,6 +12,9 @@ var _next_change := [0.0, 0.0]
 var _held: Array = [[], []]
 var _problems := {}
 var _last_wave := 0
+var _trail: Array = []
+var _trail_timer := 0.0
+var _trail_printed := false
 
 
 func _ready() -> void:
@@ -36,6 +39,11 @@ func _boss() -> void:
 
 
 func _note(key: String) -> void:
+	if not _trail_printed and key.begins_with("ausserhalb"):
+		_trail_printed = true
+		print("SPUR vor dem Absturz:")
+		for line in _trail:
+			print("  ", line)
 	if not _problems.has(key):
 		_problems[key] = 0
 		print("PROBLEM ", key, " bei ", snappedf(_elapsed, 0.1), " s")
@@ -60,6 +68,17 @@ func _physics_process(delta: float) -> void:
 	if main.shop_menu.is_open:
 		main.shop_menu._finish()
 		return
+	# Spur der letzten Sekunden, damit ein Absturz nachvollziehbar ist.
+	_trail_timer -= delta
+	if _trail_timer <= 0.0:
+		_trail_timer = 0.25 * Engine.time_scale
+		var stage_id: String = String(main.stage_layout.get("id", "-")) if not main.stage_layout.is_empty() else "-"
+		_trail.append("t=%d %s w%d ph%d P1 %d,%d v%d,%d fl%s cl%s ro%s | P2 %d,%d" % [_elapsed, stage_id, main.wave, main.phase,
+			main.players[0].global_position.x, main.players[0].global_position.y, main.players[0].velocity.x, main.players[0].velocity.y,
+			str(main.players[0].is_on_floor())[0], str(main.players[0].is_clinging())[0], str(main.players[0].on_rope)[0],
+			main.players[1].global_position.x, main.players[1].global_position.y])
+		if _trail.size() > 40:
+			_trail.pop_front()
 	if main.wave != _last_wave:
 		_last_wave = main.wave
 		print("Welle ", main.wave, " Zeit ", snappedf(_elapsed, 1.0))

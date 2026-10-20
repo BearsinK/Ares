@@ -144,7 +144,10 @@ func _draw() -> void:
 				draw_line(item.pos, item.pos - item.vel * 0.04, color, 2.5)
 			"icon":
 				var grow := minf(1.0, (1.0 - fade) * 6.0)
-				PerkArt.draw(self, item.id, item.pos, 56.0 * (0.4 + 0.6 * grow) * minf(1.0, fade * 3.0))
+				var icon_size := 56.0 * (0.4 + 0.6 * grow) * minf(1.0, fade * 3.0)
+				# Sehr kleine Symbole ergeben ungueltige Vielecke, dann gar nicht zeichnen.
+				if icon_size > 12.0:
+					PerkArt.draw(self, item.id, item.pos, icon_size)
 			"number":
 				color.a = fade
 				var font := ThemeDB.fallback_font

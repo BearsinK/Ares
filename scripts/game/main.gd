@@ -1141,6 +1141,9 @@ func _on_dummy_died(pos: Vector2) -> void:
 
 func _clear_arena() -> void:
 	if _arena_root != null:
+		# Sofort aus dem Baum nehmen: bliebe die alte Welt bis zum Frameende in der Physik, schiebt sie Spieler,
+		# die gerade an den neuen Start gesetzt wurden, aus dem Boden hinaus.
+		remove_child(_arena_root)
 		_arena_root.queue_free()
 		_arena_root = null
 
