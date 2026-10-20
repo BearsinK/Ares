@@ -261,7 +261,8 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 	# Koerperhaltung: atmet im Stand, wippt im Gang, senkt sich beim Aufstellen,
 	# federt beim Schuss zurueck, zittert bei Treffern und sackt ein, wenn er ausgeschaltet ist
 	# (und steht beim Wiederbeleben wieder auf).
-	var body_y := sin(t * 2.2) * 0.5 * (1.0 - deploy) - absf(sin(walk * 0.35)) * 1.6 * speed_factor + 2.2 * deploy + recoil * 1.1
+	var plant := deploy * (1.0 - speed_factor)
+	var body_y := sin(t * 2.2) * 0.5 * (1.0 - plant) - absf(sin(walk * 0.35)) * 1.6 * speed_factor + 2.2 * deploy + recoil * 1.1
 	body_y = lerpf(body_y, 9.0, down)
 	var body_off := Vector2(0.0, body_y) + Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 2.0 * hurt
 
@@ -281,7 +282,7 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 			var fx := absf(float(foot_reach[i])) * side * spread
 			var knee := hip + Vector2(kx, -float(knee_rise[i]))
 			var foot := Vector2(knee.x + fx, 23.0)
-			var color := Color(0.14, 0.15, 0.2) if far else Color(0.24, 0.25, 0.32)
+			var color := Color(0.3, 0.32, 0.42) if far else Color(0.55, 0.58, 0.7)
 			var stab := 0.0
 			if not bool(s.grounded) and not on_wall and not on_ceiling:
 				knee = hip + Vector2(kx * 0.8, -float(knee_rise[i]) - 2.0)
@@ -290,13 +291,13 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 				# Aufstellen: Beine spreizen sich weit, Stabilisatoren fahren aus.
 				knee.x += side * 4.0 * deploy
 				foot.x += side * 7.0 * deploy
-				stab = deploy
+				stab = plant
 				# Dreibeingang: nahe und ferne Beine wechseln sich ab, sanfte Schritte.
 				# An der Wand laeuft dieselbe Bewegung entlang der Wand nach oben oder unten.
 				var gait := walk * 0.35 + (PI if (i % 2 == 0) != far else 0.0)
-				var swing := sin(gait) * 7.0 * speed_factor * (1.0 - deploy)
+				var swing := sin(gait) * 7.0 * speed_factor
 				var lift := maxf(0.0, cos(gait))
-				lift = lift * lift * 7.0 * speed_factor * (1.0 - deploy)
+				lift = lift * lift * 7.0 * speed_factor
 				foot += Vector2(swing, -lift)
 				knee += Vector2(swing * 0.5, -lift * 0.9)
 			if down > 0.0:
@@ -312,7 +313,7 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 	var shell := PackedVector2Array([Vector2(-23, -1), Vector2(-17, -11), Vector2(13, -13), Vector2(23, -4), Vector2(19, 6), Vector2(-19, 6)])
 	for k in shell.size():
 		shell[k] += body_off
-	c.draw_colored_polygon(shell, Color(0.17, 0.18, 0.23))
+	c.draw_colored_polygon(shell, Color(0.32, 0.34, 0.44))
 	c.draw_polyline(shell + PackedVector2Array([shell[0]]), Art.OUTLINE, 2.0, true)
 	c.draw_line(Vector2(-15, -10) + body_off, Vector2(11, -12) + body_off, Color(1, 1, 1, 0.3), 1.8, true)
 	c.draw_line(Vector2(-18, 3) + body_off, Vector2(17, 3) + body_off, accent, 2.0, true)
@@ -339,7 +340,7 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 
 	# Geschuetzkopf: duckt sich beim Schuss, Rohr federt zurueck und glueht bei Hitze.
 	var pivot := Vector2(2, -17) + body_off + Vector2(0, recoil * 0.8)
-	Art.panel(c, Rect2(Vector2(-8, -23) + body_off, Vector2(18, 10)), Color(0.2, 0.21, 0.27), 3.0)
+	Art.panel(c, Rect2(Vector2(-8, -23) + body_off, Vector2(18, 10)), Color(0.4, 0.42, 0.52), 3.0)
 	var led_on := deploy > 0.5 or (overdrive > 0.0 and fmod(t, 0.2) < 0.1)
 	Art.led(c, Vector2(-3, -19) + body_off, 1.5, Color(1.0, 0.3, 0.25), led_on)
 	var barrel_length := 22.0 - 5.0 * recoil

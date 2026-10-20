@@ -133,7 +133,11 @@ func _draw() -> void:
 				draw_line(item.pos, item.pos - item.vel * 0.04, color, 2.5)
 			"number":
 				color.a = fade
-				draw_string(ThemeDB.fallback_font, item.pos + Vector2(-300.0, 0.0), item.text, HORIZONTAL_ALIGNMENT_CENTER, 600.0, item.size, color)
+				var font := ThemeDB.fallback_font
+				var at: Vector2 = item.pos + Vector2(-300.0, 0.0)
+				# Dunkle Kontur, damit Zahlen und Texte auf jedem Hintergrund lesbar bleiben.
+				draw_string_outline(font, at, item.text, HORIZONTAL_ALIGNMENT_CENTER, 600.0, item.size, 6, Color(0.03, 0.03, 0.07, 0.85 * fade))
+				draw_string(font, at, item.text, HORIZONTAL_ALIGNMENT_CENTER, 600.0, item.size, color)
 			"gib":
 				var alpha := clampf(fade * 3.0, 0.0, 1.0)
 				var size: float = item.size

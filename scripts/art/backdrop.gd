@@ -25,6 +25,8 @@ class Layer extends Node2D:
 
 func _ready() -> void:
 	z_index = -100
+	# Der Hintergrund soll zurueckstehen: gedaempft, damit Figuren, Gegner und Geschosse davor lesbar bleiben.
+	modulate = Color(0.66, 0.66, 0.72)
 	_add_layer(0.12, _paint_far, false)
 	_add_layer(0.35, _paint_mid, true)
 	_add_layer(0.62, _paint_near, false)
@@ -62,8 +64,8 @@ func _paint_far(c: CanvasItem) -> void:
 	var x := -900.0
 	while x < 4300.0:
 		var window := Rect2(x, 250, 220, 520)
-		Art.rrect(c, window, Color(0.95, 0.55, 0.25, 0.9), 6.0)
-		Art.rrect_grad(c, Rect2(window.position + Vector2(8, 8), window.size - Vector2(16, 16)), Color(0.2, 0.25, 0.45), Color(0.95, 0.5, 0.3), 3.0)
+		Art.rrect(c, window, Color(0.75, 0.46, 0.26, 0.9), 6.0)
+		Art.rrect_grad(c, Rect2(window.position + Vector2(8, 8), window.size - Vector2(16, 16)), Color(0.18, 0.22, 0.4), Color(0.72, 0.42, 0.3), 3.0)
 		for k in 4:
 			c.draw_line(window.position + Vector2(10, 8 + k * 130), window.position + Vector2(window.size.x - 10, 8 + k * 130), Color(0.06, 0.06, 0.1), 5.0)
 		c.draw_line(window.position + Vector2(window.size.x * 0.5, 8), window.position + Vector2(window.size.x * 0.5, window.size.y - 8), Color(0.06, 0.06, 0.1), 5.0)

@@ -135,7 +135,7 @@ func _draw_hints(view: Vector2) -> void:
 	if _age > visible_time or main.wave > 1 or main.phase != main.Phase.WAVE:
 		return
 	var alpha := clampf(minf(_age / 0.6, (visible_time - _age) / 1.5), 0.0, 1.0)
-	var panel := Rect2(Vector2(view.x * 0.5 - 430.0, ui_scale(view) * 150.0), Vector2(860.0, 112.0))
+	var panel := Rect2(Vector2(view.x * 0.5 - 430.0, view.y - 250.0), Vector2(860.0, 112.0))
 	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.8 * alpha), 14.0)
 	Art.rrect_line(_canvas, panel, Color(1, 1, 1, 0.25 * alpha), 14.0, 2.0)
 	_text(panel.position + Vector2(0, 28), "STEUERUNG", 16, Color(1.0, 0.85, 0.4, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)

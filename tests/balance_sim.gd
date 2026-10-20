@@ -223,8 +223,6 @@ func _bot(i: int, delta: float) -> void:
 			for strike in main.enemy_projectiles.get_children():
 				if strike is AreaStrike and absf(strike.global_position.x - p.global_position.x) < strike.radius + 40.0:
 					move = signf(p.global_position.x - strike.global_position.x)
-		elif p.stats.stationary_fire and best < reach and best > 120.0:
-			move = 0.0
 		if close >= 3 and p.ability.is_ready():
 			Input.action_press(prefix + "ability")
 		if offset.y < -90.0 and best < 500.0 and vertical_ok:

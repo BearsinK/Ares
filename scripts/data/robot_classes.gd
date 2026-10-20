@@ -19,7 +19,6 @@ const DATA := {
 		"max_hp": 100.0,
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
-		"stationary_fire": false,
 		"weapons": ["dust"],
 		"pickup_bonus": 0.5,
 		"vacuum": true,
@@ -41,9 +40,9 @@ const DATA := {
 		"max_hp": 80.0,
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
-		# Geschuetz: die Klassenwaffe (erste Waffe) schiesst nur im Stand (am Boden oder
-		# an der Wand), nach kurzer Aufbauzeit. Dafuer klettert er Waende hoch.
-		"stationary_fire": true,
+		# Geschuetz: die Klassenwaffe (erste Waffe) schiesst ueberall, aber beim Schiessen
+		# nur mit halbem Tempo (fire_slow). Dafuer klettert er Waende hoch.
+		"fire_slow": 0.5,
 		"step": "step",
 		"wall_climb": true,
 		"weapons": ["turret"],
@@ -68,7 +67,6 @@ const DATA := {
 		"step": "tread",
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
-		"stationary_fire": false,
 		"weapons": ["can"],
 		"damage_mult": 1.2,
 		"ability": {"id": "roll", "name": "Steamroller", "cooldown": 12.0, "duration": 3.0},
@@ -91,7 +89,6 @@ const DATA := {
 		"escort_drones": 2,
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
-		"stationary_fire": false,
 		"weapons": ["dronegun"],
 		"damage_mult": 0.9,
 		"ability": {"id": "print", "name": "Drone Drop", "cooldown": 20.0, "duration": 7.0},

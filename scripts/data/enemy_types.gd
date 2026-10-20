@@ -16,7 +16,7 @@ const DATA := {
 		"hp": 25.0, "speed": 80.0, "movement": "ground", "jump": 600.0,
 		"attack": "ranged", "keep_distance": 450.0, "range": 700.0,
 		"windup": 0.8, "lock_time": 0.25, "cooldown": 2.2, "damage": 8.0,
-		"projectile_speed": 520.0, "knockback": 1.0,
+		"projectile_speed": 360.0, "knockback": 1.0,
 		"xp": 2, "gold_chance": 0.5, "cost": 2.0, "from_time": 30.0,
 	},
 	"flyer": {
@@ -24,7 +24,7 @@ const DATA := {
 		"hp": 18.0, "speed": 190.0, "movement": "fly",
 		"attack": "ranged", "keep_distance": 320.0, "range": 650.0,
 		"windup": 0.7, "lock_time": 0.25, "cooldown": 2.6, "damage": 7.0,
-		"projectile_speed": 480.0, "knockback": 1.5,
+		"projectile_speed": 340.0, "knockback": 1.5,
 		"xp": 2, "gold_chance": 0.5, "cost": 2.0, "from_time": 70.0,
 	},
 	"charger": {

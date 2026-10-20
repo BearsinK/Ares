@@ -38,7 +38,8 @@ const HOOK_COOLDOWN := 0.8
 const HOOK_MAX_TIME := 0.7
 const DROP_TIME := 0.25
 const CLIMB_SPEED := 300.0
-const DEPLOY_TIME := 0.2
+## Wie lange die Schiesshaltung nach dem letzten Feuerdruck bleibt (Hexapod: langsamer beim Schiessen).
+const STANCE_HOLD := 0.12
 # Ebene 8: unsichtbare Waende, die nur Spieler aufhalten (z.B. vor dem Boss), Geschosse fliegen durch.
 const WORLD_MASK := (1 << 0) | (1 << 5) | (1 << 7)
 
@@ -109,7 +110,7 @@ var _drop_time := 0.0
 var _lob_charging := false
 var _clinging := false
 var _cling_dir := 0.0
-var _stand_time := 0.0
+var _stance_timer := 0.0
 var _shake_tick := 0.0
 var _art_time := 0.0
 var _walk_phase := 0.0
@@ -186,7 +187,16 @@ func move_speed() -> float:
 	# Dauerstrahl haelt den Schuetzen fest (langsamer, solange er feuert).
 	if _channel > 0.05:
 		slowed *= float(Weapons.get_weapon(current_weapon_id()).get("slow", 1.0))
-	return float(stats.speed) * (1.0 + float(mods.speed)) * rolling * slowed
+	return float(stats.speed) * (1.0 + float(mods.speed)) * rolling * slowed * fire_move_factor()
+
+
+## Hexapod: beim Schiessen mit der Klassenwaffe nur halbes Tempo (am Boden, an der Wand, an der Decke).
+## Overwatch hebt das auf. Weich ueber die Stellung eingeblendet.
+func fire_move_factor() -> float:
+	var fire_slow := float(stats.get("fire_slow", 1.0))
+	if fire_slow >= 1.0 or ability.is_active("overwatch"):
+		return 1.0
+	return 1.0 - (1.0 - fire_slow) * clampf(_deploy_amount, 0.0, 1.0)
 
 
 ## Feuerrate-Faktor aus Perks und Overwatch.
@@ -220,8 +230,8 @@ func take_hit(amount: float, from: Vector2) -> bool:
 	var final_amount := amount * maxf(0.1, 1.0 - float(mods.dmg_taken))
 	if ability != null and ability.is_active("roll"):
 		final_amount *= 0.5
-	# Stellung: Ein aufgestellter Hexapod steckt Treffer besser weg.
-	if bool(stats.stationary_fire) and _deploy_amount > 0.8:
+	# Stellung: Ein schiessender Hexapod steckt Treffer besser weg.
+	if float(stats.get("fire_slow", 1.0)) < 1.0 and _deploy_amount > 0.8:
 		final_amount *= 0.8
 	hp -= final_amount
 	iframes = HIT_IFRAMES
@@ -335,17 +345,11 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if belt_push != 0.0 and is_on_floor():
 		move_and_collide(Vector2(belt_push * delta, 0.0))
-	var still := ((is_on_floor() or _ceiling) and absf(velocity.x) < 30.0) or (_clinging and absf(velocity.y) < 30.0) or (on_rope and absf(velocity.y) < 30.0)
-	if still and _dash_time_left <= 0.0 and not hook_active:
-		_stand_time += delta
-	else:
-		_stand_time = 0.0
 	_update_juice(delta)
 	_handle_fire(delta)
 	queue_redraw()
 
 
-## Aufgestellt: der Hexapod steht im Geschuetzmodus (Stand oder Overwatch).
 ## Kurzes Aufleuchten (Muenzschlitz des Automaten) beim Einsammeln von Gold.
 ## 1 direkt nach einem Treffer, faellt auf 0 ab (fuer Roboter und HUD-Anzeige).
 func hurt_amount() -> float:
@@ -356,8 +360,9 @@ func gold_flash() -> void:
 	_coin_flash = 1.0
 
 
+## Schiesshaltung des Hexapods: er schiesst gerade mit dem Geschuetz (Beine spreizen sich, er geht langsamer).
 func is_deployed() -> bool:
-	return bool(stats.stationary_fire) and (_stand_time >= DEPLOY_TIME or ability.is_active("overwatch")) and not downed
+	return float(stats.get("fire_slow", 1.0)) < 1.0 and _stance_timer > 0.0 and not downed
 
 
 ## Staub am Boden unter dem Spieler.
@@ -394,9 +399,9 @@ func _update_juice(delta: float) -> void:
 	_deploy_amount = move_toward(_deploy_amount, 1.0 if planted else 0.0, delta * (8.0 if planted else 5.0))
 	if planted and not _deployed_flag:
 		_deployed_flag = true
-		Sfx.play("deploy", 0.05)
-		_puff(Vector2(-18.0, float(stats.size.y) * 0.5), 3, 90.0)
-		_puff(Vector2(18.0, float(stats.size.y) * 0.5), 3, 90.0)
+		if grounded:
+			_puff(Vector2(-18.0, float(stats.size.y) * 0.5), 2, 80.0)
+			_puff(Vector2(18.0, float(stats.size.y) * 0.5), 2, 80.0)
 	elif not planted and _deployed_flag:
 		_deployed_flag = false
 
@@ -715,7 +720,7 @@ func _process_climb(move: float, vertical: float) -> bool:
 	_clinging = true
 	_cling_dir = wall_dir
 	velocity.x = wall_dir * 80.0
-	velocity.y = vertical * CLIMB_SPEED
+	velocity.y = vertical * CLIMB_SPEED * fire_move_factor()
 	_air_jumps_left = fw("double_jump")
 	if _jump_buffer > 0.0:
 		# Von der Wand abspringen.
@@ -877,13 +882,6 @@ func current_module() -> String:
 	return modules[weapon_index] if weapon_index < modules.size() else ""
 
 
-func _can_fire(weapon_id: String) -> bool:
-	# Klassenregel Hexapod: Die Klassenwaffe (erste Waffe) schiesst nur im Stand.
-	if stats.stationary_fire and weapon_id == stats.weapons[0]:
-		return _stand_time >= DEPLOY_TIME or ability.is_active("overwatch")
-	return true
-
-
 func _rotate_weapon() -> void:
 	if weapons.size() <= 1:
 		return
@@ -898,7 +896,7 @@ func _rotate_weapon() -> void:
 ## im Bogen. Je laenger geschuettelt, desto weiter, schneller und explosiver.
 func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 	var held := Input.is_action_pressed(_prefix + "fire")
-	if held and _fire_cooldown <= 0.0 and _switch_cooldown <= 0.0 and _can_fire(weapon_id):
+	if held and _fire_cooldown <= 0.0 and _switch_cooldown <= 0.0:
 		_lob_charging = true
 		shake_charge = minf(1.0, shake_charge + delta / float(weapon.shake_time))
 		_shake_tick -= delta
@@ -938,6 +936,10 @@ func _handle_fire(_delta: float) -> void:
 	if Input.is_action_just_pressed(_prefix + "weapon"):
 		_rotate_weapon()
 	var current := Weapons.get_weapon(current_weapon_id())
+	if Input.is_action_pressed(_prefix + "fire") and not downed and current_weapon_id() == stats.weapons[0]:
+		_stance_timer = STANCE_HOLD
+	else:
+		_stance_timer = maxf(0.0, _stance_timer - _delta)
 	if current.has("ramp_time") and Input.is_action_pressed(_prefix + "fire") and not downed:
 		_channel = minf(_channel + _delta, float(current.ramp_time))
 	else:
@@ -951,8 +953,6 @@ func _handle_fire(_delta: float) -> void:
 	if _fire_cooldown > 0.0 or _switch_cooldown > 0.0:
 		return
 	var weapon_id := current_weapon_id()
-	if not _can_fire(weapon_id):
-		return
 	var weapon := Weapons.get_weapon(weapon_id)
 	if weapon.kind == "lob":
 		return
@@ -960,7 +960,7 @@ func _handle_fire(_delta: float) -> void:
 	var origin := _fire_origin(float(weapon.barrel))
 	# Rueckstoss: am Boden schwaecher, in der Luft staerker. Drohnenschuesse stossen den Koerper nicht.
 	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
-	if not (stats.stationary_fire and weapon_id == stats.weapons[0]) and escorts.is_empty():
+	if float(stats.get("fire_slow", 1.0)) >= 1.0 and escorts.is_empty():
 		velocity -= aim_dir * kick
 	_fire_flash = 1.0
 	_recoil = 1.0 if escorts.is_empty() else 0.0
@@ -1023,7 +1023,7 @@ func _art_state() -> Dictionary:
 		"print": print_progress, "launch": launch,
 		"facing": facing, "aim": aim_dir, "t": _art_time, "vx": 0.0 if downed else velocity.x,
 		"walk": _walk_phase, "grounded": is_on_floor(), "clinging": _clinging, "cling_dir": _cling_dir,
-		"planted": bool(stats.stationary_fire) and (_stand_time >= DEPLOY_TIME or ability.is_active("overwatch")),
+		"planted": is_deployed(),
 		"mood": mood, "firing": _fire_flash, "charge": shake_charge, "arm": _arm_deploy,
 		"weapon_color": weapon_color, "accent": RobotClasses.PLAYER_COLORS[player_index - 1],
 		"eye_color": stats.eye_color,
@@ -1035,6 +1035,11 @@ func _draw() -> void:
 	var accent: Color = RobotClasses.PLAYER_COLORS[player_index - 1]
 
 	ability.draw_aura(self, _art_time)
+	if not downed:
+		# Weicher Schein in der Spielerfarbe: man findet sich auch vor unruhigem Hintergrund.
+		var halo := maxf(size.x, size.y) * 0.8
+		for i in 6:
+			draw_circle(Vector2.ZERO, halo * (1.0 - 0.14 * i), Color(accent, 0.035))
 	if slow_time > 0.0:
 		draw_arc(Vector2.ZERO, maxf(stats.size.x, stats.size.y) * 0.5 + 6.0, 0.0, TAU, 28, Color(0.75, 0.92, 1.0, 0.7), 2.5, true)
 

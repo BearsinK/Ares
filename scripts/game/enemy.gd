@@ -392,7 +392,7 @@ func _update_elite(delta: float) -> void:
 					var base := (_target.global_position - global_position).normalized()
 					for k in 3:
 						var dir := base.rotated((k - 1) * 0.28)
-						fire_projectile.emit(self, global_position + dir * (radius() + 8.0), dir, 420.0, 7.0 * damage_scale)
+						fire_projectile.emit(self, global_position + dir * (radius() + 8.0), dir, 320.0, 7.0 * damage_scale)
 					Sfx.play("zap")
 		"frost":
 			for player in players:
@@ -491,6 +491,8 @@ func _draw() -> void:
 	}, Vector2.ZERO, body_scale * maxf(grow, 0.05))
 	if elite:
 		_draw_crown(r)
+	if windup >= 0.0 and stunned_time <= 0.0 and data.attack != "strike":
+		_draw_alert(r, windup)
 	if stunned_time > 0.0:
 		# Betaeubt: drei Sterne kreisen ueber dem Kopf.
 		for k in 3:
@@ -549,6 +551,19 @@ func _draw_crown(r: float) -> void:
 	draw_polyline(points, Art.OUTLINE, 1.5, true)
 
 
+## Warndreieck ueber dem Kopf: dieser Gegner greift gleich an.
+func _draw_alert(r: float, progress: float) -> void:
+	var top := -r - (50.0 if elite or kind == "brute" else 36.0)
+	var pulse := 1.0 + 0.18 * sin(_time * 18.0) * progress
+	var c := Vector2(0.0, top)
+	var tri := PackedVector2Array([c + Vector2(0.0, -11.0) * pulse, c + Vector2(-10.0, 7.0) * pulse, c + Vector2(10.0, 7.0) * pulse])
+	var outline := PackedVector2Array([c + Vector2(0.0, -15.0) * pulse, c + Vector2(-14.0, 10.0) * pulse, c + Vector2(14.0, 10.0) * pulse])
+	draw_colored_polygon(outline, Color(0.05, 0.02, 0.08, 0.85))
+	draw_colored_polygon(tri, Color(1.0, 0.82, 0.15).lerp(Color(1.0, 0.3, 0.2), progress))
+	draw_rect(Rect2(c + Vector2(-1.2, -5.0), Vector2(2.4, 7.0)), Color(0.08, 0.04, 0.1))
+	draw_rect(Rect2(c + Vector2(-1.2, 3.5), Vector2(2.4, 2.4)), Color(0.08, 0.04, 0.1))
+
+
 func _draw_telegraph(r: float) -> void:
 	if _state != State.WINDUP:
 		return
@@ -562,10 +577,21 @@ func _draw_telegraph(r: float) -> void:
 	elif data.attack == "strike":
 		return
 	elif data.attack == "ranged":
-		# Schusslinie, die kurz vor dem Schuss aufleuchtet.
-		var length := float(data.range)
-		var alpha := 0.1 + 0.5 * progress
-		draw_line(_aim * r, _aim * length, Color(1.0, 0.3, 0.3, alpha), 1.5 + 2.5 * progress, true)
+		# Schusslinie in der Farbe der Geschosse: wird kraeftiger, kurz vor dem Schuss weiss (Ziel verriegelt).
+		var length := minf(float(data.range), 900.0)
+		var locked := _state_time <= float(data.get("lock_time", 0.0))
+		var alpha := 0.3 + 0.6 * progress
+		var line_color := Color(1.0, 0.18, 0.5, alpha) if not locked else Color(1.0, 0.85, 0.9, 1.0)
+		draw_line(_aim * r, _aim * length, Color(0.05, 0.02, 0.08, 0.45 * alpha), 5.0 + 3.0 * progress, true)
+		draw_line(_aim * r, _aim * length, line_color, 2.0 + 3.0 * progress, true)
+		# Laufende Pfeilspitzen zeigen die Flugrichtung.
+		var offset := fposmod(_time * 260.0, 70.0)
+		var d := r + 14.0 + offset
+		while d < length:
+			var tip := _aim * d
+			var side := _aim.orthogonal() * 6.0
+			draw_colored_polygon(PackedVector2Array([tip + _aim * 8.0, tip - side - _aim * 4.0, tip + side - _aim * 4.0]), Color(line_color, alpha * (1.0 - d / length)))
+			d += 70.0
 	elif data.melee_shape == "circle":
 		var reach := reach()
 		draw_circle(Vector2.ZERO, reach * progress, Color(1.0, 0.2, 0.2, 0.25))

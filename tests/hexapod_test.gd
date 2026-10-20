@@ -1,5 +1,5 @@
 extends Node
-## Test des Hexapods: Wandklettern, Geschuetz nur im Stand mit Aufbauzeit.
+## Test des Hexapods: Wandklettern, Geschuetz schiesst ueberall, aber mit halbem Tempo.
 ## Ausfuehren: godot --headless --path . res://tests/hexapod_test.tscn
 
 var main: Node
@@ -68,7 +68,7 @@ func _run() -> void:
 	await _frames(40)
 	_check(hexapod.is_clinging() and absf(hexapod.global_position.y - hang_y) < 6.0, "Ohne Eingabe haengt er an der Wand")
 
-	# An der Wand kann er schiessen, sobald er aufgebaut ist
+	# An der Wand kann er schiessen
 	var shots := [0]
 	hexapod.fired.connect(func(_p: Player, _id: String, _o: Vector2, _d: Vector2, _c: float) -> void: shots[0] += 1)
 	Input.action_press("p2_fire")
@@ -76,14 +76,21 @@ func _run() -> void:
 	Input.action_release("p2_fire")
 	_check(shots[0] >= 1, "Haengend an der Wand schiesst das Geschuetz (%d Schuesse)" % shots[0])
 
-	# Beim Klettern nicht
+	# Beim Klettern schiesst er auch, aber nur mit halber Kletterfahrt
+	Input.action_press("p2_up")
+	await _frames(30)
+	var climb_free := absf(hexapod.velocity.y)
+	Input.action_release("p2_up")
+	await _frames(10)
 	shots[0] = 0
 	Input.action_press("p2_up")
 	Input.action_press("p2_fire")
 	await _frames(40)
+	var climb_firing := absf(hexapod.velocity.y)
 	Input.action_release("p2_fire")
 	Input.action_release("p2_up")
-	_check(shots[0] == 0, "Waehrend des Kletterns schiesst er nicht")
+	_check(shots[0] >= 1, "Waehrend des Kletterns schiesst er (%d Schuesse)" % shots[0])
+	_check(climb_firing < climb_free * 0.65 and climb_firing > 60.0, "Beim Schiessen klettert er halb so schnell (%.0f statt %.0f)" % [climb_firing, climb_free])
 
 	# Von der Wand abspringen
 	Input.action_press("p2_jump")
@@ -94,29 +101,40 @@ func _run() -> void:
 	_check(hexapod.velocity.x > 200.0 and hexapod.velocity.y < -300.0, "Wandsprung stoesst von der Wand ab (%.0f, %.0f)" % [hexapod.velocity.x, hexapod.velocity.y])
 	await _frames(150)
 
-	# Aufbauzeit: direkt nach dem Stehenbleiben schiesst er noch nicht
+	# Schiessen im Gehen: sofort, aber nur mit halbem Tempo
 	_place(hexapod, Vector2(1000.0, 1210.0))
 	await _frames(10)
 	Input.action_press("p2_right")
 	await _frames(30)
+	var walk_free := hexapod.velocity.x
 	Input.action_release("p2_right")
-	await _frames(2)
+	await _frames(20)
 	shots[0] = 0
+	Input.action_press("p2_right")
 	Input.action_press("p2_fire")
-	await _frames(5)
+	await _frames(8)
 	var early: int = shots[0]
 	await _frames(30)
+	var walk_firing := hexapod.velocity.x
 	Input.action_release("p2_fire")
-	_check(early == 0, "Direkt nach dem Stehenbleiben ist das Geschuetz noch nicht aufgebaut")
-	_check(shots[0] >= 1, "Danach schiesst es (%d Schuesse)" % shots[0])
+	Input.action_release("p2_right")
+	_check(early >= 1, "Das Geschuetz schiesst sofort, ohne Aufbauzeit (%d Schuesse nach 8 Frames)" % early)
+	_check(walk_firing > walk_free * 0.4 and walk_firing < walk_free * 0.6, "Beim Schiessen geht er mit halbem Tempo (%.0f statt %.0f)" % [walk_firing, walk_free])
+	await _frames(30)
+	var walk_after := 0.0
+	Input.action_press("p2_right")
+	await _frames(30)
+	walk_after = hexapod.velocity.x
+	Input.action_release("p2_right")
+	_check(walk_after > walk_free * 0.95, "Ohne Feuer ist er wieder voll beweglich (%.0f)" % walk_after)
 
-	# In der Luft kein Schuss
+	# In der Luft schiesst er auch
 	_place(hexapod, Vector2(1000.0, 600.0))
 	shots[0] = 0
 	Input.action_press("p2_fire")
 	await _frames(10)
 	Input.action_release("p2_fire")
-	_check(shots[0] == 0, "In der Luft schiesst er nicht")
+	_check(shots[0] >= 1, "In der Luft schiesst er (%d)" % shots[0])
 	await _frames(100)
 
 	# Feuerrate: deutlich schneller als der alte Sniper (0,9 pro Sekunde)
@@ -128,16 +146,18 @@ func _run() -> void:
 	Input.action_release("p2_fire")
 	_check(shots[0] >= 4, "Schnelle Schussrate (%d Schuesse in 2 s)" % shots[0])
 
-	# Nur die Klassenwaffe ist an den Stand gebunden: der Sniper aus dem Shop nicht
+	# Nur die Klassenwaffe bremst: der Sniper aus dem Shop nicht
 	hexapod.weapon_index = 1
 	await _frames(20)
 	shots[0] = 0
 	Input.action_press("p2_right")
 	Input.action_press("p2_fire")
 	await _frames(40)
+	var other_speed := hexapod.velocity.x
 	Input.action_release("p2_fire")
 	Input.action_release("p2_right")
-	_check(shots[0] >= 1, "Andere Waffen duerfen im Gehen schiessen (%d)" % shots[0])
+	_check(shots[0] >= 1, "Andere Waffen schiessen im Gehen (%d)" % shots[0])
+	_check(other_speed > walk_free * 0.9, "Andere Waffen bremsen ihn nicht (%.0f)" % other_speed)
 	await _frames(10)
 
 	# Mantle: am Schacht hochklettern und auf die Plattform oben hopsen
@@ -163,26 +183,41 @@ func _run() -> void:
 
 
 func _polish() -> void:
-	# Aufstellen: sanft einblendend, im Stand weniger Schaden, in Bewegung nicht.
+	# Schiesshaltung: sanft einblendend, beim Schiessen weniger Schaden, ohne Feuer nicht.
 	hexapod.weapon_index = 0
 	_place(hexapod, Vector2(850.0, 1210.0))
 	await _frames(40)
-	_check(hexapod.is_deployed() and hexapod._deploy_amount > 0.95, "Im Stand ist er aufgestellt (%.2f)" % hexapod._deploy_amount)
+	_check(not hexapod.is_deployed(), "Ohne Feuer ist er nicht in Schiesshaltung")
+	Input.action_press("p2_fire")
+	await _frames(40)
+	_check(hexapod.is_deployed() and hexapod._deploy_amount > 0.95, "Beim Schiessen nimmt er Schiesshaltung ein (%.2f)" % hexapod._deploy_amount)
 	hexapod.iframes = 0.0
 	var hp := hexapod.hp
 	hexapod.take_hit(20.0, hexapod.global_position + Vector2(30.0, 0.0))
-	_check(is_equal_approx(hp - hexapod.hp, 16.0), "Aufgestellt steckt er 20 Prozent weniger ein (%.1f)" % (hp - hexapod.hp))
+	_check(is_equal_approx(hp - hexapod.hp, 16.0), "Beim Schiessen steckt er 20 Prozent weniger ein (%.1f)" % (hp - hexapod.hp))
 	hexapod.iframes = 0.0
-	Input.action_press("p2_right")
-	await _frames(25)
-	_check(not hexapod.is_deployed() and hexapod._deploy_amount < 0.6, "In Bewegung klappt er die Beine wieder ein (%.2f)" % hexapod._deploy_amount)
+	Input.action_release("p2_fire")
+	await _frames(40)
+	_check(not hexapod.is_deployed() and hexapod._deploy_amount < 0.05, "Ohne Feuer klappt er die Beine wieder ein (%.2f)" % hexapod._deploy_amount)
 	hp = hexapod.hp
 	hexapod.take_hit(20.0, hexapod.global_position + Vector2(-30.0, 0.0))
-	_check(is_equal_approx(hp - hexapod.hp, 20.0), "In Bewegung voller Schaden")
-	Input.action_release("p2_right")
+	_check(is_equal_approx(hp - hexapod.hp, 20.0), "Ohne Feuer voller Schaden")
 	hexapod.iframes = 0.0
 	hexapod.velocity = Vector2.ZERO
 	await _frames(40)
+
+	# Overwatch: doppelte Rate und volles Tempo trotz Feuer.
+	hexapod.ability.try_use()
+	await _frames(5)
+	Input.action_press("p2_right")
+	Input.action_press("p2_fire")
+	await _frames(30)
+	var overwatch_speed := hexapod.velocity.x
+	Input.action_release("p2_fire")
+	Input.action_release("p2_right")
+	_check(overwatch_speed > float(hexapod.stats.speed) * 0.9, "Overwatch: volles Tempo trotz Feuer (%.0f)" % overwatch_speed)
+	hexapod.ability.time = 0.0
+	await _frames(30)
 
 	# Schuss: Rueckstoss-Animation und Hitze.
 	var saw_recoil := false
@@ -235,9 +270,13 @@ func _ceiling() -> void:
 	await _frames(40)
 	_check(hexapod._ceiling and hexapod.global_position.x > x0 + 80.0, "Er laeuft kopfueber entlang (%d px)" % (hexapod.global_position.x - x0))
 	Input.action_release("p2_right")
-	# Haengend im Stand ist er aufgestellt und kann schiessen.
+	# Haengend schiesst er und geht in Schiesshaltung.
 	await _frames(30)
-	_check(hexapod.is_deployed() and hexapod._can_fire("turret"), "Haengend im Stand ist das Geschuetz bereit")
+	Input.action_press("p2_fire")
+	await _frames(20)
+	_check(hexapod.is_deployed(), "Haengend beim Schiessen ist er in Schiesshaltung")
+	Input.action_release("p2_fire")
+	await _frames(10)
 	# Runter laesst ihn fallen.
 	Input.action_release("p2_up")
 	Input.action_press("p2_down")

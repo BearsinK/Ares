@@ -89,21 +89,22 @@ func _run() -> void:
 	Input.action_release("p1_fire")
 	_check(dummy.health < hp_before, "P1 trifft Puppe (HP %d -> %d)" % [int(hp_before), int(dummy.health)])
 
-	# Hexapod darf in der Bewegung nicht schiessen, im Stand schon
+	# Hexapod schiesst auch in der Bewegung, geht dabei aber langsamer
 	var shots := [0]
 	p2.fired.connect(func(_p: Player, _id: String, _o: Vector2, _d: Vector2, _c: float) -> void: shots[0] += 1)
 	Input.action_press("p2_right")
+	await _frames(30)
+	var free_speed: float = p2.velocity.x
 	Input.action_press("p2_fire")
 	await _frames(12)
 	shots[0] = 0
 	await _frames(25)
-	_check(shots[0] == 0, "Hexapod schiesst nicht in der Bewegung")
+	var firing_speed: float = p2.velocity.x
 	Input.action_release("p2_right")
-	await _frames(30)
-	shots[0] = 0
-	await _frames(60)
 	Input.action_release("p2_fire")
-	_check(shots[0] >= 1, "Hexapod schiesst im Stand (Schuesse: %d)" % shots[0])
+	_check(shots[0] >= 1, "Hexapod schiesst in der Bewegung (Schuesse: %d)" % shots[0])
+	_check(firing_speed < free_speed * 0.6, "Hexapod geht beim Schiessen langsamer (%.0f statt %.0f)" % [firing_speed, free_speed])
+	await _frames(30)
 
 	# Waffen: Wechsel, Schrot, Rakete, Sniper und Strahl
 	p1.global_position = Vector2(1100.0, 1210.0)

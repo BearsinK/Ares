@@ -307,7 +307,7 @@ func _update_shots(delta: float) -> void:
 		if main != null:
 			var dir: Vector2 = shot.dir
 			var origin: Vector2 = global_position + MUZZLE + dir * 40.0
-			main._on_enemy_projectile_requested(null, origin, dir, 480.0 + 50.0 * phase, 14.0 * DAMAGE_SCALE)
+			main._on_enemy_projectile_requested(null, origin, dir, 360.0 + 40.0 * phase, 14.0 * DAMAGE_SCALE)
 			Sfx.play("enemy_shoot")
 
 

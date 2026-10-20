@@ -13,8 +13,8 @@ const CLASS_INFO := {
 	},
 	"hexapod": {
 		"tags": ["Sniper", "Climber", "Turret"],
-		"blurb": "Klettert Wände und Decken wie eine Spinne und schießt schnell, aber nur im Stand. Aufgestellt steckt er 20 % weniger ein. Positionierung ist alles.",
-		"ability": "Overwatch: kurz doppelte Feuerrate ohne Aufbauzeit",
+		"blurb": "Klettert Wände und Decken wie eine Spinne und schießt schnell, geht dabei aber nur halb so schnell. Beim Schießen steckt er 20 % weniger ein.",
+		"ability": "Overwatch: kurz doppelte Feuerrate, auch voll beweglich",
 		"damage": 4, "difficulty": 4,
 	},
 	"vending": {
