@@ -12,6 +12,7 @@ func _ready() -> void:
 	main = load("res://scenes/main.tscn").instantiate()
 	main.test_loadout = true
 	main.director_enabled = false
+	main.intro_enabled = false
 	add_child(main)
 	_run.call_deferred()
 

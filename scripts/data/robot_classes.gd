@@ -2,7 +2,7 @@ class_name RobotClasses
 extends RefCounted
 ## Basiswerte der Klassen. Alle Klassen starten mit demselben Grundkit
 ## (laufen, springen, Hauptangriff), unterscheiden sich in den Werten.
-## Jede Klasse hat eine Faehigkeit auf L2 (siehe Ability).
+## Jede Klasse hat eine Faehigkeit auf Quadrat (siehe Ability).
 
 const DATA := {
 	"roomba": {
@@ -22,9 +22,10 @@ const DATA := {
 		"stationary_fire": false,
 		"weapons": ["dust"],
 		"pickup_bonus": 0.5,
+		"vacuum": true,
 		"step": "glide",
 		"damage_mult": 1.0,
-		"ability": {"id": "suck", "name": "Vortex", "cooldown": 9.0, "duration": 1.4},
+		"ability": {"id": "suck", "name": "Vortex", "cooldown": 11.0, "duration": 2.2},
 	},
 	"hexapod": {
 		"name": "Hexapod",
@@ -86,14 +87,14 @@ const DATA := {
 		"max_hp": 90.0,
 		"tips_over": true,
 		"step": "step",
-		"kill_cooldown": 0.3,
+		"kill_cooldown": 0.15,
 		"escort_drones": 2,
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
 		"stationary_fire": false,
-		"weapons": ["rapid"],
-		"damage_mult": 1.0,
-		"ability": {"id": "print", "name": "Drone Drop", "cooldown": 15.0, "duration": 9.0},
+		"weapons": ["dronegun"],
+		"damage_mult": 0.9,
+		"ability": {"id": "print", "name": "Drone Drop", "cooldown": 20.0, "duration": 7.0},
 	},
 }
 

@@ -36,6 +36,7 @@ func _start(classes: Array) -> void:
 	Engine.set_meta("classes", classes)
 	main = load("res://scenes/main.tscn").instantiate()
 	main.director_enabled = false
+	main.intro_enabled = false
 	add_child(main)
 	await _frames(20)
 	for p in main.players:
@@ -81,11 +82,13 @@ func _roomba_and_hexapod() -> void:
 	_check(p1.ability.is_active("suck") and not p1.ability.is_ready(), "L2 loest den Sog aus")
 	await _frames(45)
 	var gap := walker.global_position.x - p1.global_position.x
-	_check(start_gap - gap > 250.0, "Sog zieht den Gegner heran (%d -> %d)" % [start_gap, gap])
+	_check(start_gap - gap > 200.0, "Sog zieht den Gegner heran (%d -> %d)" % [start_gap, gap])
+	_check(gap > 120.0, "Der Gegner kommt nicht in sein Gesicht (%d)" % gap)
+	_check(walker.stunned_time > 0.0, "Der Gegner im Wirbel ist betaeubt")
 	_check(coin.force_pull, "Sog zieht Beute heran")
 	_check(not p1.ability.try_use(), "Abklingzeit sperrt erneutes Ausloesen")
 	await _frames(60)
-	_check(walker.hp < walker.max_hp or not is_instance_valid(walker), "Sog beisst nahe Gegner an")
+	_check(not is_instance_valid(walker) or walker.hp < walker.max_hp, "Wirbel und Druckwelle treffen den Gegner")
 
 	# Hexapod: Overwatch erlaubt Schuss in Bewegung mit doppelter Rate.
 	main.players[1].fired.connect(func(_p: Player, _w: String, _o: Vector2, _d: Vector2, _c: float) -> void: shots += 1)
@@ -181,7 +184,7 @@ func _vending_and_printer() -> void:
 	var victim := _enemy("brute", p2.global_position + Vector2(60.0, 0.0))
 	victim.take_damage(9999.0, p2, Vector2.RIGHT, "")
 	await _frames(2)
-	_check(p2.ability.cooldown < cd_before - 0.25, "Kill verkuerzt Druckbot-Abklingzeit (%.2f -> %.2f)" % [cd_before, p2.ability.cooldown])
+	_check(p2.ability.cooldown < cd_before - 0.12, "Kill verkuerzt Druckbot-Abklingzeit (%.2f -> %.2f)" % [cd_before, p2.ability.cooldown])
 	p2.set_module("fire")
 	p2.ability.cooldown = 0.0
 	await _tap("p2_ability")

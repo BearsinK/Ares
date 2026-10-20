@@ -48,25 +48,82 @@ func _draw_hud() -> void:
 	_draw_flash(view)
 	_draw_hints(view)
 	_draw_wave_banner(view)
-	_draw_player_panel(main.players[0], Vector2(24.0, 16.0))
-	_draw_player_panel(main.players[1], Vector2(view.x - PANEL_WIDTH - 24.0, 16.0))
+	_draw_wave_clear(view)
+	_draw_player_panels(view)
 	if main.boss != null and is_instance_valid(main.boss):
 		if not main.shop_menu.is_open and not main.levelup_menu.is_open:
 			_draw_boss_bar(view, main.boss)
 	elif not main.shop_menu.is_open and not main.levelup_menu.is_open:
+		var scale_top := ui_scale(view) * 0.9
+		_canvas.draw_set_transform(Vector2(view.x * 0.5 * (1.0 - scale_top), 6.0), 0.0, Vector2(scale_top, scale_top))
 		_draw_top_center(view)
+		_canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_draw_perk_strip(view)
+	_draw_perk_banner(view)
 	_draw_xp_bar(view)
 	_draw_debug(view)
 
 
-## Steuerungshinweis in den ersten Sekunden eines Laufs.
+## Weicher Ein- und Ausstieg: 0 bis 1 ueber die Dauer fade, dann bleibt es bei 1.
+static func _ease_out(x: float) -> float:
+	return 1.0 - pow(1.0 - clampf(x, 0.0, 1.0), 3.0)
+
+
+## Wellenstart: Letterbox, einfliegender Titel mit Modifikator, Countdown 3 2 1 und LOS.
 func _draw_wave_banner(view: Vector2) -> void:
-	if main.wave_banner_time <= 0.0 or main.wave_modifier == "normal" or main.phase != main.Phase.WAVE:
+	if main.phase != main.Phase.WAVE:
 		return
-	var info: Dictionary = WaveModifiers.DATA[main.wave_modifier]
-	var alpha := clampf(minf(main.wave_banner_time / 0.5, (3.5 - main.wave_banner_time) / 0.3), 0.0, 1.0)
-	_text(Vector2(0, view.y * 0.27), "WELLE %d: %s" % [main.wave, info.name], 52, Color(1.0, 0.7, 0.3, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	_text(Vector2(0, view.y * 0.27 + 36.0), info.text, 22, Color(0.95, 0.95, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	if main.wave_go > 0.0:
+		var k: float = 1.0 - float(main.wave_go) / 0.7
+		var size := int(120.0 + 60.0 * k)
+		_text(Vector2(0, view.y * 0.5 + 40.0), "LOS!", size, Color(1.0, 0.9, 0.4, 1.0 - k), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	if main.wave_intro <= 0.0:
+		return
+	var elapsed: float = main.WAVE_INTRO - main.wave_intro
+	var bars := minf(_ease_out(elapsed / 0.4), _ease_out(main.wave_intro / 0.4))
+	var bar_height := 64.0 * bars
+	_canvas.draw_rect(Rect2(0, 0, view.x, bar_height), Color(0, 0, 0, 0.85))
+	_canvas.draw_rect(Rect2(0, view.y - bar_height, view.x, bar_height), Color(0, 0, 0, 0.85))
+	var last: bool = main.wave >= main.max_waves
+	var title := "LETZTE WELLE" if last else "WELLE %d" % main.wave
+	var slide := (1.0 - _ease_out(elapsed / 0.55)) * -view.x * 0.6
+	var alpha := clampf(main.wave_intro / 0.35, 0.0, 1.0)
+	var title_color := Color(1.0, 0.55, 0.3, alpha) if last else Color(1.0, 0.92, 0.55, alpha)
+	_text(Vector2(slide + 4.0, view.y * 0.3 + 4.0), title, 96, Color(0, 0, 0, 0.5 * alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(slide, view.y * 0.3), title, 96, title_color, HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	if main.wave_modifier != "normal":
+		var info: Dictionary = WaveModifiers.DATA[main.wave_modifier]
+		var pop := _ease_out((elapsed - 0.5) / 0.35)
+		_text(Vector2(0, view.y * 0.3 + 56.0), String(info.name), int(36.0 + 14.0 * pop), Color(1.0, 0.65, 0.25, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		_text(Vector2(0, view.y * 0.3 + 92.0), String(info.text), 22, Color(0.95, 0.95, 1.0, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	# Countdown: jede Zahl poppt gross auf und schrumpft.
+	if main.wave_intro <= 3.0:
+		var number := int(ceil(main.wave_intro))
+		var frac: float = 1.0 - (float(main.wave_intro) - float(number - 1))
+		var size := int(150.0 - 50.0 * _ease_out(frac * 1.5))
+		_text(Vector2(0, view.y * 0.55 + 40.0), str(number), size, Color(1, 1, 1, clampf(1.2 - frac * 0.5, 0.0, 1.0)), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+
+
+## Wellenende: grosses WELLE GESCHAFFT mit Aufpoppen, Zusammenfassung und Bonus.
+func _draw_wave_clear(view: Vector2) -> void:
+	if main.phase != main.Phase.CLEARING:
+		return
+	var elapsed: float = main.CLEAR_DELAY - main._clear_time
+	var remaining: float = main._clear_time
+	var fade := clampf(remaining / 0.4, 0.0, 1.0)
+	var pop := _ease_out(elapsed / 0.35)
+	var overshoot := 1.0 + 0.25 * sin(clampf(elapsed / 0.35, 0.0, 1.0) * PI)
+	var y := view.y * 0.3
+	# Leuchtband hinter dem Titel.
+	var band := Rect2(0, y - 20.0, view.x * pop, 110.0)
+	_canvas.draw_rect(band, Color(0.05, 0.04, 0.0, 0.55 * fade))
+	_canvas.draw_rect(Rect2(0, y - 22.0, view.x * pop, 3.0), Color(1.0, 0.85, 0.3, 0.9 * fade))
+	_canvas.draw_rect(Rect2(0, y + 88.0, view.x * pop, 3.0), Color(1.0, 0.85, 0.3, 0.9 * fade))
+	_text(Vector2(0, y + 66.0 - 8.0 * overshoot), "WELLE %d GESCHAFFT!" % main.wave, int(78.0 * overshoot), Color(1.0, 0.9, 0.4, fade), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	var info_alpha := _ease_out((elapsed - 0.45) / 0.3) * fade
+	_text(Vector2(0, y + 140.0), "Besiegt: %d      Bonus: +%d Gold" % [main.wave_kills, main.wave_bonus], 28, Color(0.95, 0.96, 1.0, info_alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	var next := "Als Nächstes: der Endboss" if main.wave >= main.max_waves else "Gleich öffnet der Shop"
+	_text(Vector2(0, y + 178.0), next, 20, Color(0.7, 0.75, 0.9, info_alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
 func _draw_hints(view: Vector2) -> void:
@@ -74,11 +131,11 @@ func _draw_hints(view: Vector2) -> void:
 	if _age > visible_time or main.wave > 1 or main.phase != main.Phase.WAVE:
 		return
 	var alpha := clampf(minf(_age / 0.6, (visible_time - _age) / 1.5), 0.0, 1.0)
-	var panel := Rect2(Vector2(view.x * 0.5 - 430.0, 104.0), Vector2(860.0, 112.0))
+	var panel := Rect2(Vector2(view.x * 0.5 - 430.0, ui_scale(view) * 150.0), Vector2(860.0, 112.0))
 	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.8 * alpha), 14.0)
 	Art.rrect_line(_canvas, panel, Color(1, 1, 1, 0.25 * alpha), 14.0, 2.0)
 	_text(panel.position + Vector2(0, 28), "STEUERUNG", 16, Color(1.0, 0.85, 0.4, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
-	_text(panel.position + Vector2(0, 56), "Controller: R2 schießen   R1 Dash   L1 Sprung   L2 Fähigkeit   Dreieck Waffe   Kreis Partner beleben", 15, Color(0.9, 0.92, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+	_text(panel.position + Vector2(0, 56), "Controller: R2 schießen   R1 Dash   L1 Sprung   Quadrat Fähigkeit   L2 Haken   Dreieck Waffe   Kreis Partner beleben", 15, Color(0.9, 0.92, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 	_text(panel.position + Vector2(0, 80), "Tastatur P1: WASD, Maus, Leertaste, Shift, E     P2: Pfeile, Punkt, Strich, Komma     F11 Vollbild", 15, Color(0.7, 0.74, 0.9, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 	_text(panel.position + Vector2(0, 102), "Je weiter ihr kommt, desto mehr Chips gibt es für die Garage.", 13, Color(0.6, 0.95, 1.0, alpha * 0.9), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 
@@ -110,11 +167,30 @@ func _draw_flash(view: Vector2) -> void:
 		_canvas.draw_polygon(points, colors)
 
 
+## Groesse der Anzeige: waechst mit der Fensterhoehe (Basis 1,4x bei 900 px).
+func ui_scale(view: Vector2) -> float:
+	return clampf(view.y / 900.0, 0.8, 1.7) * 1.4
+
+
+## Beide Spielerpanels, vergroessert. Ein Treffer laesst das Panel des Getroffenen rot aufblitzen und wackeln.
+func _draw_player_panels(view: Vector2) -> void:
+	var s := ui_scale(view)
+	var width := (PANEL_WIDTH + 20.0) * s
+	for i in 2:
+		var player: Player = main.players[i]
+		var x := 18.0 if i == 0 else view.x - width - 18.0
+		var shake := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 6.0 * player.hurt_amount()
+		_canvas.draw_set_transform(Vector2(x, 12.0) + shake, 0.0, Vector2(s, s))
+		_draw_player_panel(player, Vector2(10.0, 8.0))
+	_canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
 func _draw_player_panel(player: Player, origin: Vector2) -> void:
 	var accent: Color = RobotClasses.PLAYER_COLORS[player.player_index - 1]
 	var panel := Rect2(origin + Vector2(-10, -8), Vector2(PANEL_WIDTH + 20.0, PANEL_HEIGHT))
-	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.72), 12.0)
-	Art.rrect_line(_canvas, panel, Color(accent, 0.55), 12.0, 2.0)
+	var hurt := player.hurt_amount()
+	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.8).lerp(Color(0.5, 0.05, 0.05, 0.9), hurt), 12.0)
+	Art.rrect_line(_canvas, panel, Color(accent, 0.7).lerp(Color(1.0, 0.25, 0.2), hurt), 12.0, 2.0 + 2.0 * hurt)
 	_canvas.draw_rect(Rect2(panel.position + Vector2(14, 0), Vector2(60, 3)), accent)
 
 	# Kopfzeile: Spielermarke, Klasse, Gold.
@@ -151,16 +227,21 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 		var pill := Rect2(origin + Vector2(i * 22.0, 52), Vector2(18, 7))
 		Art.rrect(_canvas, pill, accent if i < player.dash_charges else Color(1, 1, 1, 0.14), 3.0)
 
-	# Klassenfaehigkeit (L2): Leiste fuellt sich, bei Bereitschaft leuchtet sie.
+	# Klassenfaehigkeit (Quadrat): Leiste fuellt sich, bei Bereitschaft leuchtet sie.
 	var ability := player.ability
-	var ability_bar := Rect2(origin + Vector2(112, 47), Vector2(PANEL_WIDTH - 112.0, 15))
+	var ability_bar := Rect2(origin + Vector2(138, 47), Vector2(PANEL_WIDTH - 138.0, 15))
 	var ability_color := Color(1.0, 0.85, 0.3) if ability.is_ready() else accent
 	Art.rrect(_canvas, ability_bar, Color(0.1, 0.1, 0.14), 5.0)
 	var ability_fill := ability.time / float(ability.data.duration) if ability.is_active() else ability.readiness()
 	if ability_fill > 0.0:
 		Art.rrect(_canvas, Rect2(ability_bar.position, Vector2(maxf(ability_bar.size.x * ability_fill, 8.0), ability_bar.size.y)), ability_color if not ability.is_active() else Color(1, 1, 1), 5.0)
 	Art.rrect_line(_canvas, ability_bar, Color(ability_color, 0.8 if ability.is_ready() else 0.35), 5.0, 1.5)
-	var ability_text := "L2 %s  BEREIT" % ability.data.name if ability.is_ready() else "L2 %s" % ability.data.name
+	# Tastensymbol (Quadrat) vor der Leiste, leuchtet bei Bereitschaft.
+	var key_rect := Rect2(ability_bar.position + Vector2(-24, 0), Vector2(18, 15))
+	var key_pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 160.0) if ability.is_ready() else 0.4
+	Art.rrect_line(_canvas, key_rect, Color(1.0, 0.55, 0.8, key_pulse), 4.0, 2.0)
+	_text(origin + Vector2(48, 60), "Fähigkeit", 12, Color(0.7, 0.74, 0.9))
+	var ability_text := "%s  BEREIT" % ability.data.name if ability.is_ready() else "%s" % ability.data.name
 	_text(ability_bar.position + Vector2(0, 12), ability_text, 12, Color(0.05, 0.06, 0.1) if ability_fill > 0.55 else Color(0.85, 0.88, 0.95), HORIZONTAL_ALIGNMENT_CENTER, ability_bar.size.x)
 
 	# Waffen als Chips, aktive Waffe hervorgehoben.
@@ -221,7 +302,9 @@ func _draw_top_center(view: Vector2) -> void:
 	var remaining := int(ceil(maxf(main.wave_time_left, 0.0)))
 	var clock := "%02d:%02d" % [remaining / 60, remaining % 60]
 	if main.phase == main.Phase.CLEARING:
-		clock = "Welle geschafft!"
+		clock = "Geschafft!"
+	if main.sandbox:
+		_text(Vector2(0, 104), "SANDBOX", 14, Color(1.0, 0.85, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var panel := Rect2(Vector2(view.x * 0.5 - 130.0, 8.0), Vector2(260.0, 82.0))
 	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.72), 12.0)
 	Art.rrect_line(_canvas, panel, Color(1, 1, 1, 0.2), 12.0, 2.0)
@@ -230,15 +313,54 @@ func _draw_top_center(view: Vector2) -> void:
 	_text(Vector2(0, 82), "Stufe %d     Gegner %d" % [main.level, main.director.alive_count()], 14, Color(0.7, 0.72, 0.85), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
+## Reihe der bisher gewaehlten Team-Perks (Symbol und Anzahl) unter der Wellenanzeige.
+func _draw_perk_strip(view: Vector2) -> void:
+	if main.perks_taken.is_empty() or main.shop_menu.is_open or main.levelup_menu.is_open:
+		return
+	var s := ui_scale(view)
+	var count: int = main.perks_taken.size()
+	var step := 44.0 * s * 0.8
+	var start := Vector2(view.x * 0.5 - (count - 1) * step * 0.5, ui_scale(view) * 90.0 + 14.0)
+	var index := 0
+	for id in main.perks_taken:
+		var center := start + Vector2(index * step, 0.0)
+		Art.rrect(_canvas, Rect2(center - Vector2(step * 0.46, step * 0.46), Vector2(step * 0.92, step * 0.92)), Color(0.04, 0.05, 0.09, 0.7), 8.0)
+		PerkArt.draw(_canvas, id, center, step * 0.7)
+		var amount: int = main.perks_taken[id]
+		if amount > 1:
+			_text(center + Vector2(step * 0.1, step * 0.45), "x%d" % amount, 15, Color(1.0, 0.95, 0.6))
+		index += 1
+
+
+## Nach der Wahl: Name und Wirkung des Perks gross in der Bildmitte oben.
+func _draw_perk_banner(view: Vector2) -> void:
+	if main.perk_banner_time <= 0.0 or main.perk_banner_id == "":
+		return
+	var t: float = main.perk_banner_time
+	var alpha := clampf(minf(t / 0.5, (3.0 - t) / 0.2), 0.0, 1.0)
+	var pop := _ease_out((3.0 - t) / 0.3)
+	var id: String = main.perk_banner_id
+	var color := PerkArt.color_of(id)
+	var y := view.y * 0.2
+	var panel := Rect2(Vector2(view.x * 0.5 - 330.0, y), Vector2(660.0, 120.0 * pop))
+	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.85 * alpha), 14.0)
+	Art.rrect_line(_canvas, panel, Color(color, alpha), 14.0, 3.0)
+	if pop > 0.9:
+		PerkArt.draw(_canvas, id, panel.position + Vector2(70.0, 60.0), 70.0)
+		_text(panel.position + Vector2(130.0, 44.0), "UPGRADE: %s" % String(Perks.DATA[id].name), 34, Color(1.0, 0.95, 0.7, alpha))
+		_text(panel.position + Vector2(130.0, 82.0), "Für beide Roboter, je nach Klasse", 20, Color(0.8, 0.84, 0.95, alpha))
+
+
 func _draw_xp_bar(view: Vector2) -> void:
-	var bar := Rect2(Vector2(view.x * 0.5 - 360.0, view.y - 26.0), Vector2(720.0, 12.0))
+	var bar := Rect2(Vector2(view.x * 0.5 - 420.0, view.y - 38.0), Vector2(840.0, 18.0))
 	var fraction := clampf(float(main.xp) / float(main.xp_needed), 0.0, 1.0)
 	Art.rrect(_canvas, bar.grow(2.0), Color(0.03, 0.04, 0.08, 0.8), 8.0)
 	if fraction > 0.0:
 		Art.rrect_grad(_canvas, Rect2(bar.position, Vector2(maxf(bar.size.x * fraction, 8.0), bar.size.y)), Color(0.55, 0.8, 1.0), Color(0.25, 0.5, 0.95), 6.0)
 		Art.glow(_canvas, bar.position + Vector2(bar.size.x * fraction, 6), 10.0, Color(0.4, 0.7, 1.0))
 	Art.rrect_line(_canvas, bar.grow(2.0), Color(1, 1, 1, 0.3), 8.0, 1.5)
-	_text(bar.position + Vector2(-70, 11), "Stufe %d" % main.level, 14, Color(0.75, 0.85, 1.0))
+	_text(bar.position + Vector2(-100, 16), "Stufe %d" % main.level, 20, Color(0.75, 0.85, 1.0))
+	_text(bar.position + Vector2(bar.size.x + 14.0, 16), "%d / %d XP" % [main.xp, main.xp_needed], 16, Color(0.65, 0.78, 0.95))
 
 
 func _draw_debug(view: Vector2) -> void:

@@ -7,6 +7,8 @@ extends RefCounted
 const PATH := "user://ares_save.json"
 
 static var persist := DisplayServer.get_name() != "headless"
+## Testphase: Alle Klassen und Waffen sind freigeschaltet (Tests im Headless-Modus pruefen die Sperren weiter).
+static var unlock_all := DisplayServer.get_name() != "headless"
 static var _data: Dictionary = {}
 static var _loaded := false
 
@@ -82,12 +84,12 @@ static func buy_upgrade(upgrade_id: String) -> bool:
 
 static func class_unlocked(class_id: String) -> bool:
 	_ensure()
-	return not Meta.CLASS_UNLOCKS.has(class_id) or (_data.classes as Array).has(class_id)
+	return unlock_all or not Meta.CLASS_UNLOCKS.has(class_id) or (_data.classes as Array).has(class_id)
 
 
 static func weapon_unlocked(weapon_id: String) -> bool:
 	_ensure()
-	return not Meta.WEAPON_UNLOCKS.has(weapon_id) or (_data.weapons as Array).has(weapon_id)
+	return unlock_all or not Meta.WEAPON_UNLOCKS.has(weapon_id) or (_data.weapons as Array).has(weapon_id)
 
 
 ## kind: "class" oder "weapon".

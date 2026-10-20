@@ -62,6 +62,7 @@ func _in_game() -> void:
 	Engine.set_meta("classes", ["roomba", "hexapod"])
 	main = load("res://scenes/main.tscn").instantiate()
 	main.director_enabled = false
+	main.intro_enabled = false
 	add_child(main)
 	await _frames(20)
 	var p1: Player = main.players[0]
@@ -129,6 +130,7 @@ func _elites() -> void:
 	Engine.set_meta("classes", ["roomba", "hexapod"])
 	main = load("res://scenes/main.tscn").instantiate()
 	main.director_enabled = false
+	main.intro_enabled = false
 	add_child(main)
 	await _frames(20)
 	var p1: Player = main.players[0]

@@ -2,9 +2,9 @@ extends Node2D
 ## Titelbildschirm mit Hauptmenue, Klassenauswahl fuer beide Spieler und
 ## Steuerungsuebersicht. Startet danach die Hauptszene.
 
-enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING }
+enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING, SANDBOX }
 
-const MENU_ITEMS: Array[String] = ["Spielen", "Garage", "Steuerung", "Musik", "Beenden"]
+const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Steuerung", "Musik", "Beenden"]
 const COUNTDOWN := 1.1
 
 var state := State.MAIN
@@ -16,6 +16,12 @@ var workshop_cursor := 0
 var workshop_message := ""
 var workshop_good := false
 var workshop_message_time := 0.0
+## Sandbox: Klassenwahl fuehrt danach in die Einstellungen. Einstellung, Cursor und Bereitschaft je Spieler.
+var sandbox_mode := false
+var sandbox_config := {}
+var sandbox_cursor: Array[int] = [0, 0]
+var sandbox_locked: Array[bool] = [false, false]
+var sandbox_classes: Array[String] = []
 
 var _time := 0.0
 var _camera: Camera2D
@@ -61,6 +67,8 @@ func _process(delta: float) -> void:
 				state = State.MAIN
 		State.WORKSHOP:
 			_update_workshop(delta)
+		State.SANDBOX:
+			_update_sandbox(delta)
 	_stage.queue_redraw()
 	_ui.queue_redraw()
 
@@ -74,18 +82,23 @@ func _update_main() -> void:
 		Sfx.play("switch")
 	if UiKit.confirm():
 		Sfx.play("pickup")
-		match cursor:
-			0:
+		match MENU_ITEMS[cursor]:
+			"Spielen":
 				state = State.SELECT
 				locked = [false, false]
-			1:
+				sandbox_mode = false
+			"Sandbox":
+				state = State.SELECT
+				locked = [false, false]
+				sandbox_mode = true
+			"Garage":
 				state = State.WORKSHOP
 				workshop_cursor = 0
-			2:
+			"Steuerung":
 				state = State.CONTROLS
-			3:
+			"Musik":
 				Music.set_enabled(not Music.enabled)
-			4:
+			"Beenden":
 				get_tree().quit()
 
 
@@ -150,6 +163,11 @@ func _update_select(delta: float) -> void:
 			for i in 2:
 				classes.append(UiKit.CLASS_ORDER[picks[i]])
 			Engine.set_meta("classes", classes)
+			if sandbox_mode:
+				_enter_sandbox(classes)
+				return
+			if Engine.has_meta("sandbox"):
+				Engine.remove_meta("sandbox")
 			get_tree().change_scene_to_file("res://scenes/main.tscn")
 		return
 	var nobody_ready := not locked[0] and not locked[1]
@@ -173,6 +191,63 @@ func _update_select(delta: float) -> void:
 	if nobody_ready and (Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("p1_interact") or Input.is_action_just_pressed("p2_interact")):
 		state = State.MAIN
 	if locked[0] and locked[1]:
+		start_timer = COUNTDOWN
+		Sfx.play("levelup")
+
+
+func _enter_sandbox(classes: Array) -> void:
+	sandbox_classes = []
+	for class_id in classes:
+		sandbox_classes.append(String(class_id))
+	sandbox_config = SandboxConfig.default_config(sandbox_classes)
+	sandbox_cursor = [0, 0]
+	sandbox_locked = [false, false]
+	state = State.SANDBOX
+	start_timer = 0.0
+
+
+func _update_sandbox(delta: float) -> void:
+	if start_timer > 0.0:
+		start_timer -= delta
+		if start_timer <= 0.0:
+			Engine.set_meta("sandbox", sandbox_config)
+			Engine.set_meta("classes", sandbox_classes)
+			get_tree().change_scene_to_file("res://scenes/main.tscn")
+		return
+	for i in 2:
+		var prefix := "p%d_" % (i + 1)
+		var rows := SandboxConfig.rows(sandbox_config, i, sandbox_classes[i])
+		if sandbox_locked[i]:
+			if Input.is_action_just_pressed(prefix + "interact"):
+				sandbox_locked[i] = false
+			continue
+		if Input.is_action_just_pressed(prefix + "up"):
+			sandbox_cursor[i] = (sandbox_cursor[i] + rows.size() - 1) % rows.size()
+			Sfx.play("switch")
+		if Input.is_action_just_pressed(prefix + "down"):
+			sandbox_cursor[i] = (sandbox_cursor[i] + 1) % rows.size()
+			Sfx.play("switch")
+		var delta_value := 0
+		if Input.is_action_just_pressed(prefix + "left"):
+			delta_value -= 1
+		if Input.is_action_just_pressed(prefix + "right"):
+			delta_value += 1
+		var row: Dictionary = rows[sandbox_cursor[i]]
+		if delta_value != 0 and row.kind != "ready":
+			SandboxConfig.change(sandbox_config, i, sandbox_classes[i], row, delta_value)
+			Sfx.play("switch")
+		if Input.is_action_just_pressed(prefix + "confirm"):
+			if row.kind == "ready":
+				sandbox_locked[i] = true
+				Sfx.play("pickup")
+			else:
+				SandboxConfig.change(sandbox_config, i, sandbox_classes[i], row, 1)
+				Sfx.play("switch")
+		if Input.is_action_just_pressed(prefix + "interact") and not sandbox_locked[0] and not sandbox_locked[1]:
+			state = State.SELECT
+			locked = [false, false]
+			return
+	if sandbox_locked[0] and sandbox_locked[1]:
 		start_timer = COUNTDOWN
 		Sfx.play("levelup")
 
@@ -207,6 +282,8 @@ func _draw_ui() -> void:
 			UiKit.controls_panel(_ui, view)
 		State.WORKSHOP:
 			_draw_workshop(view)
+		State.SANDBOX:
+			_draw_sandbox(view)
 
 
 func _item_label(index: int) -> String:
@@ -225,6 +302,53 @@ func _draw_main(view: Vector2) -> void:
 		var rect := Rect2(Vector2(view.x * 0.5 - 160, 310 + i * 76), Vector2(320, 60))
 		UiKit.button(_ui, rect, _item_label(i), i == cursor and state == State.MAIN)
 	UiKit.text(_ui, Vector2(0, view.y - 40), "Hoch/Runter wählen, Kreuz oder Enter bestätigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+
+
+func _draw_sandbox(view: Vector2) -> void:
+	_ui.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.75))
+	UiKit.text(_ui, Vector2(0, 70), "SANDBOX", 52, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(0, 104), "Hoch/Runter: Zeile, Links/Rechts: ändern, Kreuz bei BEREIT: los. Startwelle, Gold und Unverwundbar gelten für beide.", 18, Color(0.75, 0.8, 0.95), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	var wave_text := "Endboss" if int(sandbox_config.wave) >= SandboxConfig.BOSS_WAVE else "Welle %d" % int(sandbox_config.wave)
+	UiKit.text(_ui, Vector2(0, 128), "Start: %s     Gold: %d     Unverwundbar: %s" % [wave_text, int(sandbox_config.gold), "An" if bool(sandbox_config.god) else "Aus"], 22, Color(1.0, 0.9, 0.5), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	for i in 2:
+		_draw_sandbox_panel(i, Rect2(Vector2(view.x * 0.5 - 760 + i * 800.0, 150), Vector2(720, view.y - 210)))
+	if start_timer > 0.0:
+		UiKit.text(_ui, Vector2(0, view.y - 30), "LOS GEHT'S!", 28, Color(0.9, 0.95, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+
+
+func _draw_sandbox_panel(i: int, panel: Rect2) -> void:
+	var accent: Color = RobotClasses.PLAYER_COLORS[i]
+	var rows := SandboxConfig.rows(sandbox_config, i, sandbox_classes[i])
+	Art.panel(_ui, panel, Color(0.09, 0.11, 0.18), 20.0, accent if sandbox_locked[i] else Color(1, 1, 1, 0.3))
+	_ui.draw_rect(Rect2(panel.position + Vector2(24, 0), Vector2(120, 5)), accent)
+	UiKit.text(_ui, panel.position + Vector2(30, 44), "SPIELER %d  %s" % [i + 1, RobotClasses.get_stats(sandbox_classes[i]).name], 26, accent)
+	if sandbox_locked[i]:
+		UiKit.text(_ui, panel.position + Vector2(0, 44), "BEREIT", 24, Color(0.5, 1.0, 0.6), HORIZONTAL_ALIGNMENT_RIGHT, panel.size.x - 30.0)
+	var row_height := 38.0
+	var visible_rows := int((panel.size.y - 120.0) / row_height)
+	var first := clampi(sandbox_cursor[i] - visible_rows / 2, 0, maxi(0, rows.size() - visible_rows))
+	for k in visible_rows:
+		var index := first + k
+		if index >= rows.size():
+			break
+		var row: Dictionary = rows[index]
+		var rect := Rect2(panel.position + Vector2(20, 64 + k * row_height), Vector2(panel.size.x - 40.0, row_height - 4.0))
+		var selected := index == sandbox_cursor[i] and not sandbox_locked[i]
+		var disabled: bool = row.get("disabled", false)
+		Art.rrect(_ui, rect, Color(0.2, 0.24, 0.36) if selected else Color(0.12, 0.14, 0.22), 8.0)
+		if selected:
+			Art.rrect_line(_ui, rect, accent, 8.0, 2.0)
+		var label_color := Color(0.45, 0.47, 0.55) if disabled else (Color.WHITE if selected else Color(0.8, 0.83, 0.93))
+		UiKit.text(_ui, rect.position + Vector2(14, 25), String(row.label), 20, label_color)
+		if row.kind == "ready":
+			UiKit.text(_ui, rect.position + Vector2(0, 25), "Kreuz: bereit", 18, Color(0.6, 0.95, 0.7), HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - 14.0)
+		else:
+			var value: String = String(row.value)
+			if selected and not disabled:
+				value = "<  %s  >" % value
+			UiKit.text(_ui, rect.position + Vector2(0, 25), value, 20, Color(1.0, 0.9, 0.5) if not disabled else Color(0.4, 0.42, 0.5), HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - 14.0)
+		if selected and row.has("text"):
+			UiKit.text(_ui, rect.position + Vector2(190, 25), String(row.text), 14, Color(0.7, 0.8, 0.95), HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 400.0)
 
 
 func _draw_workshop(view: Vector2) -> void:
@@ -323,5 +447,5 @@ func _draw_player_select(i: int, panel: Rect2) -> void:
 	UiKit.stat_bar(_ui, panel.position + Vector2(40, 523), 300.0, "Tempo", float(stats.speed) / 390.0, Color(0.4, 0.7, 1.0))
 	UiKit.stat_bar(_ui, panel.position + Vector2(40, 551), 300.0, "Feuerkraft", float(info.damage) / 5.0, Color(1.0, 0.6, 0.3))
 	UiKit.stat_bar(_ui, panel.position + Vector2(40, 579), 300.0, "Schwierigkeit", float(info.difficulty) / 5.0, Color(0.9, 0.5, 0.9))
-	UiKit.text(_ui, panel.position + Vector2(370, 500), "Fähigkeit (L2):", 16, Color(1.0, 0.85, 0.4))
+	UiKit.text(_ui, panel.position + Vector2(370, 500), "Fähigkeit (Quadrat):", 16, Color(1.0, 0.85, 0.4))
 	UiKit.text(_ui, panel.position + Vector2(370, 524), info.ability, 16, Color(0.88, 0.9, 0.98), HORIZONTAL_ALIGNMENT_LEFT, panel.size.x - 400.0, true)

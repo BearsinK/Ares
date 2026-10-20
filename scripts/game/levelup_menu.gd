@@ -10,6 +10,8 @@ signal chosen(perk_id: String)
 const CARD_SIZE := Vector2(340.0, 420.0)
 const CARD_GAP := 40.0
 const GRACE_TIME := 0.5
+## So lange dauert der Streit um verschiedene Karten, bevor der Zufall entscheidet.
+const SPLIT_TIME := 2.5
 
 var players: Array[Player] = []
 var perk_ids: Array[String] = []
@@ -18,6 +20,8 @@ var is_open := false
 var _cursor := [0, 0]
 var _locked := [-1, -1]
 var _age := 0.0
+var _split_time := 0.0
+var _split_message := ""
 var _title := ""
 var _canvas: Node2D
 
@@ -37,6 +41,7 @@ func open(new_players: Array[Player], new_perk_ids: Array[String], level: int) -
 	_cursor = [1, 1]
 	_locked = [-1, -1]
 	_age = 0.0
+	_split_time = 0.0
 	_title = "LEVEL UP!  Stufe %d" % level
 	is_open = true
 	visible = true
@@ -53,6 +58,13 @@ func _process(delta: float) -> void:
 			_handle_player(i)
 		if _locked[0] != -1 and _locked[0] == _locked[1]:
 			_finish(perk_ids[_locked[0]])
+		elif _locked[0] != -1 and _locked[1] != -1:
+			# Beide bereit, aber auf verschiedenen Karten: nach kurzer Zeit entscheidet der Zufall.
+			_split_time += delta
+			if _split_time >= SPLIT_TIME:
+				_finish(perk_ids[_locked[randi() % 2]])
+		else:
+			_split_time = 0.0
 	_canvas.queue_redraw()
 
 
@@ -85,7 +97,9 @@ func _draw_menu() -> void:
 	var view := _canvas.get_viewport_rect().size
 	_canvas.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.74))
 	UiKit.text(_canvas, Vector2(0, 150), _title, 56, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	UiKit.text(_canvas, Vector2(0, 192), "Beide wählen dieselbe Karte. Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück", 18, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_canvas, Vector2(0, 192), "Beide wählen dieselbe Karte. Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück", 20, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	if _locked[0] != -1 and _locked[1] != -1 and _locked[0] != _locked[1]:
+		UiKit.text(_canvas, Vector2(0, 222), "Uneinig! Der Zufall entscheidet in %.1f s" % maxf(0.0, SPLIT_TIME - _split_time), 24, Color(1.0, 0.6, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 	var total := perk_ids.size() * CARD_SIZE.x + (perk_ids.size() - 1) * CARD_GAP
 	var start := Vector2((view.x - total) * 0.5, 240.0)

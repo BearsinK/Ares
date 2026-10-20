@@ -6,8 +6,8 @@ extends Node
 ##
 ## Controller-Belegung (PS5 DualSense):
 ##   Linker Stick: bewegen        Rechter Stick: zielen
-##   L1: Sprung    R1: Dash       R2: Hauptangriff    L2: Klassenfaehigkeit
-##   Quadrat: Haken               Dreieck: Waffe wechseln
+##   L1: Sprung    R1: Dash       R2: Hauptangriff    L2: Haken
+##   Quadrat: Klassenfaehigkeit   Dreieck: Waffe wechseln
 ##   Kreis: Interagieren          Kreuz: Bestaetigen
 
 const ACTIONS: Array[String] = [
@@ -101,8 +101,8 @@ func _bind_gamepad(player: int, device: int) -> void:
 	_pad_button(p + "jump", device, JOY_BUTTON_LEFT_SHOULDER)
 	_pad_button(p + "dash", device, JOY_BUTTON_RIGHT_SHOULDER)
 	_pad_axis(p + "fire", device, JOY_AXIS_TRIGGER_RIGHT, 1.0)
-	_pad_axis(p + "ability", device, JOY_AXIS_TRIGGER_LEFT, 1.0)
-	_pad_button(p + "hook", device, JOY_BUTTON_X)
+	_pad_button(p + "ability", device, JOY_BUTTON_X)
+	_pad_axis(p + "hook", device, JOY_AXIS_TRIGGER_LEFT, 1.0)
 	_pad_button(p + "weapon", device, JOY_BUTTON_Y)
 	_pad_button(p + "interact", device, JOY_BUTTON_B)
 	_pad_button(p + "confirm", device, JOY_BUTTON_A)

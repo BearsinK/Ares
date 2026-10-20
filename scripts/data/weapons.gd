@@ -7,12 +7,26 @@ extends RefCounted
 
 const ALL_IDS: Array[String] = ["dust", "rapid", "shotgun", "rocket", "beam", "sniper", "can", "turret"]
 
+## Klassenwaffen, die nur ihre Klasse im Shop angeboten bekommt.
+const EXCLUSIVE := {"can": "vending", "turret": "hexapod"}
+
+
+static func usable_by(weapon_id: String, class_id: String) -> bool:
+	return not EXCLUSIVE.has(weapon_id) or EXCLUSIVE[weapon_id] == class_id
+
+
 const DATA := {
 	"dust": {
 		"name": "Dustgun", "kind": "projectile", "color": Color(0.8, 0.92, 1.0),
 		"fire_rate": 6.0, "damage": 8.0, "pellets": 1, "spread": 0.04,
 		"speed": 950.0, "lifetime": 0.9, "pierce": 0, "size": 4.0,
 		"recoil": 40.0, "shake": 1.0, "sound": "shoot", "barrel": 14.0,
+	},
+	"dronegun": {
+		"name": "Drone Pulse", "kind": "projectile", "color": Color(1.0, 0.65, 0.3),
+		"fire_rate": 3.6, "damage": 5.0, "pellets": 1, "spread": 0.07,
+		"speed": 900.0, "lifetime": 0.8, "pierce": 0, "size": 3.5,
+		"recoil": 0.0, "shake": 0.3, "sound": "drone_shot", "barrel": 14.0,
 	},
 	"rapid": {
 		"name": "Rapid", "kind": "projectile", "color": Color(1.0, 0.9, 0.4),

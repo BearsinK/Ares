@@ -5,6 +5,14 @@ extends Node
 const MIX_RATE := 22050
 const POOL_SIZE := 16
 
+## Lautstaerke einzelner Sounds (1.0 = unveraendert). Schuesse sind bewusst leiser,
+## weil sie staendig vorkommen.
+const GAIN := {
+	"shoot": 0.4, "shoot_heavy": 0.55, "shotgun": 0.55, "rocket": 0.6, "beam": 0.35, "sniper": 0.6,
+	"turret": 0.45, "turret_over": 0.45, "can_throw": 0.55, "enemy_shoot": 0.45, "drone": 0.3, "drone_shot": 0.3,
+	"hit": 0.55, "kill": 0.7, "shake": 0.6, "pop": 0.6,
+}
+
 var _streams: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
 var _next := 0
@@ -32,6 +40,7 @@ func _ready() -> void:
 	_streams["hurt"] = _synth(220.0, 70.0, 0.22, "saw", 0.45, 0.5)
 	_streams["revive"] = _synth(300.0, 900.0, 0.3, "sine", 0.4, 0.0)
 	_streams["pickup"] = _synth(700.0, 1200.0, 0.06, "sine", 0.18, 0.0)
+	_streams["scrap"] = _synth(1500.0, 2100.0, 0.05, "sine", 0.12, 0.1)
 	_streams["coin"] = _synth(1100.0, 1700.0, 0.08, "square", 0.15, 0.0)
 	_streams["levelup"] = _synth(400.0, 1000.0, 0.4, "square", 0.3, 0.0)
 	_streams["telegraph"] = _synth(500.0, 500.0, 0.05, "sine", 0.15, 0.0)
@@ -54,6 +63,7 @@ func _ready() -> void:
 	_streams["ability"] = _synth(200.0, 700.0, 0.3, "saw", 0.35, 0.3)
 	_streams["ready"] = _synth(900.0, 1300.0, 0.08, "sine", 0.2, 0.0)
 	_streams["suck"] = _synth(150.0, 420.0, 0.25, "sine", 0.3, 0.4)
+	_streams["drone_shot"] = _synth(1000.0, 600.0, 0.05, "sine", 0.25, 0.1)
 	_streams["drone"] = _synth(1300.0, 700.0, 0.07, "square", 0.14, 0.2)
 	_streams["kill"] = _synth(300.0, 40.0, 0.35, "saw", 0.4, 0.6)
 

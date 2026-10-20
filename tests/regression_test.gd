@@ -27,6 +27,7 @@ func _run() -> void:
 	Engine.set_meta("classes", ["roomba", "hexapod"])
 	main = load("res://scenes/main.tscn").instantiate()
 	main.director_enabled = false
+	main.intro_enabled = false
 	add_child(main)
 	await _frames(20)
 	var p1: Player = main.players[0]
@@ -82,6 +83,44 @@ func _run() -> void:
 				inside += 1
 	_check(inside == 0, "Kein Spawn im Schacht (%d)" % inside)
 
+	# Schrott: zerstoerte Gegner lassen ihn fallen, nur der Roomba saugt ihn auf.
+	for scrap in get_tree().get_nodes_in_group("scrap"):
+		scrap.queue_free()
+	await _frames(2)
+	p1.global_position = Vector2(600.0, 1215.0)
+	p2.global_position = Vector2(2000.0, 1215.0)
+	for i in 6:
+		var brute: Enemy = main.director.spawn("brute", Vector2(1200.0 + i * 5.0, 1200.0))
+		brute._cooldown = 99.0
+		brute.on_screen = true
+		brute.take_damage(1.0e9, p1, Vector2.RIGHT, "", true)
+	await _frames(60)
+	var scrap_count := get_tree().get_nodes_in_group("scrap").size()
+	_check(scrap_count > 3 and scrap_count <= main.MAX_SCRAP, "Schrott bleibt liegen, aber begrenzt (%d)" % scrap_count)
+	var xp_before: int = main.xp
+	var hp_before := p1.hp
+	p1.hp = p1.max_health() - 5.0
+	var near := Scrap.new()
+	near.players = main.players
+	near.position = p1.global_position + Vector2(60.0, 0.0)
+	near.collected.connect(main._on_scrap_collected)
+	main.pickups.add_child(near)
+	var far := Scrap.new()
+	far.players = main.players
+	far.position = p2.global_position + Vector2(40.0, 0.0)
+	main.pickups.add_child(far)
+	await _frames(70)
+	_check(not is_instance_valid(near) or near.is_queued_for_deletion(), "Der Roomba saugt Schrott in der Naehe auf")
+	_check(is_instance_valid(far) and not far.is_queued_for_deletion(), "Der Hexapod saugt keinen Schrott auf")
+	_check(main.xp > xp_before or main.level > 1, "Schrott gibt XP")
+	p1.hp = p1.max_health()
+	for scrap in get_tree().get_nodes_in_group("scrap"):
+		scrap.queue_free()
+	if main.levelup_menu.is_open:
+		main.levelup_menu._finish(main.levelup_menu.perk_ids[0])
+	get_tree().paused = false
+	await _frames(2)
+
 	# Dash hinterlaesst Nachbilder der Figur, die wieder verschwinden.
 	var ghosts_before := get_tree().get_nodes_in_group("dash_ghosts").size()
 	p1.dash_charges = 2
@@ -108,6 +147,42 @@ func _run() -> void:
 		if item.type == "gib":
 			gibs_after += 1
 	_check(gibs_after > gibs_before + 3, "Tod erzeugt Truemmerteile (%d)" % (gibs_after - gibs_before))
+
+	# Der Schacht ist durchgaengig: unten durchlaufen, im Aufwind nach oben getragen.
+	p1.global_position = Vector2(2500.0, 1215.0)
+	p1.velocity = Vector2.ZERO
+	Input.action_press("p1_right")
+	await _frames(150)
+	Input.action_release("p1_right")
+	_check(p1.global_position.x > 2950.0, "Man kommt durch den Schacht auf die andere Seite (x=%.0f)" % p1.global_position.x)
+	p1.global_position = Vector2(2740.0, 1200.0)
+	p1.velocity = Vector2.ZERO
+	await _frames(100)
+	_check(p1.global_position.y < 600.0, "Der Aufwind traegt nach oben (y=%.0f)" % p1.global_position.y)
+
+	# Klassenwaffen werden nur ihrer Klasse angeboten.
+	var seen_can_for_roomba := false
+	var seen_can_for_vending := false
+	for i in 300:
+		for offer in ShopItems.make_offers(p1, 3):
+			if offer.type == "weapon" and (offer.id == "can" or offer.id == "turret"):
+				seen_can_for_roomba = true
+	_check(not seen_can_for_roomba, "Roomba bekommt weder Soda Bomb noch Turret im Shop")
+	_check(Weapons.usable_by("can", "vending") and not Weapons.usable_by("can", "roomba") and Weapons.usable_by("turret", "hexapod"), "Klassenwaffen sind exklusiv")
+
+	# Team-Perk: Zaehler, Banner und Einigung per Zufall.
+	main._on_perk_chosen("overclock")
+	_check(main.perks_taken.get("overclock", 0) == 1 and main.perk_banner_time > 2.0, "Perk-Wahl zaehlt und zeigt ein Banner")
+	var menu: LevelUpMenu = main.levelup_menu
+	menu.open(main.players, ["overclock", "magnet", "piggy"], 2)
+	menu._age = 1.0
+	menu._locked = [0, 2]
+	var finished := [""]
+	menu.chosen.connect(func(id: String) -> void: finished[0] = id)
+	menu._split_time = LevelUpMenu.SPLIT_TIME - 0.01
+	await get_tree().create_timer(0.2, true, false, true).timeout
+	_check(finished[0] == "overclock" or finished[0] == "piggy", "Uneinigkeit wird nach kurzer Zeit zufaellig entschieden (%s)" % finished[0])
+	get_tree().paused = false
 
 	# Dash waehrend des Hakens verbraucht keine Ladung.
 	p1.hook_active = true

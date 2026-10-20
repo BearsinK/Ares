@@ -5,7 +5,7 @@ extends Node2D
 ## kreisen weiter außen und beschießen selbstständig den nächsten Gegner.
 
 const ORBIT_RADIUS := 80.0
-const SHOT_INTERVAL := 0.55
+const SHOT_INTERVAL := 1.0
 const RANGE := 700.0
 
 var owner_player: Player

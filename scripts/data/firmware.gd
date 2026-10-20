@@ -8,7 +8,7 @@ const DATA := {
 	"wall_jump": {"name": "Wall Jump", "text": "an Wänden abspringen und rutschen", "max": 1},
 	"glide": {"name": "Glider", "text": "Sprung halten bremst den Fall", "max": 1},
 	"slam": {"name": "Ground Slam", "text": "in der Luft runter + Sprung: Aufprall mit Schaden", "max": 1},
-	"hook": {"name": "Grapple Hook", "text": "Haken (Quadrat) zieht dich zum Zielpunkt", "max": 1},
+	"hook": {"name": "Grapple Hook", "text": "Haken (L2) zieht dich zum Zielpunkt", "max": 1},
 	"dash_charge": {"name": "Dash Cell", "text": "eine Dash-Aufladung mehr", "max": 2},
 }
 

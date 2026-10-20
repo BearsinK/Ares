@@ -8,7 +8,7 @@ const CLASS_INFO := {
 	"roomba": {
 		"tags": ["Vacuum", "Support", "Agile"],
 		"blurb": "Flache Scheibe mit Roboterarm. Schwacher Dauerbeschuss, großer Sammelradius, saugt Beute und Gegner heran.",
-		"ability": "Vortex: zieht Gegner und Beute heran",
+		"ability": "Vortex: zieht Gegner vor dich, betäubt sie und sprengt sie weg",
 		"damage": 3, "difficulty": 2,
 	},
 	"hexapod": {
@@ -37,9 +37,9 @@ const CONTROLS_LINES: Array[String] = [
 	"L1 / Leertaste / Pfeil hoch: Sprung (nach unten + Sprung: durch Plattform fallen)",
 	"R1 / Shift / Schrägstrich: Dash mit Unverwundbarkeit",
 	"R2 / Linke Maustaste, F / Punkt: Schießen",
-	"L2 / E / Komma: Klassenfähigkeit",
+	"Quadrat / E / Komma: Klassenfähigkeit",
 	"Dreieck / Q / M: Waffe wechseln",
-	"Quadrat / R / N: Greifhaken (Firmware)",
+	"L2 / R / N: Greifhaken (Firmware)",
 	"Kreis / G / L: Partner wiederbeleben (halten), im Menü zurück",
 	"Kreuz / Enter: Bestätigen im Menü",
 	"Options / Escape: Pause",

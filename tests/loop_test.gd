@@ -35,6 +35,7 @@ func _run() -> void:
 	Engine.set_meta("classes", ["roomba", "hexapod"])
 	main = load("res://scenes/main.tscn").instantiate()
 	main.director_enabled = false
+	main.intro_enabled = false
 	add_child(main)
 	await _frames(20)
 	var p1: Player = main.players[0]
@@ -100,7 +101,7 @@ func _run() -> void:
 	var shake_before: float = main.camera._shake
 	p1.take_hit(20.0, p1.global_position + Vector2(40.0, 0.0))
 	_check(main.camera._shake > shake_before, "Treffer loest Kamerawackeln aus")
-	_check(main.hud._flash_time > 0.0, "Treffer loest roten Bildschirmrand aus")
+	_check(p1.hurt_amount() > 0.9, "Treffer laesst den getroffenen Roboter aufleuchten")
 	await get_tree().create_timer(0.3, true, false, true).timeout
 	_check(is_equal_approx(Engine.time_scale, 1.0), "Hitstop endet wieder")
 	await _perks(p1, p2)
@@ -154,6 +155,7 @@ func _new_enemies(p1: Player, p2: Player) -> void:
 	p2.global_position = Vector2(2900.0, 1225.0)
 	p1.hp = p1.max_health()
 	p1.iframes = 0.0
+	p1.ability.time = 0.0
 	await _frames(10)
 
 	# Rammbock: kuendigt an, rennt los und trifft.

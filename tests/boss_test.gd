@@ -28,6 +28,7 @@ func _run() -> void:
 	main = load("res://scenes/main.tscn").instantiate()
 	main.wave_duration = 1.0
 	main.max_waves = 1
+	main.intro_enabled = false
 	add_child(main)
 	await _frames(20)
 	var p1: Player = main.players[0]

@@ -12,6 +12,8 @@ func _ready() -> void:
 	main = load("res://scenes/main.tscn").instantiate()
 	main.director_enabled = false
 	main.use_dummies = true
+	main.shaft_lift = false
+	main.intro_enabled = false
 	add_child(main)
 	_run.call_deferred()
 

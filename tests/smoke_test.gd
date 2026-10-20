@@ -12,6 +12,7 @@ func _ready() -> void:
 	main.test_loadout = true
 	main.use_dummies = true
 	main.director_enabled = false
+	main.intro_enabled = false
 	add_child(main)
 	_run.call_deferred()
 

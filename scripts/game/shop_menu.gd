@@ -79,8 +79,26 @@ func _handle_player(i: int) -> void:
 		move -= 1
 	if Input.is_action_just_pressed(prefix + "right"):
 		move += 1
-	if move != 0:
-		_cursor[i] = clampi(_cursor[i] + move, 0, READY_SLOT)
+	var vertical := 0
+	if Input.is_action_just_pressed(prefix + "up"):
+		vertical -= 1
+	if Input.is_action_just_pressed(prefix + "down"):
+		vertical += 1
+	var before: int = _cursor[i]
+	var slot: int = _cursor[i]
+	if vertical != 0:
+		# Zwei Zeilen: Angebote oben, Reroll und Fertig unten.
+		if vertical > 0 and slot < REROLL_SLOT:
+			slot = REROLL_SLOT if slot <= 1 else READY_SLOT
+		elif vertical < 0 and slot >= REROLL_SLOT:
+			slot = 1 if slot == REROLL_SLOT else 2
+	elif move != 0:
+		if slot >= REROLL_SLOT:
+			slot = clampi(slot + move, REROLL_SLOT, READY_SLOT)
+		else:
+			slot = clampi(slot + move, 0, REROLL_SLOT - 1)
+	_cursor[i] = slot
+	if slot != before:
 		Sfx.play("switch")
 	if Input.is_action_just_pressed(prefix + "confirm"):
 		_activate(i)
@@ -141,7 +159,7 @@ func _draw_menu() -> void:
 	var font := ThemeDB.fallback_font
 	_canvas.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.78))
 	UiKit.text(_canvas, Vector2(0, 110), ("LETZTER SHOP  vor dem Endboss" if before_boss else "SHOP  nach Welle %d" % wave), 48, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	UiKit.text(_canvas, Vector2(0, 144), "Links/Rechts: wählen, Kreuz: kaufen. Wenn beide FERTIG sind, geht es weiter.", 17, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_canvas, Vector2(0, 144), "Pfeile oder Stick: wählen (runter: Reroll und Fertig), Kreuz: kaufen. Wenn beide FERTIG sind, geht es weiter.", 17, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	for i in 2:
 		_draw_player_column(i, Vector2(40.0 + i * (view.x * 0.5), 190.0), view.x * 0.5 - 80.0, font)
 

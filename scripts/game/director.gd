@@ -21,6 +21,8 @@ var arena_size := Vector2(3200.0, 1350.0)
 var floor_y := 1250.0
 var players: Array[Player] = []
 var enemies: Array[Enemy] = []
+## Raster fuer die Abstandssuche der Gegner, wird jeden Frame neu gefuellt.
+var grid := EnemyGrid.new()
 var parent_node: Node = null
 var time := 0.0
 var wave := 1
@@ -80,6 +82,7 @@ func _physics_process(delta: float) -> void:
 	for i in range(enemies.size() - 1, -1, -1):
 		if not is_instance_valid(enemies[i]) or enemies[i].is_queued_for_deletion():
 			enemies.remove_at(i)
+	grid.rebuild(enemies)
 	_update_visibility()
 	if not enabled:
 		return
@@ -138,6 +141,7 @@ func spawn(kind: String, at: Variant = null, elite := false, elite_kind := "") -
 	var enemy := Enemy.new()
 	enemy.setup(kind, hp_scale(), damage_scale(), players, elite, elite_kind)
 	enemy.siblings = enemies
+	enemy.grid = grid
 	enemy.speed_mult = float(modifier.get("speed", 1.0))
 	enemy.position = at if at != null else _spawn_position(kind)
 	enemy.fire_projectile.connect(projectile_requested.emit)

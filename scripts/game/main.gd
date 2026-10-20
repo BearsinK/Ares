@@ -5,6 +5,9 @@ extends Node2D
 
 const ARENA_SIZE := Vector2(3200.0, 1350.0)
 const FLOOR_Y := 1250.0
+## Schacht rechts: Bereich des Aufwinds und seine Steiggeschwindigkeit.
+const SHAFT_LIFT := Rect2(2645.0, 610.0, 190.0, 640.0)
+const SHAFT_LIFT_SPEED := 560.0
 const WORLD_COLOR := Color(0.2, 0.22, 0.3)
 const BG_COLOR := Color(0.08, 0.09, 0.13)
 
@@ -28,7 +31,9 @@ const TEST_MODULES := [
 
 const DUMMY_RESPAWN_TIME := 4.0
 const RESULT_DELAY := 1.4
-const CLEAR_DELAY := 3.0
+const CLEAR_DELAY := 3.6
+## Einstieg in eine Welle: Titel und Countdown, die Gegner kommen erst danach.
+const WAVE_INTRO := 3.2
 const HEALTH_DROP_CHANCE := 0.07
 const HEALTH_DROP_HEAL := 0.25
 
@@ -37,6 +42,8 @@ enum Phase { WAVE, CLEARING, SHOP, BOSS, VICTORY }
 ## Tests koennen diese Werte vor dem Einhaengen der Szene setzen.
 var use_dummies := false
 var director_enabled := true
+## Wellenstart-Animation mit Countdown (Tests schalten sie ab).
+var intro_enabled := true
 ## Wenn gesetzt, starten die Spieler mit allen Testwaffen und Modulen.
 ## Sonst nur mit der Klassenwaffe, der Rest kommt aus dem Shop. F3 gibt das Testset.
 var test_loadout := false
@@ -45,6 +52,10 @@ var wave_duration := 120.0
 var max_waves := 10
 ## Nach der letzten Welle folgt der Endboss. Ohne Boss endet der Lauf mit dem Sieg.
 var boss_enabled := true
+## Aufwind im Schacht (Tests schalten ihn ab, wenn sie Wandmechanik dort pruefen).
+var shaft_lift := true
+## Sandbox-Lauf: keine Chips, Einstellung aus dem Titelbildschirm.
+var sandbox := false
 
 var players: Array[Player] = []
 var camera: CoopCamera
@@ -82,6 +93,17 @@ var run_recorded := false
 ## Modifikator der aktuellen Welle (Id) und Einblendung beim Wellenstart.
 var wave_modifier := "normal"
 var wave_banner_time := 0.0
+var wave_intro := 0.0
+## Gewaehlte Team-Perks (id -> Anzahl) und das Banner nach der Wahl.
+var perks_taken := {}
+var perk_banner_id := ""
+var perk_banner_time := 0.0
+var wave_go := 0.0
+## Beim Wellenende: besiegte Gegner der Welle und Bonus-Gold, fuer die Anzeige.
+var wave_kills := 0
+var wave_bonus := 0
+var _wave_kills_start := 0
+var _intro_beat := 0
 
 
 func _ready() -> void:
@@ -117,13 +139,18 @@ func _ready() -> void:
 	pause_menu.main = self
 	add_child(pause_menu)
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
+	_apply_sandbox()
+	_begin_wave_intro()
 
 
 func _physics_process(delta: float) -> void:
 	wave_banner_time = maxf(0.0, wave_banner_time - delta)
+	wave_go = maxf(0.0, wave_go - delta)
+	perk_banner_time = maxf(0.0, perk_banner_time - delta)
 	Music.set_layer_level(1.0 if phase == Phase.BOSS else clampf(0.2 + 0.08 * float(wave), 0.2, 0.9))
 	_check_level_up()
 	_update_wave(delta)
+	_apply_shaft_lift(delta)
 	for entry in _respawns:
 		entry.t -= delta
 		if entry.t <= 0.0:
@@ -178,10 +205,41 @@ func _grant_test_loadout() -> void:
 	Sfx.play("levelup")
 
 
+func _begin_wave_intro() -> void:
+	_wave_kills_start = kills
+	if not director_enabled or not intro_enabled:
+		return
+	wave_intro = WAVE_INTRO
+	_intro_beat = 4
+	director.enabled = false
+
+
+func _update_intro(delta: float) -> void:
+	wave_intro = maxf(0.0, wave_intro - delta)
+	# Countdown 3, 2, 1 in den letzten drei Sekunden, dann LOS.
+	var beat := int(ceil(wave_intro)) if wave_intro > 0.0 else 0
+	if beat != _intro_beat and beat <= 3:
+		_intro_beat = beat
+		if beat > 0:
+			Sfx.play("switch")
+		else:
+			Sfx.play("ability")
+			camera.add_shake(6.0)
+			if Fx.instance:
+				for player in players:
+					Fx.instance.ring(player.global_position, 120.0, Color(1.0, 0.9, 0.5))
+	if wave_intro <= 0.0:
+		director.enabled = director_enabled
+		wave_go = 0.7
+
+
 func _update_wave(delta: float) -> void:
 	match phase:
 		Phase.WAVE:
 			if not director_enabled or game_over:
+				return
+			if wave_intro > 0.0:
+				_update_intro(delta)
 				return
 			wave_time_left -= delta
 			director.wave_progress = 1.0 - wave_time_left / wave_duration
@@ -198,6 +256,19 @@ func _end_wave() -> void:
 	_clear_time = CLEAR_DELAY
 	director.enabled = false
 	Sfx.play("levelup")
+	wave_kills = kills - _wave_kills_start
+	# Bonus fuer die geschaffte Welle, fuer jeden Spieler.
+	wave_bonus = 4 + 2 * wave
+	for player in players:
+		player.gold += wave_bonus
+	camera.add_shake(10.0)
+	hitstop(0.12)
+	if hud != null:
+		hud.flash(Color(1.0, 1.0, 0.85, 0.35))
+	if Fx.instance:
+		for player in players:
+			Fx.instance.ring(player.global_position, 260.0, Color(1.0, 0.9, 0.4))
+			Fx.instance.spark(player.global_position, Color(1.0, 0.9, 0.4), 18, 420.0)
 	# Restliche Gegner zerfallen und lassen ihre Beute fallen, die zu den Spielern fliegt.
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if enemy is Enemy:
@@ -205,7 +276,8 @@ func _end_wave() -> void:
 	for bullet in enemy_projectiles.get_children():
 		bullet.queue_free()
 	for pickup in pickups.get_children():
-		pickup.force_pull = true
+		if pickup is Pickup:
+			pickup.force_pull = true
 	# Alle stehen wieder auf und erholen sich etwas.
 	for player in players:
 		if player.downed:
@@ -234,6 +306,7 @@ func _on_shop_closed() -> void:
 	_apply_modifier()
 	phase = Phase.WAVE
 	director.enabled = director_enabled
+	_begin_wave_intro()
 
 
 ## Endkampf: Die Arena wird zur Ofenhalle mit Laufband, der Boss tritt auf.
@@ -274,6 +347,8 @@ func _record_run(victory: bool) -> void:
 	if run_recorded:
 		return
 	run_recorded = true
+	if sandbox:
+		return
 	var cleared := wave if victory else wave - 1
 	run_chips = SaveData.record_run(maxi(cleared, 0), kills, level, int(director.time), victory and boss != null and boss.dying)
 
@@ -323,6 +398,41 @@ func _switch_class(index: int) -> void:
 	get_tree().reload_current_scene()
 
 
+## Wendet die Sandbox-Einstellung (Engine-Meta "sandbox") auf Spieler und Startwelle an.
+func _apply_sandbox() -> void:
+	var config: Dictionary = Engine.get_meta("sandbox", {})
+	if config.is_empty():
+		return
+	sandbox = true
+	for i in players.size():
+		var player := players[i]
+		var data: Dictionary = config.players[i]
+		player.weapons.clear()
+		player.modules.clear()
+		for j in data.weapons.size():
+			player.weapons.append(data.weapons[j])
+			player.modules.append(data.modules[j])
+		player.weapon_index = 0
+		for id in data.firmware:
+			for k in int(data.firmware[id]):
+				player.add_firmware(id)
+		for id in data.perks:
+			for k in int(data.perks[id]):
+				player.add_mods(Perks.mods_for(id, player.class_id))
+				perks_taken[id] = int(perks_taken.get(id, 0)) + 1
+		player.gold = int(config.gold)
+		player.invulnerable = bool(config.god)
+		player.hp = player.max_health()
+		player.dash_charges = player.dash_max()
+	if int(config.wave) >= SandboxConfig.BOSS_WAVE:
+		wave = max_waves
+		_start_boss.call_deferred()
+	else:
+		wave = int(config.wave)
+		wave_time_left = wave_duration
+		_apply_modifier()
+
+
 func _spawn_players() -> void:
 	for i in 2:
 		var player := Player.new()
@@ -357,10 +467,12 @@ func hitstop(duration: float) -> void:
 
 func _on_player_hurt(player: Player, amount: float) -> void:
 	camera.add_shake(minf(8.0 + amount * 0.5, 18.0))
-	hud.flash(Color(1.0, 0.15, 0.1, 0.35))
 	if amount >= 15.0:
 		hitstop(0.06)
+	# Der Treffer ist am getroffenen Roboter zu sehen (roter Ring, Zahl, Aufblitzen), nicht auf dem ganzen Bild.
 	Fx.instance.spark(player.global_position, Color(1.0, 0.4, 0.3), 10, 400.0)
+	Fx.instance.ring(player.global_position, 70.0, Color(1.0, 0.25, 0.2))
+	Fx.instance.number(player.global_position + Vector2(0.0, -float(player.stats.size.y) * 0.5 - 24.0), amount, Color(1.0, 0.3, 0.25), 32)
 
 
 func _on_slam_landed(player: Player, pos: Vector2) -> void:
@@ -418,6 +530,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 			player.hp = minf(player.max_health(), player.hp + float(player.mods.kill_heal))
 	for player in players:
 		player.ability.reduce_cooldown(float(player.stats.get("kill_cooldown", 0.0)))
+	_spawn_scrap(enemy)
 	var blast := 0.0
 	for player in players:
 		blast = maxf(blast, float(player.mods.death_blast))
@@ -442,6 +555,44 @@ func _death_blast(pos: Vector2, damage: float) -> void:
 		if other.global_position.distance_to(pos) <= 85.0:
 			other.take_damage(damage, null, (other.global_position - pos).normalized(), "", true)
 	_blast_depth -= 1
+
+
+const MAX_SCRAP := 22
+## Schrott pro Gegnertyp (Brute und Elite lassen mehr fallen).
+const SCRAP_DROPS := {"walker": 0.5, "shooter": 0.6, "flyer": 0.5, "charger": 1.2, "mortar": 1.2, "brute": 3.0}
+
+
+## Zerstoerte Gegner lassen Schrott fallen, den nur der Roomba aufsaugt. Ohne Roomba gibt es keinen.
+func _spawn_scrap(enemy: Enemy) -> void:
+	var has_vacuum := false
+	for player in players:
+		if bool(player.stats.get("vacuum", false)):
+			has_vacuum = true
+	if not has_vacuum or not enemy.on_screen:
+		return
+	var amount: float = float(SCRAP_DROPS.get(enemy.kind, 0.5)) * (3.0 if enemy.elite else 1.0)
+	var count := int(amount) + (1 if randf() < fmod(amount, 1.0) else 0)
+	for i in count:
+		var existing := get_tree().get_nodes_in_group("scrap")
+		if existing.size() >= MAX_SCRAP:
+			existing[0].queue_free()
+		var scrap := Scrap.new()
+		scrap.players = players
+		scrap.floor_y = FLOOR_Y
+		scrap.tint = Color(enemy.data.color).darkened(0.2)
+		scrap.position = enemy.global_position + Vector2(randf_range(-10.0, 10.0), 0.0)
+		scrap.collected.connect(_on_scrap_collected)
+		pickups.add_child(scrap)
+
+
+func _on_scrap_collected(_scrap: Scrap, player: Player) -> void:
+	xp += maxi(1, int(round(Meta.xp_multiplier())))
+	player.hp = minf(player.max_health(), player.hp + 1.0)
+	player.ability.reduce_cooldown(0.4)
+	player.gold_flash()
+	Sfx.play("scrap", 0.05)
+	if Fx.instance:
+		Fx.instance.spark(player.global_position + Vector2(float(player.facing) * 24.0, 8.0), Color(0.6, 1.0, 0.9), 3, 120.0)
 
 
 func _spawn_pickup(kind: String, value: int, pos: Vector2) -> void:
@@ -480,6 +631,20 @@ func _on_pickup_collected(pickup: Pickup, player: Player) -> void:
 		Sfx.play("coin")
 
 
+## Aufwind im Schacht rechts: Spieler im Schacht werden nach oben getragen (zur Plattform oben).
+func _apply_shaft_lift(_delta: float) -> void:
+	if phase == Phase.BOSS or not shaft_lift:
+		return
+	for player in players:
+		if player.downed:
+			continue
+		var p := player.global_position
+		if p.x > SHAFT_LIFT.position.x and p.x < SHAFT_LIFT.end.x and p.y > SHAFT_LIFT.position.y and p.y < SHAFT_LIFT.end.y:
+			player.velocity.y = minf(player.velocity.y, -SHAFT_LIFT_SPEED)
+			if Fx.instance and randf() < 0.15:
+				Fx.instance.spark(p + Vector2(randf_range(-30.0, 30.0), 40.0), Color(0.3, 0.9, 0.6, 0.7), 1, 90.0)
+
+
 func _check_level_up() -> void:
 	if game_over or levelup_menu.is_open or xp < xp_needed:
 		return
@@ -495,6 +660,18 @@ func _check_level_up() -> void:
 func _on_perk_chosen(perk_id: String) -> void:
 	for player in players:
 		player.add_mods(Perks.mods_for(perk_id, player.class_id))
+	perks_taken[perk_id] = int(perks_taken.get(perk_id, 0)) + 1
+	perk_banner_id = perk_id
+	perk_banner_time = 3.0
+	# Rueckmeldung am Roboter: Ring, Funken und was der Perk fuer genau diese Klasse bewirkt.
+	var color := PerkArt.color_of(perk_id)
+	for player in players:
+		if Fx.instance:
+			Fx.instance.ring(player.global_position, 150.0, color)
+			Fx.instance.spark(player.global_position, color, 16, 380.0)
+			Fx.instance.number_text(player.global_position + Vector2(0.0, -float(player.stats.size.y) * 0.5 - 40.0), Perks.describe(perk_id, player.class_id), color, 24)
+	camera.add_shake(6.0)
+	Sfx.play("revive")
 
 
 func _on_enemy_projectile_requested(_enemy: Enemy, origin: Vector2, direction: Vector2, speed: float, damage: float) -> void:
@@ -574,7 +751,10 @@ func _build_wave_layout() -> void:
 		Rect2(470.0, 1010.0, 260.0, 24.0),
 		Rect2(150.0, 890.0, 260.0, 24.0),
 		Rect2(520.0, 770.0, 240.0, 24.0),
-		Rect2(1000.0, 1100.0, 1100.0, 24.0),
+		Rect2(1000.0, 1020.0, 1100.0, 24.0),
+		# Trittplatten, damit die hohe Mittelplattform vom Boden aus erreichbar bleibt.
+		Rect2(840.0, 1140.0, 130.0, 24.0),
+		Rect2(2130.0, 1140.0, 130.0, 24.0),
 		Rect2(1200.0, 930.0, 320.0, 24.0),
 		Rect2(1680.0, 930.0, 320.0, 24.0),
 		Rect2(1440.0, 760.0, 320.0, 24.0),
@@ -587,8 +767,9 @@ func _build_wave_layout() -> void:
 		_add_block(rect, "platform")
 
 	# Hoher Schacht mit Belohnungs-Plattform: gedacht fuer Wandsprung, Klettern und Haken.
-	_add_block(Rect2(2600.0, 600.0, 40.0, 650.0), "wall")
-	_add_block(Rect2(2840.0, 600.0, 40.0, 650.0), "wall")
+	# Unten bleibt ein Durchgang (130 px), damit man durch den Schacht auf die andere Seite kommt.
+	_add_block(Rect2(2600.0, 600.0, 40.0, 520.0), "wall")
+	_add_block(Rect2(2840.0, 600.0, 40.0, 520.0), "wall")
 	_add_block(Rect2(2570.0, 600.0, 340.0, 24.0), "platform")
 
 
@@ -733,7 +914,7 @@ func spawn_drone_shot(player: Player, origin: Vector2, direction: Vector2) -> vo
 	bullet.position = origin
 	bullet.direction = direction
 	bullet.speed = 750.0
-	bullet.damage = 6.0 * player.damage_mult()
+	bullet.damage = 4.0 * player.damage_mult()
 	bullet.lifetime = 1.0
 	bullet.size = 4.0
 	bullet.color = Color(1.0, 0.65, 0.25)
@@ -742,8 +923,8 @@ func spawn_drone_shot(player: Player, origin: Vector2, direction: Vector2) -> vo
 		bullet.element = element
 		bullet.color = Elements.COLORS[element]
 	bullet.shooter = player
-	bullet.explosion_radius = 55.0
-	bullet.explosion_damage = 9.0 * player.damage_mult()
+	bullet.explosion_radius = 50.0
+	bullet.explosion_damage = 6.0 * player.damage_mult()
 	bullet.hit.connect(_on_projectile_hit)
 	projectiles.add_child(bullet)
 

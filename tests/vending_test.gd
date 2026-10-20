@@ -11,6 +11,7 @@ func _ready() -> void:
 	Engine.set_meta("classes", ["vending", "roomba"])
 	main = load("res://scenes/main.tscn").instantiate()
 	main.director_enabled = false
+	main.intro_enabled = false
 	add_child(main)
 	_run.call_deferred()
 

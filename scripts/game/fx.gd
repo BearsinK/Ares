@@ -29,6 +29,13 @@ func number(pos: Vector2, amount: float, color := Color(1.0, 1.0, 0.5), size := 
 		"t": 0.6, "max": 0.6, "color": color, "size": size})
 
 
+## Wie number, aber mit beliebigem Text und laengerer Lebensdauer (z.B. Perk-Wirkung).
+func number_text(pos: Vector2, text: String, color: Color, size := 22) -> void:
+	if _items.size() >= MAX_ITEMS:
+		return
+	_items.append({"type": "number", "pos": pos, "text": text, "t": 1.6, "max": 1.6, "color": color, "size": size})
+
+
 func spark(pos: Vector2, color: Color, count := 6, speed := 260.0) -> void:
 	for i in count:
 		if _items.size() >= MAX_ITEMS:
@@ -103,7 +110,7 @@ func _draw() -> void:
 				draw_line(item.pos, item.pos - item.vel * 0.04, color, 2.5)
 			"number":
 				color.a = fade
-				draw_string(ThemeDB.fallback_font, item.pos, item.text, HORIZONTAL_ALIGNMENT_CENTER, -1, item.size, color)
+				draw_string(ThemeDB.fallback_font, item.pos + Vector2(-300.0, 0.0), item.text, HORIZONTAL_ALIGNMENT_CENTER, 600.0, item.size, color)
 			"gib":
 				var alpha := clampf(fade * 3.0, 0.0, 1.0)
 				var size: float = item.size

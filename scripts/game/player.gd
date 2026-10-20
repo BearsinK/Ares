@@ -61,6 +61,8 @@ var partner: Player = null
 # Bewegungs-Firmware: id -> Anzahl Stapel (siehe Firmware).
 var firmware: Dictionary = {}
 var hook_active := false
+## Sandbox: keine Treffer.
+var invulnerable := false
 var hook_anchor := Vector2.ZERO
 ## Schuettel-Aufladung der Dose (0 bis 1), solange Schiessen gehalten wird.
 var shake_charge := 0.0
@@ -198,7 +200,7 @@ func add_mods(new_mods: Dictionary) -> void:
 
 ## Gibt true zurueck, wenn der Treffer ankam (nicht unverwundbar oder am Boden).
 func take_hit(amount: float, from: Vector2) -> bool:
-	if downed or iframes > 0.0:
+	if downed or iframes > 0.0 or invulnerable:
 		return false
 	var final_amount := amount * maxf(0.1, 1.0 - float(mods.dmg_taken))
 	if ability != null and ability.is_active("roll"):
@@ -328,6 +330,11 @@ func _physics_process(delta: float) -> void:
 
 ## Aufgestellt: der Hexapod steht im Geschuetzmodus (Stand oder Overwatch).
 ## Kurzes Aufleuchten (Muenzschlitz des Automaten) beim Einsammeln von Gold.
+## 1 direkt nach einem Treffer, faellt auf 0 ab (fuer Roboter und HUD-Anzeige).
+func hurt_amount() -> float:
+	return clampf(_hurt_timer / 0.45, 0.0, 1.0)
+
+
 func gold_flash() -> void:
 	_coin_flash = 1.0
 
@@ -585,7 +592,8 @@ func _process_climb(move: float, vertical: float) -> bool:
 		return false
 
 	var start := pushing and (not on_floor or vertical < -0.4)
-	if not (start or (_clinging and pushing)):
+	# Einmal festgehalten bleibt er auch ohne Richtungseingabe haengen (nur Wegdruecken, Sprung oder Runter loest ihn).
+	if not (start or (_clinging and (pushing or move == 0.0))):
 		_clinging = false
 		return false
 
@@ -907,6 +915,12 @@ func _draw() -> void:
 	# Blinken waehrend der Unverwundbarkeit nach einem Treffer.
 	var blink := iframes > 0.0 and _dash_time_left <= 0.0 and not downed and fmod(iframes, 0.12) < 0.06
 	modulate = Color(1, 1, 1, 0.45) if blink else (Color(0.6, 0.6, 0.66) if downed else Color.WHITE)
+	if _hurt_timer > 0.0 and not downed:
+		# Treffer: Roboter leuchtet kurz rot auf.
+		modulate = modulate.lerp(Color(1.0, 0.3, 0.25, modulate.a), 0.75 * hurt_amount())
+		var k := hurt_amount()
+		draw_circle(Vector2.ZERO, maxf(size.x, size.y) * 0.5 + 10.0, Color(1.0, 0.15, 0.1, 0.28 * k))
+		draw_arc(Vector2.ZERO, maxf(size.x, size.y) * 0.5 + 12.0 + 14.0 * (1.0 - k), 0.0, TAU, 28, Color(1.0, 0.3, 0.2, 0.8 * k), 3.0, true)
 
 	var jitter := Vector2.ZERO
 	if shake_charge > 0.0:

@@ -729,7 +729,7 @@ static func draw_enemy(c: CanvasItem, kind: String, s: Dictionary, offset := Vec
 	var flying := kind == "flyer"
 	var grounded := bool(s.get("grounded", true)) and not flying
 	# Neigung mit der Fahrt (Flieger staerker), Zurueckzucken bei Treffern.
-	var tilt := clampf(vx / 900.0, -0.12, 0.12) * (2.0 if flying else 1.0) - facing * hurt * 0.16
+	var tilt := (clampf(vx / 900.0, -0.12, 0.12) if (grounded or flying) else 0.0) * (2.0 if flying else 1.0) - facing * hurt * 0.16
 	var squash: Vector2 = s.get("squash", Vector2.ONE)
 	var foot := float(s.get("foot", 14.0))
 	var pivot := Vector2(0.0, foot * zoom * (1.0 - squash.y)) if not flying else Vector2.ZERO
@@ -738,6 +738,10 @@ static func draw_enemy(c: CanvasItem, kind: String, s: Dictionary, offset := Vec
 	var step := absf(sin(float(s.get("walk", 0.0)) * 0.5)) * 1.4 * speed_factor * zoom
 	var hit_shift := Vector2(-facing * 3.0 * hurt, 0.0) * zoom
 	c.draw_set_transform(offset + pivot + hit_shift + Vector2(0.0, -step), tilt, Vector2(facing * zoom * squash.x, zoom * squash.y))
+	if bool(s.get("lod", false)):
+		_enemy_lod(c, kind, s)
+		c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
 	match kind:
 		"walker":
 			_walker(c, s)
@@ -763,6 +767,21 @@ static func draw_enemy(c: CanvasItem, kind: String, s: Dictionary, offset := Vec
 			c.draw_line(spark_at, spark_at + Vector2(5, -4), Color(1.0, 0.85, 0.4), 1.5, true)
 			c.draw_line(spark_at + Vector2(5, -4), spark_at + Vector2(3, 1), Color(1.0, 0.85, 0.4), 1.5, true)
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Stark vereinfachte Figur fuer grosse Schwaerme (spart Zeichenzeit): Koerper, Kontur, Augen.
+static func _enemy_lod(c: CanvasItem, kind: String, s: Dictionary) -> void:
+	var info: Dictionary = EnemyTypes.get_type(kind)
+	var r := float(info.radius)
+	var color := _tint(info.color, s)
+	if kind == "flyer":
+		Art.ellipse(c, Vector2.ZERO, r * 1.1, r * 0.7, color, 12)
+	else:
+		c.draw_rect(Rect2(-r * 0.8, -r, r * 1.6, r * 1.9), color)
+		c.draw_rect(Rect2(-r * 0.8, -r, r * 1.6, r * 0.5), color.darkened(0.25))
+	c.draw_rect(Rect2(r * 0.1, -r * 0.55, r * 0.5, r * 0.22), Color(1.0, 0.25, 0.2))
+	if float(s.get("windup", -1.0)) >= 0.0:
+		c.draw_circle(Vector2(r * 0.4, -r * 0.4), r * 0.9, Color(1.0, 0.3, 0.2, 0.25))
 
 
 ## Muendungsblitz: Stern an einem Punkt (lokale Koordinaten), fire 0 bis 1.

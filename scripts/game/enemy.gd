@@ -35,6 +35,7 @@ var max_shield := 0.0
 var body_scale := 1.0
 var players: Array[Player] = []
 var siblings: Array[Enemy] = []
+var grid: EnemyGrid = null
 
 var _state := State.CHASE
 var _state_time := 0.0
@@ -56,6 +57,9 @@ var _charge_hit: Array[Player] = []
 var _hurt_time := 0.0
 var _fire_flash := 0.0
 var _squash := 0.0
+var _jump_cooldown := 0.0
+## Betaeubt (z.B. im Roomba-Wirbel): keine Angriffe, keine eigene Bewegung.
+var stunned_time := 0.0
 var _fall_speed := 0.0
 var _was_grounded := false
 
@@ -130,6 +134,10 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 		_die()
 
 
+func stun(duration: float) -> void:
+	stunned_time = maxf(stunned_time, duration)
+
+
 func radius() -> float:
 	return float(data.radius) * body_scale
 
@@ -155,13 +163,14 @@ func _spawn_gibs() -> void:
 	if not on_screen or Fx.instance == null:
 		return
 	var r := radius()
-	var plates := (7 if elite else 4) + (3 if kind == "brute" else 0)
+	var crowded := siblings.size() > 30
+	var plates := (2 if crowded else ((7 if elite else 4) + (3 if kind == "brute" else 0)))
 	for i in plates:
 		Fx.instance.gib(global_position, Color(data.color).darkened(randf_range(0.0, 0.35)), "plate", randf_range(0.5, 0.9) * r, 420.0 + r * 4.0)
 	if kind != "flyer":
 		for i in 2:
 			Fx.instance.gib(global_position + Vector2((i * 2 - 1) * r * 0.5, r * 0.4), Color.WHITE, "wheel", r * 0.8, 300.0)
-	for i in 5:
+	for i in (2 if crowded else 5):
 		Fx.instance.gib(global_position, Color.WHITE, "bolt", 6.0, 500.0)
 
 
@@ -170,6 +179,11 @@ func _physics_process(delta: float) -> void:
 	_hurt_time = maxf(0.0, _hurt_time - delta)
 	_fire_flash = maxf(0.0, _fire_flash - delta * 5.0)
 	_squash = maxf(0.0, _squash - delta * 6.0)
+	_jump_cooldown = maxf(0.0, _jump_cooldown - delta)
+	stunned_time = maxf(0.0, stunned_time - delta)
+	if stunned_time > 0.0 and (_state == State.WINDUP or _state == State.CHARGE):
+		_state = State.COOLDOWN
+		_cooldown = maxf(_cooldown, 0.6)
 	_flash = maxf(0.0, _flash - delta)
 	_slam_flash = maxf(0.0, _slam_flash - delta)
 	_cooldown = maxf(0.0, _cooldown - delta)
@@ -222,13 +236,23 @@ func _frozen_physics(delta: float) -> void:
 	_maybe_redraw()
 
 
-## Zeichnet nur, was im Bild ist, und bei sehr vielen Gegnern nur jeden zweiten Frame.
+## Zeichnet nur, was im Bild ist. Je mehr Gegner da sind, desto seltener wird ihre Figur neu
+## gezeichnet (Position und Bewegung laufen weiter jeden Frame, nur die Innenanimation wird
+## gröber). Bei Angriffen, Treffern und Zustandswechseln wird immer sofort gezeichnet.
 func _maybe_redraw() -> void:
 	if not on_screen:
 		return
-	if siblings.size() > 45 and (Engine.get_physics_frames() + get_instance_id()) % 2 == 0:
-		return
+	var count := siblings.size()
+	var interval := 1 if count <= 12 else (2 if count <= 25 else (3 if count <= 45 else 4))
+	if interval > 1 and not _needs_smooth_redraw():
+		if (Engine.get_physics_frames() + get_instance_id()) % interval != 0:
+			return
 	queue_redraw()
+
+
+func _needs_smooth_redraw() -> bool:
+	return _flash > 0.0 or _hurt_time > 0.0 or _fire_flash > 0.0 or _slam_flash > 0.0 or _squash > 0.0 \
+		or stunned_time > 0.0 or _state == State.WINDUP or _state == State.CHARGE or elite
 
 
 func _pick_target() -> void:
@@ -249,7 +273,7 @@ func _ground_movement(delta: float) -> void:
 		velocity.x = _charge_dir * float(data.charge_speed)
 		return
 	var desired := 0.0
-	if _target != null and _state != State.WINDUP:
+	if _target != null and _state != State.WINDUP and stunned_time <= 0.0:
 		var offset := _target.global_position - global_position
 		var direction := signf(offset.x)
 		var distance := absf(offset.x)
@@ -262,16 +286,19 @@ func _ground_movement(delta: float) -> void:
 		elif distance > reach() * 0.7:
 			desired = direction
 		# Springen: ueber Hindernisse und zu hoeher liegenden Spielern.
-		if is_on_floor() and desired != 0.0:
-			var player_above := offset.y < -70.0 and distance < 280.0
+		# Nur selten und nur, wenn es wirklich noetig ist (Hindernis oder Spieler deutlich hoeher).
+		if is_on_floor() and desired != 0.0 and _jump_cooldown <= 0.0:
+			var player_above := offset.y < -120.0 and distance < 220.0
 			if is_on_wall() or player_above:
 				velocity.y = -float(data.jump)
+				_jump_cooldown = randf_range(1.6, 2.6)
+				_squash = 0.0
 	velocity.x = move_toward(velocity.x, desired * float(data.speed) * speed_mult * statuses.speed_factor(), 1400.0 * delta)
 
 
 func _fly_movement(delta: float) -> void:
 	var desired := Vector2.ZERO
-	if _target != null and _state != State.WINDUP:
+	if _target != null and _state != State.WINDUP and stunned_time <= 0.0:
 		var keep: float = data.keep_distance
 		var orbit := Vector2(sin(_time * 0.8 + _phase) * keep, -170.0 + cos(_time * 1.3 + _phase) * 50.0)
 		var goal := _target.global_position + orbit
@@ -285,11 +312,12 @@ func _apply_separation(delta: float) -> void:
 	if (Engine.get_physics_frames() + get_instance_id()) % 3 != 0:
 		return
 	var push := Vector2.ZERO
-	for other in siblings:
+	var neighbors: Array = grid.near(global_position) if grid != null and siblings.size() > 8 else siblings
+	for other: Enemy in neighbors:
 		if other == self or not is_instance_valid(other):
 			continue
-		var offset := global_position - other.global_position
-		var distance := offset.length()
+		var offset: Vector2 = global_position - other.global_position
+		var distance: float = offset.length()
 		if distance < SEPARATION_DISTANCE and distance > 0.01:
 			push += offset / distance * (SEPARATION_DISTANCE - distance)
 	if data.movement == "fly":
@@ -299,6 +327,8 @@ func _apply_separation(delta: float) -> void:
 
 
 func _update_attack(delta: float) -> void:
+	if stunned_time > 0.0:
+		return
 	match _state:
 		State.CHASE:
 			if _target == null or _cooldown > 0.0:
@@ -331,7 +361,7 @@ func _update_attack(delta: float) -> void:
 
 ## Eigene Mechanik der Elite-Art.
 func _update_elite(delta: float) -> void:
-	if not elite or _target == null:
+	if not elite or _target == null or stunned_time > 0.0:
 		return
 	match elite_kind:
 		"fire":
@@ -444,11 +474,18 @@ func _draw() -> void:
 		"facing": _facing, "aim": _aim, "t": _time, "walk": _walk_phase,
 		"flash": _flash > 0.0, "windup": windup, "slam": _slam_flash > 0.0 or charging,
 		"vx": velocity.x, "grounded": is_on_floor(), "hurt": _hurt_time / 0.25, "fire": _fire_flash,
-		"hp_frac": hp / max_hp, "foot": float(data.radius),
-		"squash": Vector2(1.0 + 0.2 * _squash, 1.0 - 0.24 * _squash),
+		"hp_frac": hp / max_hp, "foot": float(data.radius), "lod": siblings.size() > 40 and not elite,
+		"squash": _draw_squash(),
 	}, Vector2.ZERO, body_scale * maxf(grow, 0.05))
 	if elite:
 		_draw_crown(r)
+	if stunned_time > 0.0:
+		# Betaeubt: drei Sterne kreisen ueber dem Kopf.
+		for k in 3:
+			var ang := _time * 7.0 + k * TAU / 3.0
+			var star := Vector2(cos(ang) * r * 0.7, -r - 12.0 + sin(ang) * 4.0)
+			draw_circle(star, 3.0, Color(0.6, 1.0, 0.95))
+			draw_circle(star, 5.0, Color(0.6, 1.0, 0.95, 0.3))
 	if elite or (hp < max_hp and (kind == "brute" or hp < max_hp * 0.99)):
 		var width := maxf(r * 2.0, 30.0)
 		var top := -r - (22.0 if kind == "brute" or elite else 14.0) - (10.0 if elite else 0.0)
@@ -459,6 +496,16 @@ func _draw() -> void:
 		draw_rect(Rect2(-width * 0.5, top, width, 5.0), Color(1, 1, 1, 0.3), false, 1.0)
 		if elite and elite_kind != "":
 			draw_string(ThemeDB.fallback_font, Vector2(-60.0, top - 4.0), EnemyTypes.ELITE_KINDS[elite_kind].name, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 11, Color(_elite_color(), 0.95))
+
+
+## Landen staucht, in der Luft streckt sich der Gegner leicht.
+func _draw_squash() -> Vector2:
+	if _squash > 0.0:
+		return Vector2(1.0 + 0.2 * _squash, 1.0 - 0.24 * _squash)
+	if data.movement == "ground" and not is_on_floor():
+		var stretch := clampf(absf(velocity.y) / 1500.0, 0.0, 0.12)
+		return Vector2(1.0 - 0.6 * stretch, 1.0 + stretch)
+	return Vector2.ONE
 
 
 func _elite_color() -> Color:

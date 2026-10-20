@@ -11,6 +11,7 @@ func _ready() -> void:
 	main.wave_duration = 3.0
 	main.max_waves = 2
 	main.boss_enabled = false
+	main.intro_enabled = false
 	add_child(main)
 	_run.call_deferred()
 
@@ -78,9 +79,8 @@ func _run() -> void:
 	_check(gold_p1 == 0, "Gold ist persoenlich (P1 unveraendert)")
 
 	# Reroll
-	for i in 4:
-		await _tap("p2_right")
-	_check(shop._cursor[1] == 4, "Cursor steht auf Reroll")
+	await _tap("p2_down")
+	_check(shop._cursor[1] == 4, "Runter fuehrt zum Reroll")
 	gold_before = p2.gold
 	await _tap("p2_confirm")
 	_check(p2.gold == gold_before - 5, "Reroll kostet Gold (%d -> %d)" % [gold_before, p2.gold])
@@ -89,8 +89,9 @@ func _run() -> void:
 	await _tap("p2_right")
 	await _tap("p2_confirm")
 	_check(shop.is_open, "Shop bleibt offen, bis beide fertig sind")
-	for i in 5:
-		await _tap("p1_right")
+	await _tap("p1_down")
+	await _tap("p1_right")
+	_check(shop._cursor[0] == ShopMenu.READY_SLOT, "P1 erreicht Fertig mit Runter und Rechts")
 	await _tap("p1_confirm")
 	await get_tree().create_timer(0.1).timeout
 	_check(not shop.is_open and not get_tree().paused, "Shop schliesst, wenn beide fertig sind")

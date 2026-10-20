@@ -13,6 +13,8 @@ func _ready() -> void:
 	main.director_enabled = false
 	main.use_dummies = true
 	main.test_loadout = true
+	main.shaft_lift = false
+	main.intro_enabled = false
 	add_child(main)
 	_run.call_deferred()
 
@@ -59,6 +61,7 @@ func _run() -> void:
 
 	# Haengen: ohne hoch/runter bleibt er an Ort und Stelle
 	Input.action_release("p2_up")
+	Input.action_release("p2_left")
 	await _frames(10)
 	var hang_y := hexapod.global_position.y
 	await _frames(40)
@@ -138,7 +141,7 @@ func _run() -> void:
 
 	# Mantle: am Schacht hochklettern und auf die Plattform oben hopsen
 	hexapod.weapon_index = 0
-	_place(hexapod, Vector2(2566.0, 1210.0))
+	_place(hexapod, Vector2(2568.0, 800.0))
 	await _frames(10)
 	Input.action_press("p2_right")
 	Input.action_press("p2_up")
@@ -152,6 +155,7 @@ func _run() -> void:
 	_check(hexapod.global_position.y < 690.0 and hexapod.is_on_floor(), "Hexapod klettert den Schacht hoch und steht oben (y=%.0f)" % hexapod.global_position.y)
 
 	await _ceiling()
+	await _ceiling_fire()
 	await _polish()
 	print("Fertig, Fehler: ", failures)
 	get_tree().quit(failures)
@@ -214,12 +218,12 @@ func _polish() -> void:
 func _ceiling() -> void:
 	hexapod.revive(1.0)
 	hexapod.weapon_index = 0
-	# Unter einer Plattform festhalten (Plattform 1000..2100 bei y 1100..1124).
-	_place(hexapod, Vector2(1500.0, 1150.0))
+	# Unter einer Plattform festhalten (Plattform 1000..2100 bei y 1020..1044).
+	_place(hexapod, Vector2(1500.0, 1072.0))
 	await _frames(2)
 	Input.action_press("p2_up")
 	await _frames(20)
-	_check(hexapod._ceiling and absf(hexapod.global_position.y - (1124.0 + 23.0 + 1.0)) < 2.0, "Hexapod haelt sich unter der Plattform fest (y=%.0f)" % hexapod.global_position.y)
+	_check(hexapod._ceiling and absf(hexapod.global_position.y - (1044.0 + 23.0 + 1.0)) < 2.0, "Hexapod haelt sich unter der Plattform fest (y=%.0f)" % hexapod.global_position.y)
 	_check(hexapod._ceiling_amount > 0.9 and absf(float(hexapod._art_state().ceiling)) > 0.9, "Kopfueber: Zeichenzustand zeigt die Decke")
 	# Er bleibt haengen und laeuft kopfueber entlang.
 	var y0 := hexapod.global_position.y
@@ -240,11 +244,11 @@ func _ceiling() -> void:
 	Input.action_release("p2_down")
 	_check(not hexapod._ceiling and hexapod.global_position.y > y0 + 20.0, "Runter loest ihn von der Decke")
 	# Ohne Hoch-Taste greift er nicht.
-	_place(hexapod, Vector2(1500.0, 1150.0))
+	_place(hexapod, Vector2(1500.0, 1072.0))
 	await _frames(10)
 	_check(not hexapod._ceiling, "Ohne Hoch haelt er sich nicht fest")
 	# Am Plattformrand faellt er herunter.
-	_place(hexapod, Vector2(1500.0, 1150.0))
+	_place(hexapod, Vector2(1500.0, 1072.0))
 	Input.action_press("p2_up")
 	await _frames(10)
 	Input.action_press("p2_right")
@@ -280,3 +284,30 @@ func _ceiling() -> void:
 	hexapod.revive(1.0)
 	await _frames(30)
 
+
+
+func _ceiling_fire() -> void:
+	hexapod.revive(1.0)
+	hexapod.weapon_index = 0
+	_place(hexapod, Vector2(1500.0, 1072.0))
+	await _frames(2)
+	Input.action_press("p2_up")
+	await _frames(20)
+	var shots := [0]
+	hexapod.fired.connect(func(_p: Player, _id: String, _o: Vector2, _d: Vector2, _c: float) -> void: shots[0] += 1)
+	# Mit gehaltener Hoch-Taste (haengen) und Feuer.
+	Input.action_press("p2_fire")
+	await _frames(40)
+	Input.action_release("p2_fire")
+	_check(hexapod._ceiling and shots[0] >= 1, "An der Decke schiesst das Geschuetz mit gehaltener Hoch-Taste (%d Schuesse, ceiling %s)" % [shots[0], str(hexapod._ceiling)])
+	Input.action_release("p2_up")
+	await _frames(10)
+	shots[0] = 0
+	Input.action_press("p2_fire")
+	await _frames(40)
+	Input.action_release("p2_fire")
+	_check(hexapod._ceiling and shots[0] >= 1, "An der Decke schiesst das Geschuetz im Haengen (%d Schuesse)" % shots[0])
+	hexapod.velocity = Vector2.ZERO
+	Input.action_press("p2_down")
+	await _frames(20)
+	Input.action_release("p2_down")

@@ -85,6 +85,7 @@ func _pause_and_result() -> void:
 	Engine.set_meta("classes", ["roomba", "hexapod"])
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	main.director_enabled = false
+	main.intro_enabled = false
 	add_child(main)
 	await _wait(0.5)
 	var menu: PauseMenu = main.pause_menu

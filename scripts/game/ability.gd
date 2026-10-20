@@ -1,14 +1,16 @@
 class_name Ability
 extends Node
-## Klassenfaehigkeit auf L2 mit Abklingzeit. Wird vom Spieler erzeugt und
+## Klassenfaehigkeit auf Quadrat mit Abklingzeit. Wird vom Spieler erzeugt und
 ## steuert Dauer, Wirkung auf Gegner und die Zeichnung der Aura.
-##   suck: Roomba zieht Gegner und Beute heran und kaut sie an.
+##   suck: Roomba zieht Gegner und Beute zu einem Brennpunkt vor sich, betaeubt sie und sprengt sie am Ende weg.
 ##   overwatch: Hexapod schiesst mit doppelter Rate, auch in Bewegung.
 ##   roll: Automat rollt als Walze, schneller, nimmt weniger Schaden und rammt Gegner.
 ##   print: Drucker druckt zwei Drohnen, die automatisch Gegner beschiessen.
 
 const SUCK_RADIUS := 560.0
-const SUCK_BITE_RADIUS := 170.0
+const SUCK_BITE_RADIUS := 150.0
+const VORTEX_DISTANCE := 190.0
+const BURST_DAMAGE := 22.0
 const TICK := 0.2
 const DRONES := 2
 
@@ -70,7 +72,10 @@ func try_use() -> bool:
 func _physics_process(delta: float) -> void:
 	if player.downed:
 		time = 0.0
+	var was_active := time > 0.0
 	time = maxf(0.0, time - delta)
+	if was_active and time <= 0.0 and data.id == "suck" and not player.downed:
+		_vortex_burst()
 	cooldown = maxf(0.0, cooldown - delta)
 	if cooldown <= 0.0 and not _was_ready:
 		_was_ready = true
@@ -88,33 +93,57 @@ func _enemies() -> Array:
 	return get_tree().get_nodes_in_group("enemies")
 
 
+## Brennpunkt des Wirbels: ein Stueck vor dem Roomba. Gegner werden dorthin gezogen und
+## betaeubt, sie kommen also nie in sein Gesicht und koennen nicht zuschlagen.
+func vortex_focus() -> Vector2:
+	return player.global_position + Vector2(float(player.facing) * VORTEX_DISTANCE, -8.0)
+
+
 func _update_suck(delta: float) -> void:
 	_tick -= delta
 	var bite := _tick <= 0.0
 	if bite:
 		_tick = TICK
+	var focus := vortex_focus()
 	for enemy in _enemies():
-		var offset: Vector2 = player.global_position - enemy.global_position
+		var offset: Vector2 = focus - enemy.global_position
 		var distance := offset.length()
-		if distance > SUCK_RADIUS or distance < 1.0:
+		if enemy.global_position.distance_to(player.global_position) > SUCK_RADIUS:
 			continue
-		var direction := offset / distance
 		if enemy is Enemy:
-			# Nahe am Roomba wird der Zug schwaecher, damit Gegner nicht hindurchschiessen.
-			var pull := 900.0 * (1.0 - 0.5 * distance / SUCK_RADIUS) * clampf(distance / 140.0, 0.15, 1.0)
+			enemy.stun(0.3)
+			var direction := offset / maxf(distance, 1.0)
+			# Zug wird schwaecher, je naeher sie dem Brennpunkt kommen, und endet dort.
+			var pull := clampf(distance * 7.0, 0.0, 900.0)
 			if enemy.data.knockback < 0.5:
-				pull *= 0.35
+				pull *= 0.5
 			if enemy.data.movement == "fly":
-				enemy.velocity = enemy.velocity.move_toward(direction * pull, 6000.0 * delta)
+				enemy.velocity = enemy.velocity.move_toward(direction * pull, 8000.0 * delta)
 			else:
-				enemy.velocity.x = move_toward(enemy.velocity.x, direction.x * pull, 6000.0 * delta)
+				enemy.velocity.x = move_toward(enemy.velocity.x, direction.x * pull, 8000.0 * delta)
 		if bite and distance <= SUCK_BITE_RADIUS:
-			enemy.take_damage(7.0 * player.damage_mult(), player, direction * -0.5, "")
+			enemy.take_damage(6.0 * player.damage_mult(), player, Vector2.ZERO, "")
 	var pickups := player.get_parent().get("pickups") as Node2D
 	if pickups != null:
 		for pickup in pickups.get_children():
-			if pickup.global_position.distance_to(player.global_position) <= SUCK_RADIUS * 1.6:
+			if pickup is Pickup and pickup.global_position.distance_to(player.global_position) <= SUCK_RADIUS * 1.6:
 				pickup.force_pull = true
+
+
+## Am Ende des Wirbels: Druckwelle am Brennpunkt, die alles wegschleudert.
+func _vortex_burst() -> void:
+	var focus := vortex_focus()
+	if Fx.instance:
+		Fx.instance.ring(focus, 220.0, Color(0.5, 1.0, 0.9))
+		Fx.instance.explosion(focus, 120.0, Color(0.4, 1.0, 0.9))
+	Sfx.play("explosion")
+	var main := player.get_parent()
+	if "camera" in main and main.camera != null:
+		main.camera.add_shake(8.0)
+	for enemy in _enemies():
+		var offset: Vector2 = enemy.global_position - focus
+		if offset.length() <= 230.0:
+			enemy.take_damage(BURST_DAMAGE * player.damage_mult(), player, offset.normalized() * 2.5, "")
 
 
 func _update_roll(delta: float) -> void:
@@ -160,11 +189,23 @@ func draw_aura(c: CanvasItem, t: float) -> void:
 	var fade := clampf(time / 0.3, 0.0, 1.0)
 	match data.id:
 		"suck":
+			var focus_local := Vector2(float(player.facing) * VORTEX_DISTANCE, -8.0)
 			for i in 3:
 				var phase := fposmod(t * 1.6 + i / 3.0, 1.0)
-				var r := lerpf(SUCK_RADIUS, 50.0, phase)
-				c.draw_arc(Vector2.ZERO, r, 0.0, TAU, 64, Color(0.5, 1.0, 0.9, 0.35 * phase * fade), 3.0, true)
-			Art.glow(c, Vector2.ZERO, radius + 40.0, Color(0.4, 1.0, 0.9))
+				var r := lerpf(SUCK_RADIUS, 40.0, phase)
+				c.draw_arc(focus_local, r, 0.0, TAU, 64, Color(0.5, 1.0, 0.9, 0.3 * phase * fade), 3.0, true)
+			# Brennpunkt: drehende Spiralarme und heller Kern.
+			for arm in 4:
+				var base := t * 7.0 + arm * TAU / 4.0
+				var points := PackedVector2Array()
+				for k in 10:
+					var f := float(k) / 9.0
+					var ang := base + f * 2.4
+					points.append(focus_local + Vector2(cos(ang), sin(ang)) * (14.0 + 54.0 * f))
+				c.draw_polyline(points, Color(0.6, 1.0, 0.95, 0.7 * fade), 3.0, true)
+			c.draw_circle(focus_local, 12.0, Color(0.05, 0.2, 0.2, 0.9 * fade))
+			Art.glow(c, focus_local, 60.0, Color(0.4, 1.0, 0.9))
+			Art.glow(c, Vector2.ZERO, radius + 30.0, Color(0.4, 1.0, 0.9))
 		"overwatch":
 			var pulse := 0.5 + 0.5 * sin(t * 10.0)
 			var from: Vector2 = player._muzzle_offset()

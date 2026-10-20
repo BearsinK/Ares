@@ -6,19 +6,39 @@ extends RefCounted
 const OUTLINE := Color(0.05, 0.06, 0.1, 0.9)
 
 
+## Einheitskreisbogen-Punkte pro Segmentzahl, damit nicht bei jedem Aufruf Sinus und Kosinus laufen.
+static var _arc_cache := {}
+
+
+static func _arc_unit(segments: int) -> PackedVector2Array:
+	if not _arc_cache.has(segments):
+		var unit := PackedVector2Array()
+		for corner in 4:
+			var start := -PI / 2.0 + corner * PI / 2.0
+			for i in segments + 1:
+				var angle := start + (PI / 2.0) * float(i) / float(segments)
+				unit.append(Vector2(cos(angle), sin(angle)))
+		_arc_cache[segments] = unit
+	return _arc_cache[segments]
+
+
 static func rounded_points(rect: Rect2, radius: float, segments := 5) -> PackedVector2Array:
 	var r := minf(radius, minf(rect.size.x, rect.size.y) * 0.5)
-	var points := PackedVector2Array()
-	var corners := [
-		[rect.position + Vector2(rect.size.x - r, r), -PI / 2.0],
-		[rect.position + Vector2(rect.size.x - r, rect.size.y - r), 0.0],
-		[rect.position + Vector2(r, rect.size.y - r), PI / 2.0],
-		[rect.position + Vector2(r, r), PI],
+	var unit := _arc_unit(segments)
+	var centers := [
+		rect.position + Vector2(rect.size.x - r, r),
+		rect.position + Vector2(rect.size.x - r, rect.size.y - r),
+		rect.position + Vector2(r, rect.size.y - r),
+		rect.position + Vector2(r, r),
 	]
-	for corner in corners:
+	var points := PackedVector2Array()
+	points.resize(unit.size())
+	var index := 0
+	for corner in 4:
+		var center: Vector2 = centers[corner]
 		for i in segments + 1:
-			var angle: float = corner[1] + (PI / 2.0) * float(i) / float(segments)
-			points.append(corner[0] + Vector2(cos(angle), sin(angle)) * r)
+			points[index] = center + unit[index] * r
+			index += 1
 	return points
 
 

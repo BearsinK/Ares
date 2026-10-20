@@ -4,9 +4,9 @@ extends Camera2D
 ## und zoomt heraus, wenn sie weit auseinander sind. Eine harte Maximaldistanz
 ## zwischen den Spielern kommt spaeter.
 
-@export var margin := Vector2(450.0, 300.0)
-@export var min_zoom := 0.5
-@export var max_zoom := 1.0
+@export var margin := Vector2(360.0, 230.0)
+@export var min_zoom := 0.55
+@export var max_zoom := 1.3
 
 var targets: Array[Node2D] = []
 ## Verschiebt den Bildmittelpunkt, z.B. nach rechts im Bosskampf.

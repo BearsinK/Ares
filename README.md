@@ -20,12 +20,12 @@ Beide Spieler können Controller und Tastatur gleichzeitig nutzen. Spieler 1 bek
 | Sprung | L1 | Leertaste | Pfeil hoch |
 | Dash | R1 | Shift | Schrägstrich |
 | Schießen | R2 | Linke Maustaste oder F | Punkt |
-| Klassenfähigkeit | L2 | E | Komma |
+| Klassenfähigkeit | Quadrat | E | Komma |
 | Waffe wechseln | Dreieck | Q | M |
-| Haken (Firmware) | Quadrat | R | N |
+| Haken (Firmware) | L2 | R | N |
 | Menüs | Links/Rechts, Kreuz bestätigen, Kreis zurück | A/D, Enter | Pfeile, Num-Enter, Rechts-Shift oder Rechts-Alt |
 
-Interagieren (Kreis / G / L) belebt den Partner (halten). Die Klassenfähigkeit auf L2 (Taste E bzw. Komma) hat eine Abklingzeit, die Leiste im HUD zeigt sie. Escape oder Options öffnet die Pause.
+Interagieren (Kreis / G / L) belebt den Partner (halten). Die Klassenfähigkeit auf Quadrat (Taste E bzw. Komma) hat eine Abklingzeit, die Leiste im HUD zeigt sie. Escape oder Options öffnet die Pause.
 
 Das Spiel startet im Titelbildschirm: Spielen, dann wählt jeder Spieler seine Klasse (Links/Rechts, Kreuz bestätigt, Kreis nimmt zurück). Im Spiel wechseln F4 (Spieler 1) und F5 (Spieler 2) die Klasse (startet die Szene neu).
 
@@ -47,7 +47,7 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Elemente als Module an Waffen (Feuer, Wasser, Eis, Blitz) mit kurzen Statuseffekten und Kombos: Wasser+Blitz (x1,5, Kettenblitz), Wasser+Eis (eingefroren), Wasser+Feuer (Dampfexplosion), Feuer+Eis (schmilzt). Setzt ein anderer Spieler den Status, ist die Kombo deutlich stärker (Coop-Bonus). Zum Testen tragen die Waffen schon Module (Punkt im HUD zeigt das Element)
 - Wellen mit Zeitlimit (Standard 120 s, 10 Wellen), danach räumt sich das Feld, alle stehen auf und der Shop öffnet. Jeder kauft persönlich ein: Buffs, Elementmodule, Waffen, Bewegungs-Firmware, Reroll. Nach der letzten Welle erscheint ein Sieg-Bildschirm (der Endboss fehlt noch)
 - Bewegungs-Firmware: Doppelsprung, Wandsprung (rutschen und abspringen), Gleitschirm, Bodenstoß, Greifhaken, mehr Dash-Ladungen. Plattformen sind von unten durchlässig, mit nach unten + Sprung fällt man durch
-- Klassenfähigkeiten auf L2: Roomba Sog (zieht Gegner und Beute heran und kaut sie an), Hexapod Overwatch (4 s doppelte Feuerrate, auch in Bewegung), Automat Walze (3 s schneller, halber Schaden, rammt Gegner), Drucker Druck (zwei Drohnen mit Explosivschüssen, übernehmen das Element-Modul der aktiven Waffe; jeder Kill verkürzt die Abklingzeit um 0,3 s)
+- Klassenfähigkeiten auf Quadrat: Roomba Vortex (zieht Gegner und Beute zu einem Brennpunkt vor ihm, betäubt sie, und sprengt sie am Ende weg, sie kommen ihm nie ins Gesicht), Hexapod Overwatch (4 s doppelte Feuerrate, auch in Bewegung), Automat Walze (3 s schneller, halber Schaden, rammt Gegner), Drucker Druck (zwei Drohnen mit Explosivschüssen, übernehmen das Element-Modul der aktiven Waffe; jeder Kill verkürzt die Abklingzeit um 0,3 s)
 - Sechs Gegnertypen (Grunt, Gunner, Buzzer, Brute, Ramtank, Mortar): dazu Ramtank (kündigt einen Ansturm an, der Schaden macht, wenn man im Weg steht) und Mortar (Warnkreis am Boden, dann Einschlag). Ab etwa einer Minute erscheinen Elites: größer, zäher, goldene Aura, viel Beute und ein Reparaturkit
 - Reparaturkits (grünes Kreuz) heilen den Spieler, der sie braucht. Treffer erzeugen Kamerawackeln, roten Bildschirmrand und einen kurzen Hitstop
 - Dreizehn Perks mit Symbolen, darunter Glückschip (Crit), Notstrom (Heilung pro Kill), Durchschlag, Sprengkapsel (Kettenexplosionen) und Kühlkreislauf (Fähigkeit lädt schneller)
@@ -57,6 +57,14 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Wellen-Modifikatoren ab Welle 2: Swarm, Elite Rush, Heavy Metal, Air Raid, Overdrive. Der Shop bietet auch Reparaturen, und jeder Kauf macht weitere teurer
 - Perk Cable Link: nah beim Partner mehr Schaden und Regeneration
 - Musik wird im Code erzeugt und lässt sich im Menü abschalten, F11 schaltet Vollbild um
+- Wellenübergang: Beim Start fliegt der Wellentitel ein (mit Modifikator), ein Countdown 3, 2, 1 und LOS läuft, erst dann kommen Gegner. Am Ende erscheint WELLE GESCHAFFT mit Besiegt-Zähler und Gold-Bonus
+- Schrott: Zerstörte Gegner lassen Mutter, Schraube, Zahnrad oder Blech fallen (höchstens 22 liegen gleichzeitig). Nur der Roomba saugt ihn auf (Nähe, im Vortex weiter weg): 1 XP, 1 Leben und 0,4 s weniger Fähigkeits-Abklingzeit
+- Schacht rechts: unten ein Durchgang, im Schacht trägt ein Aufwind nach oben zur Plattform. Hexapod klettert Wände und hält sich auch ohne Richtungseingabe fest
+- Soda Bomb (Automat) und Turret (Hexapod) werden nur ihrer Klasse im Shop angeboten. Alle Klassen und Waffen sind in der Testphase freigeschaltet
+- Druckbot: Begleitdrohnen schießen "Drone Pulse" (langsam, schwach), stark wird er über Waffen, Module und Perks
+- Treffer zeigen sich am getroffenen Roboter (roter Ring, Zahl, Aufleuchten) und an seinem HUD-Panel, nicht auf dem ganzen Bild. Das HUD ist größer, mit Fähigkeits-Symbol und XP-Anzeige
+- Team-Perks: nach der Wahl Banner, Ring und Wirkungs-Text an beiden Robotern, Perk-Leiste unter der Wellenanzeige. Wählen die Spieler verschiedene Karten, entscheidet nach 2,5 s der Zufall
+- Sandbox (Titelmenü): erst Klassen wählen, dann pro Spieler Waffen (bis 3), Module, Firmware und Team-Perks einstellen, dazu Startwelle (bis Endboss), Startgold und Unverwundbarkeit. Sandbox-Läufe geben keine Chips
 - Gegner sind ebenfalls poliert: Aufpoppen beim Spawn, Gangwippen, Neigung mit der Fahrt, Zurückzucken bei Treffern, Landestauchung, Mündungsblitz und Rückstoß bei Schüssen, Schlagbogen des Grunts, Rauch und Funken bei wenig Leben, Staub beim Abbremsen des Ramtanks und Trümmerteile (Platten, Räder, Schrauben) beim Tod. Alle Zustände zeigt `tests/pose_sheet.tscn` mit `POSE_CLASS=enemies`
 - Hexapod, Vendor, Drucker und Roomba sind animiert und poliert (der Drucker mit Filament-Pistole, Spule, Fortschrittsanzeige, kippt um wenn er am Boden ist, Drohnen mit Rotoren, Aufpoppen und Blinken vor dem Ablauf): Atmen, Gangwippen, Aufstellen mit Stabilisatoren, Rückstoß, Hitze, Wand- und Deckenklettern (kopfüber, das Geschütz hängt dann nach unten) mit gedrehtem Körper, Landestauchung, Dash mit Nachbildern der echten Figur, Windlinien, Absprungwolken, Wandrutsch-Funken, Haken mit Kralle und schwingender Leine, Bodenschlag mit Druckwelle und Kamerawackeln, Umkippen und Aufstehen (ausgeschaltet liegen Automat und Drucker auf dem Rücken, Roomba und Hexapod auf dem Panzer). Der Hexapod steckt aufgestellt 20 % weniger ein, der Vendor wird kaum zurückgestoßen und lässt den Boden beben. Eine Pose-Tafel (`tests/pose_sheet.tscn`, `POSE_CLASS=vending`) zeigt alle Zustände
 - Pausemenü (Weiter, Steuerung, Neustart, Hauptmenü mit Rückfrage) und Ergebnisbildschirm nach Game Over oder Sieg
