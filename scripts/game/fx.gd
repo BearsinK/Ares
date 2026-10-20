@@ -124,6 +124,7 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	var outlined := 0
 	for item in _items:
 		var fade: float = item.t / item.max
 		var color: Color = item.color
@@ -135,8 +136,10 @@ func _draw() -> void:
 				color.a = fade
 				var font := ThemeDB.fallback_font
 				var at: Vector2 = item.pos + Vector2(-300.0, 0.0)
-				# Dunkle Kontur, damit Zahlen und Texte auf jedem Hintergrund lesbar bleiben.
-				draw_string_outline(font, at, item.text, HORIZONTAL_ALIGNMENT_CENTER, 600.0, item.size, 6, Color(0.03, 0.03, 0.07, 0.85 * fade))
+				# Dunkle Kontur, damit Zahlen und Texte auf jedem Hintergrund lesbar bleiben (nur fuer die ersten, spart Zeit bei Dauerfeuer).
+				if outlined < 20 or item.size >= 20:
+					outlined += 1
+					draw_string_outline(font, at, item.text, HORIZONTAL_ALIGNMENT_CENTER, 600.0, item.size, 6, Color(0.03, 0.03, 0.07, 0.85 * fade))
 				draw_string(font, at, item.text, HORIZONTAL_ALIGNMENT_CENTER, 600.0, item.size, color)
 			"gib":
 				var alpha := clampf(fade * 3.0, 0.0, 1.0)

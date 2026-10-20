@@ -27,6 +27,7 @@ var _roulette_t := 0.0
 var _roulette_order: Array[int] = []
 var _roulette_times: Array[float] = []
 var _roulette_shown := -1
+var _roulette_done := false
 var _roulette_winner := -1
 var _roulette_end := 0.0
 const ROULETTE_HOLD := 1.5
@@ -103,6 +104,7 @@ func _start_roulette() -> void:
 	_roulette_end = t
 	_roulette_t = 0.0
 	_roulette_shown = -1
+	_roulette_done = false
 	_roulette = true
 
 
@@ -115,8 +117,9 @@ func _update_roulette(delta: float) -> void:
 	if shown != _roulette_shown:
 		_roulette_shown = shown
 		Sfx.play("switch")
-		if _roulette_t >= _roulette_end:
-			Sfx.play("levelup")
+	if not _roulette_done and _roulette_t >= _roulette_end:
+		_roulette_done = true
+		Sfx.play("levelup")
 	if _roulette_t >= _roulette_end + ROULETTE_HOLD:
 		_finish(perk_ids[_roulette_winner])
 

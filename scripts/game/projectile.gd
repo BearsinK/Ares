@@ -32,6 +32,7 @@ var _hit_targets: Array[Node] = []
 var _velocity := Vector2.ZERO
 var _trail_timer := 0.0
 var _target: Node2D = null
+var _retarget_timer := 0.0
 var _age := 0.0
 
 
@@ -63,6 +64,9 @@ func _physics_process(delta: float) -> void:
 			Fx.instance.spark(global_position, Color(1.0, 1.0, 1.0), 1, 90.0)
 	lifetime -= delta
 	if lifetime <= 0.0:
+		if homing > 0.0 and not is_queued_for_deletion():
+			# Eine Rakete, die ihr Ziel verfehlt, zuendet am Ende ihrer Flugzeit.
+			hit.emit(self, global_position, null)
 		queue_free()
 
 
@@ -73,16 +77,13 @@ func _steer(delta: float) -> void:
 		_velocity = _velocity.normalized() * now
 	if _age < 0.12:
 		return
-	if _target == null or not is_instance_valid(_target) or _target.is_queued_for_deletion():
-		_target = null
-		var best := 1100.0
-		for enemy in get_tree().get_nodes_in_group("enemies"):
-			var offset: Vector2 = enemy.global_position - global_position
-			var distance := offset.length()
-			# Nur Gegner einigermassen in Flugrichtung, sonst dreht die Rakete Kreise.
-			if distance < best and offset.normalized().dot(_velocity.normalized()) > -0.15:
-				best = distance
-				_target = enemy
+	_retarget_timer -= delta
+	var lost := _target == null or not is_instance_valid(_target) or _target.is_queued_for_deletion()
+	if lost or _retarget_timer <= 0.0:
+		_retarget_timer = 0.2
+		# Verlorenes Ziel oder keine freie Sicht mehr: naechsten sichtbaren Gegner vor der Rakete suchen.
+		if lost or not _has_line_of_sight(_target):
+			_target = _find_target()
 	if _target != null:
 		var wanted := (_target.global_position - global_position).angle()
 		var diff := angle_difference(_velocity.angle(), wanted)
@@ -93,6 +94,26 @@ func _steer(delta: float) -> void:
 	if _trail_timer <= 0.0 and Fx.instance:
 		_trail_timer = 0.025
 		Fx.instance.spark(global_position - direction * 10.0, Color(1.0, 0.7, 0.3, 0.8), 1, 70.0)
+
+
+## Naechster Gegner einigermassen in Flugrichtung (sonst dreht die Rakete Kreise), ohne Wand dazwischen.
+func _find_target() -> Node2D:
+	var best := 1100.0
+	var result: Node2D = null
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		var offset: Vector2 = enemy.global_position - global_position
+		var distance := offset.length()
+		if distance < best and offset.normalized().dot(_velocity.normalized()) > -0.15 and _has_line_of_sight(enemy):
+			best = distance
+			result = enemy
+	return result
+
+
+func _has_line_of_sight(target: Node2D) -> bool:
+	if target == null or not is_instance_valid(target):
+		return false
+	var query := PhysicsRayQueryParameters2D.create(global_position, target.global_position, 1)
+	return get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
 
 func _draw() -> void:

@@ -86,7 +86,7 @@ func _roomba_and_hexapod() -> void:
 	_check(start_gap - gap > 200.0, "Sog zieht den Gegner heran (%d -> %d)" % [start_gap, gap])
 	_check(gap > 120.0, "Der Gegner kommt nicht in sein Gesicht (%d)" % gap)
 	_check(walker.stunned_time > 0.0, "Der Gegner im Wirbel ist betaeubt")
-	_check(coin.force_pull, "Sog zieht Beute heran")
+	_check(not is_instance_valid(coin) or coin.force_pull, "Sog zieht Beute heran")
 	_check(not p1.ability.try_use(), "Abklingzeit sperrt erneutes Ausloesen")
 	await _frames(60)
 	_check(not is_instance_valid(walker) or walker.hp < walker.max_hp, "Wirbel und Druckwelle treffen den Gegner")

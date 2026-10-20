@@ -45,7 +45,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func is_fullscreen() -> bool:
-	return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+	var mode := DisplayServer.window_get_mode()
+	return mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN
 
 
 ## Vollbild an oder aus (Menue, F11) und merken fuer den naechsten Start. Im in den Godot-Editor

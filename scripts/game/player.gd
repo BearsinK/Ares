@@ -182,19 +182,25 @@ func max_health() -> float:
 
 
 func move_speed() -> float:
-	var rolling := 1.7 if ability != null and ability.is_active("roll") else 1.0
-	var slowed := 0.6 if slow_time > 0.0 else 1.0
+	var slowed := 1.0
 	# Dauerstrahl haelt den Schuetzen fest (langsamer, solange er feuert).
 	if _channel > 0.05:
 		slowed *= float(Weapons.get_weapon(current_weapon_id()).get("slow", 1.0))
-	return float(stats.speed) * (1.0 + float(mods.speed)) * rolling * slowed * fire_move_factor()
+	return base_speed() * slowed * fire_move_factor()
+
+
+## Tempo ohne die Bremse durchs Schiessen (Dash-Schwung, Walze, Eis).
+func base_speed() -> float:
+	var rolling := 1.7 if ability != null and ability.is_active("roll") else 1.0
+	var slowed := 0.6 if slow_time > 0.0 else 1.0
+	return float(stats.speed) * (1.0 + float(mods.speed)) * rolling * slowed
 
 
 ## Hexapod: beim Schiessen mit der Klassenwaffe nur halbes Tempo (am Boden, an der Wand, an der Decke).
 ## Overwatch hebt das auf. Weich ueber die Stellung eingeblendet.
 func fire_move_factor() -> float:
 	var fire_slow := float(stats.get("fire_slow", 1.0))
-	if fire_slow >= 1.0 or ability.is_active("overwatch"):
+	if fire_slow >= 1.0 or (ability != null and ability.is_active("overwatch")):
 		return 1.0
 	return 1.0 - (1.0 - fire_slow) * clampf(_deploy_amount, 0.0, 1.0)
 
@@ -852,7 +858,7 @@ func _process_dash(delta: float) -> void:
 		_spawn_ghost()
 	if _dash_time_left <= 0.0:
 		# Momentum: nach dem Dash bleibt etwas Schwung erhalten.
-		velocity = _dash_dir * move_speed() * DASH_END_MOMENTUM
+		velocity = _dash_dir * base_speed() * DASH_END_MOMENTUM
 		velocity.y = minf(velocity.y, 0.0)
 
 
@@ -960,7 +966,7 @@ func _handle_fire(_delta: float) -> void:
 	var origin := _fire_origin(float(weapon.barrel))
 	# Rueckstoss: am Boden schwaecher, in der Luft staerker. Drohnenschuesse stossen den Koerper nicht.
 	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
-	if float(stats.get("fire_slow", 1.0)) >= 1.0 and escorts.is_empty():
+	if not (float(stats.get("fire_slow", 1.0)) < 1.0 and weapon_id == stats.weapons[0]) and escorts.is_empty():
 		velocity -= aim_dir * kick
 	_fire_flash = 1.0
 	_recoil = 1.0 if escorts.is_empty() else 0.0

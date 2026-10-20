@@ -45,6 +45,7 @@ func _run() -> void:
 	_check(gates.visible and not gates.is_closed and not main.shop_menu.is_open, "Tore fahren zu, Shop noch zu")
 	await _until(func() -> bool: return gates.is_closed)
 	_check(gates.is_closed and gates.amount >= 1.0, "Tore sind zu")
+	await _until(func() -> bool: return main.shop_menu.is_open)
 	_check(main.shop_menu.is_open and main.phase == main.Phase.SHOP, "Shop oeffnet sich hinter den Toren")
 
 	var wave_before: int = main.wave
@@ -53,6 +54,20 @@ func _run() -> void:
 	_check(main.wave == wave_before + 1 and main.phase == main.Phase.WAVE, "Naechste Welle laeuft")
 	await _until(func() -> bool: return not gates.visible)
 	_check(not gates.visible and gates.amount <= 0.0, "Tore sind danach weg")
+
+	# Level-Up waehrend die Tore zufahren: Der Shop wartet, bis das Menue zu ist.
+	main.wave_intro = 0.0
+	main._end_wave()
+	await _until(func() -> bool: return gates.visible and not gates.is_closed)
+	main.levelup_menu.open(main.players, Perks.random_ids(3), 2)
+	await _until(func() -> bool: return gates.is_closed)
+	await _wait(0.4)
+	_check(gates.is_closed and not main.shop_menu.is_open, "Mit offenem Level-Up-Menue bleibt der Shop zu")
+	main.levelup_menu._finish(main.levelup_menu.perk_ids[0])
+	await _until(func() -> bool: return main.shop_menu.is_open)
+	_check(main.shop_menu.is_open and main.phase == main.Phase.SHOP, "Nach dem Level-Up oeffnet sich der Shop")
+	main.shop_menu._finish()
+	await _until(func() -> bool: return not gates.visible)
 
 	# Game Over waehrend die Tore zu sind: Tore werden sofort weggeraeumt.
 	gates.close()

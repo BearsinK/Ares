@@ -143,7 +143,6 @@ func _ready() -> void:
 	levelup_menu.chosen.connect(_on_perk_chosen)
 	add_child(levelup_menu)
 	gates = GateOverlay.new()
-	gates.closed.connect(_on_gates_closed)
 	add_child(gates)
 	add_child(Vignette.new())
 	hud = Hud.new()
@@ -265,8 +264,12 @@ func _update_wave(delta: float) -> void:
 			_clear_time -= delta
 			if _clear_time <= 0.0 and not game_over and not levelup_menu.is_open:
 				if intro_enabled and not (wave >= max_waves and not boss_enabled):
-					# Erst schliessen sich die Metalltore, dann oeffnet sich der Shop dahinter.
-					gates.close()
+					# Erst schliessen sich die Metalltore (laeuft weiter, auch wenn ein Level-Up dazwischenkommt),
+					# dann oeffnet sich der Shop dahinter.
+					if gates.is_closed:
+						_open_shop()
+					else:
+						gates.close()
 				else:
 					_open_shop()
 
@@ -304,11 +307,6 @@ func _end_wave() -> void:
 			player.revive(0.5)
 		else:
 			player.hp = minf(player.max_health(), player.hp + player.max_health() * 0.3)
-
-
-func _on_gates_closed() -> void:
-	if phase == Phase.CLEARING and not game_over:
-		_open_shop()
 
 
 func _open_shop() -> void:

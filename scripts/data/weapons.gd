@@ -30,7 +30,7 @@ const DATA := {
 	},
 	"rapid": {
 		"name": "Rapid", "kind": "projectile", "color": Color(1.0, 0.9, 0.4),
-		"fire_rate": 14.0, "damage": 4.0, "pellets": 1, "spread": 0.04, "spread_heat": 0.3,
+		"fire_rate": 14.0, "damage": 4.0, "pellets": 1, "spread": 0.04, "spread_heat": 0.1,
 		"speed": 1100.0, "lifetime": 0.8, "pierce": 0, "size": 3.0, "push": 0.2,
 		"recoil": 25.0, "shake": 0.6, "sound": "shoot_rapid", "barrel": 16.0,
 	},
