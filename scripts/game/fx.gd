@@ -84,6 +84,13 @@ func tracer(from: Vector2, to: Vector2, color: Color, width: float, life: float)
 	_items.append({"type": "tracer", "from": from, "to": to, "t": life, "max": life, "color": color, "width": width})
 
 
+## Symbol eines Items steigt auf und verblasst (Kiste geoeffnet).
+func perk_icon(pos: Vector2, perk_id: String, life := 2.2) -> void:
+	if _items.size() >= MAX_ITEMS:
+		return
+	_items.append({"type": "icon", "pos": pos, "id": perk_id, "t": life, "max": life, "color": Color.WHITE})
+
+
 func ring(pos: Vector2, radius: float, color: Color) -> void:
 	_items.append({"type": "ring", "pos": pos, "radius": radius, "t": 0.2, "max": 0.2, "color": color})
 
@@ -101,6 +108,9 @@ func _process(delta: float) -> void:
 			item.vel *= 0.9
 		elif item.type == "number":
 			item.pos.y -= 70.0 * delta
+		elif item.type == "icon":
+			# Steigt erst schnell, dann langsam.
+			item.pos.y -= (90.0 * item.t / item.max + 10.0) * delta
 		elif item.type == "gib":
 			item.vel.y += 1800.0 * delta
 			var before: Vector2 = item.pos
@@ -132,6 +142,9 @@ func _draw() -> void:
 			"spark":
 				color.a = fade
 				draw_line(item.pos, item.pos - item.vel * 0.04, color, 2.5)
+			"icon":
+				var grow := minf(1.0, (1.0 - fade) * 6.0)
+				PerkArt.draw(self, item.id, item.pos, 56.0 * (0.4 + 0.6 * grow) * minf(1.0, fade * 3.0))
 			"number":
 				color.a = fade
 				var font := ThemeDB.fallback_font

@@ -66,6 +66,7 @@ func _draw_hud() -> void:
 	_draw_perk_banner(view)
 	_draw_chest_markers(view)
 	_draw_guardian(view)
+	_draw_stage_banner(view)
 	_draw_xp_bar(view)
 	_draw_debug(view)
 
@@ -415,6 +416,18 @@ func _draw_chest_markers(view: Vector2) -> void:
 		var tip := edge + dir * 30.0
 		var side := dir.orthogonal() * 9.0
 		_canvas.draw_colored_polygon(PackedVector2Array([tip + dir * 8.0, tip - dir * 4.0 + side, tip - dir * 4.0 - side]), Color(color, 0.95))
+
+
+## Neue Karte: Name und Charakter unten in der Mitte, solange der Wellen-Einstieg laeuft.
+func _draw_stage_banner(view: Vector2) -> void:
+	if main.stage_banner_time <= 0.0 or main.stage_layout.is_empty() or main.shop_menu.is_open or main.levelup_menu.is_open:
+		return
+	var t: float = main.stage_banner_time
+	var alpha := clampf(minf(t / 0.6, (3.2 - t) / 0.4), 0.0, 1.0)
+	var y := view.y * 0.74
+	_canvas.draw_rect(Rect2(0, y - 52.0, view.x, 92.0), Color(0, 0, 0, 0.5 * alpha))
+	_text(Vector2(0, y), String(main.stage_layout.name).to_upper(), 44, Color(1.0, 0.9, 0.55, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(0, y + 28.0), String(main.stage_layout.get("text", "")), 20, Color(0.9, 0.92, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
 ## Waechter: Banner beim Erscheinen, Lebensleiste oben in der Mitte und ein Pfeil am Rand, wenn er ausserhalb des Bildes ist.

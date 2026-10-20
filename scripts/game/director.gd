@@ -126,8 +126,8 @@ func _choose_kind() -> String:
 		var info: Dictionary = EnemyTypes.DATA[kind]
 		if unlock_time() >= float(info.from_time) and (not modifier.has("kinds") or (modifier.kinds as Array).has(kind)):
 			options.append(kind)
-			# Billige Gegner sind haeufiger.
-			weights.append(1.0 / float(info.cost))
+			# Billige Gegner sind haeufiger, die Karte bevorzugt ihre eigenen Typen.
+			weights.append(1.0 / float(info.cost) * float((stage.get("bias", {}) as Dictionary).get(kind, 1.0)))
 	var total := 0.0
 	for weight in weights:
 		total += weight

@@ -199,3 +199,12 @@ func _draw_result(view: Vector2) -> void:
 		_canvas.draw_rect(Rect2(Vector2(x, panel.position.y + 150.0), Vector2(60, 4)), accent)
 		UiKit.text(_canvas, Vector2(x, panel.position.y + 188.0), "P%d  %s" % [i + 1, player.stats.name], 22, accent)
 		UiKit.text(_canvas, Vector2(x, panel.position.y + 220.0), "Gold %d    Waffen %d    Firmware %d" % [player.gold, player.weapons.size(), player.firmware_count()], 16, Color(0.85, 0.88, 0.97))
+		# Gesammelte Items als Symbole mit Zaehler.
+		var item_x := x + 14.0
+		for id in player.items:
+			PerkArt.draw(_canvas, id, Vector2(item_x, panel.end.y + 82.0 + i * 0.0), 30.0)
+			if int(player.items[id]) > 1:
+				UiKit.text(_canvas, Vector2(item_x + 8.0, panel.end.y + 102.0), "x%d" % int(player.items[id]), 14, Color(1.0, 0.95, 0.6))
+			item_x += 38.0
+			if item_x > x + 340.0:
+				break

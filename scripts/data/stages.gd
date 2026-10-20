@@ -18,6 +18,12 @@ extends RefCounted
 const SIZE := Vector2(6400.0, 2200.0)
 const IDS: Array[String] = ["basin", "caverns", "zigzag"]
 const NAMES := {"basin": "Rostbecken", "caverns": "Kavernen", "zigzag": "Zickzack", "classic": "Halle"}
+## Charakter jeder Karte: Kurztext fuers Banner und Gewichte, mit denen der Director Gegnertypen bevorzugt.
+const INFO := {
+	"basin": {"text": "Weite Hallen, viele Bodengegner", "bias": {"walker": 1.4, "charger": 1.6, "brute": 1.2, "bomber": 1.2}},
+	"caverns": {"text": "Enge Gänge, viele Flieger und Sprengis", "bias": {"flyer": 1.9, "bomber": 1.5, "shooter": 0.8}},
+	"zigzag": {"text": "Lange Rampen, Schützen und Mörser", "bias": {"shooter": 1.7, "mortar": 1.7, "medic": 1.4, "walker": 0.8}},
+}
 const ROPE_WIDTH := 20.0
 ## Wie oft ein Stage-Wechsel stattfindet: alle drei Wellen eine neue Karte.
 const WAVES_PER_STAGE := 3
@@ -54,7 +60,7 @@ static func random_order() -> Array:
 
 
 static func _empty(id: String) -> Dictionary:
-	return {"id": id, "name": NAMES.get(id, id), "size": SIZE, "solids": [] as Array[Rect2], "ramps": [] as Array[PackedVector2Array],
+	return {"id": id, "name": NAMES.get(id, id), "text": INFO.get(id, {}).get("text", ""), "bias": INFO.get(id, {}).get("bias", {}), "size": SIZE, "solids": [] as Array[Rect2], "ramps": [] as Array[PackedVector2Array],
 		"platforms": [] as Array[Rect2], "ropes": [] as Array[Rect2], "starts": [] as Array[Vector2], "ground": [] as Array[Vector2],
 		"air": [] as Array[Rect2], "steam": [] as Array[Vector2], "island": [] as Array[int], "surface_hint": []}
 

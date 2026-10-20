@@ -178,6 +178,8 @@ func _ready() -> void:
 	_apply_sandbox()
 	_begin_wave_intro()
 	_refresh_chests()
+	if not stage_layout.is_empty() and intro_enabled:
+		stage_banner_time = 3.2
 
 
 func _physics_process(delta: float) -> void:
@@ -884,10 +886,11 @@ func _on_chest_opened(chest: Chest, player: Player) -> void:
 	var id: String = options[randi() % options.size()]
 	player.add_item(id)
 	var color := PerkArt.color_of(id)
-	var at := chest.global_position + Vector2(0.0, -80.0)
+	var at := chest.global_position + Vector2(0.0, -118.0)
 	if Fx.instance:
 		Fx.instance.ring(chest.global_position + Vector2(0.0, -20.0), 170.0 if chest.large else 120.0, color)
 		Fx.instance.spark(chest.global_position + Vector2(0.0, -30.0), color, 22 if chest.large else 14, 420.0)
+		Fx.instance.perk_icon(at + Vector2(0.0, -46.0), id)
 		Fx.instance.number_text(at, String(Perks.DATA[id].name), color, 30, 3.2)
 		Fx.instance.number_text(at + Vector2(0.0, 26.0), Perks.describe(id, player.class_id), Color(0.92, 0.94, 1.0), 17, 3.2)
 	camera.add_shake(7.0 if chest.large else 4.0)

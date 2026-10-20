@@ -56,6 +56,23 @@ func _run() -> void:
 		early[director._choose_kind()] = true
 	_check(not early.has("bomber") and not early.has("medic"), "Am Anfang gibt es sie noch nicht")
 
+	# Jede Karte hat ihren Charakter: Kavernen mehr Flieger als das Rostbecken, Zickzack mehr Schuetzen.
+	director.wave = 8
+	director.wave_progress = 0.5
+	var shares := {}
+	for id in ["basin", "caverns", "zigzag"]:
+		director.stage = Stages.build(id)
+		var counts := {"flyer": 0, "shooter": 0, "walker": 0}
+		for i in 3000:
+			var kind := director._choose_kind()
+			if counts.has(kind):
+				counts[kind] += 1
+		shares[id] = counts
+	_check(shares.caverns.flyer > shares.basin.flyer * 1.4, "Kavernen haben mehr Flieger (%d gegen %d)" % [shares.caverns.flyer, shares.basin.flyer])
+	_check(shares.zigzag.shooter > shares.basin.shooter * 1.4, "Zickzack hat mehr Schuetzen (%d gegen %d)" % [shares.zigzag.shooter, shares.basin.shooter])
+	_check(shares.basin.walker > shares.zigzag.walker * 1.3, "Das Rostbecken hat mehr Grunts (%d gegen %d)" % [shares.basin.walker, shares.zigzag.walker])
+	director.stage = {}
+
 	# Sprengi: rennt hin, sprengt sich, verletzt den Spieler, laesst nichts fallen.
 	var kills_before: int = main.kills
 	var bomber: Enemy = main.director.spawn("bomber", Vector2(1330.0, 1225.0))
