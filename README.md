@@ -26,6 +26,8 @@ Beide Spieler können Controller und Tastatur gleichzeitig nutzen. Spieler 1 bek
 
 Interagieren (Kreis / G / L) belebt den Partner (halten). Die Klassenfähigkeit (L2) hat noch keine Funktion.
 
+Klassen wechseln: F4 (Spieler 1) und F5 (Spieler 2) schalten durch Roomba, Hexapod, Automat und Drucker (startet die Szene neu). Der Drucker ist noch ein Platzhalter.
+
 Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die nächste, F3 gibt beiden das komplette Testset (alle Waffen mit Modulen).
 
 ## Aktueller Stand
@@ -35,6 +37,7 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Platzhalter-Klassen Roomba und Hexapod (Hexapod schießt nur im Stand)
 - Sechs Waffen: Staubkugeln, Schnellfeuer, Schrot, Rakete (Explosion), Strahl und Sniper (Treffer entlang einer Linie, durchschlägt Gegner). Jeder Spieler hat drei zum Ausprobieren, Wechsel per Dreieck
 - Rückmeldung: Mündungsfeuer, Funken, Rückstoß, Kamerawackeln, Explosionen, eigener Sound pro Waffe
+- Automat: Dosenwurf im Bogen. Feuer halten schüttelt die Dose (Ladering, gepunktete Flugbahn), loslassen wirft. Je länger geschüttelt, desto weiter, schneller und größer die Explosion. Ab 20 Prozent Schütteln explodiert die Dose beim Aufprall, kurzes Antippen wirft nur eine ungeschüttelte Dose ohne Explosion. Mit Elementmodul gibt die Dose das Element weiter
 - Vier Gegnertypen (Läufer, Schütze, Flieger, Brute) ohne Kontaktschaden: Jeder Angriff wird vorher angekündigt (Kegel, Kreis, Schusslinie)
 - Director: Gegner erscheinen nach und nach, die Menge und Stärke steigen mit der Zeit
 - XP und Gold fallen aus Gegnern, werden angezogen und eingesammelt. XP gehört beiden, Gold dem Einsammler
@@ -66,6 +69,7 @@ godot --headless --path . res://tests/progression_test.tscn
 godot --headless --path . res://tests/element_test.tscn
 godot --headless --path . res://tests/wave_test.tscn
 godot --headless --path . res://tests/movement_test.tscn
+godot --headless --path . res://tests/vending_test.tscn
 ```
 
 Die Tests simulieren Eingaben und prüfen Bewegung, Waffen, Gegnerangriffe, Wiederbeleben, Game Over und den Director.

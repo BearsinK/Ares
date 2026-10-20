@@ -17,13 +17,21 @@ var shooter: Node = null
 var explosion_radius := 0.0
 var explosion_damage := 0.0
 var element := ""
+## Bogenwurf: Schwerkraft in px/s^2. Dosen landen auch auf Plattformen.
+var arc_gravity := 0.0
+var collide_platforms := false
+var shaken := false
+var charge := 0.0
 
 var _hit_targets: Array[Node] = []
+var _velocity := Vector2.ZERO
+var _trail_timer := 0.0
 
 
 func _ready() -> void:
 	collision_layer = 1 << 3
-	collision_mask = (1 << 0) | (1 << 2)
+	collision_mask = (1 << 0) | (1 << 2) | ((1 << 5) if collide_platforms else 0)
+	_velocity = direction * speed
 	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
 	circle.radius = size
@@ -34,20 +42,46 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	position += direction * speed * delta
+	_velocity.y += arc_gravity * delta
+	position += _velocity * delta
+	if arc_gravity > 0.0:
+		direction = _velocity.normalized()
+		queue_redraw()
+		_trail_timer -= delta
+		if shaken and _trail_timer <= 0.0 and Fx.instance:
+			_trail_timer = 0.03
+			Fx.instance.spark(global_position, Color(1.0, 1.0, 1.0), 1, 90.0)
 	lifetime -= delta
 	if lifetime <= 0.0:
 		queue_free()
 
 
 func _draw() -> void:
+	if arc_gravity > 0.0:
+		_draw_can()
+		return
 	var streak := clampf(speed * 0.02, 6.0, 40.0)
 	draw_line(-direction * streak, Vector2.ZERO, Color(color, 0.5), size * 1.2)
 	draw_circle(Vector2.ZERO, size, color)
 	draw_circle(Vector2.ZERO, size * 1.8, Color(color, 0.25))
 
 
-func _on_body_entered(_body: Node2D) -> void:
+func _draw_can() -> void:
+	# Dose: Koerper, Deckel und Boden, geschuettelte Dosen schaeumen.
+	var body_color := color
+	draw_set_transform(Vector2.ZERO, _velocity.angle() + PI / 2.0)
+	draw_rect(Rect2(-size * 0.7, -size, size * 1.4, size * 2.0), body_color)
+	draw_rect(Rect2(-size * 0.7, -size, size * 1.4, size * 2.0), Color(0.1, 0.3, 0.15), false, 2.0)
+	draw_rect(Rect2(-size * 0.7, -size, size * 1.4, size * 0.4), Color(0.85, 0.85, 0.9))
+	draw_set_transform(Vector2.ZERO)
+	if shaken:
+		draw_circle(Vector2.ZERO, size * (1.4 + 0.6 * charge), Color(1.0, 1.0, 1.0, 0.25))
+
+
+func _on_body_entered(body: Node2D) -> void:
+	# Plattformen sind von unten durchlaessig, ein aufsteigender Wurf fliegt hindurch.
+	if body is CollisionObject2D and (body.collision_layer & (1 << 5)) != 0 and _velocity.y <= 0.0:
+		return
 	hit.emit(self, global_position, null)
 	queue_free()
 

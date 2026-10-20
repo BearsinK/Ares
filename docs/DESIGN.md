@@ -144,7 +144,7 @@ Alle starten mit demselben Grundkit, unterscheiden sich in Hauptangriff, Klassen
 
 ### Getränkeautomat auf Panzerketten
 - Archetyp: tanky, Flächenschaden (AoE), langsam
-- Wirft Dosen im Bogen, geschüttelte Dosen explodieren
+- Wirft Dosen im Bogen, geschüttelte Dosen explodieren (umgesetzt: Feuer halten schüttelt und lädt auf, Loslassen wirft, Aufladung bestimmt Wurfweite, Tempo, Explosionsradius und Schaden)
 - Walze: Mit genug Beschleunigung wird er zur Walze. Dann verursacht er Schaden durch Kontakt (er ist die Ausnahme vom Kein-Kontaktschaden-Prinzip, aber nur gegen Gegner) und hat etwas Rüstung gegen Nahkampftreffer
 - Walze baut Tempo über Anlauf auf, Richtungswechsel kostet Tempo (Vorschlag, damit er trotz Walze langsam bleibt)
 - Raupenboost-Firmware ist der Startknopf der Walze (Vorschlag)

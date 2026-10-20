@@ -89,7 +89,7 @@ func _run() -> void:
 
 	# Hexapod darf in der Bewegung nicht schiessen, im Stand schon
 	var shots := [0]
-	p2.fired.connect(func(_p: Player, _id: String, _o: Vector2, _d: Vector2) -> void: shots[0] += 1)
+	p2.fired.connect(func(_p: Player, _id: String, _o: Vector2, _d: Vector2, _c: float) -> void: shots[0] += 1)
 	Input.action_press("p2_right")
 	Input.action_press("p2_fire")
 	await _frames(12)

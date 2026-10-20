@@ -40,6 +40,9 @@ func _ready() -> void:
 	_streams["steam"] = _synth(900.0, 300.0, 0.3, "saw", 0.3, 0.95)
 	_streams["freeze"] = _synth(1600.0, 800.0, 0.2, "sine", 0.3, 0.2)
 	_streams["zap"] = _synth(1400.0, 300.0, 0.15, "square", 0.25, 0.5)
+	_streams["shake"] = _synth(380.0, 260.0, 0.04, "square", 0.14, 0.7)
+	_streams["can_throw"] = _synth(220.0, 520.0, 0.14, "sine", 0.35, 0.1)
+	_streams["pop"] = _synth(500.0, 120.0, 0.1, "square", 0.3, 0.5)
 	_streams["kill"] = _synth(300.0, 40.0, 0.35, "saw", 0.4, 0.6)
 
 

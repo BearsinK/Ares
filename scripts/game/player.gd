@@ -4,7 +4,7 @@ extends CharacterBody2D
 ## (siehe input_setup.gd). Die Darstellung ist ein Platzhalter aus Formen:
 ## Koerperform und Farbe zeigen die Klasse, der Rand zeigt den Spieler.
 
-signal fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2)
+signal fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2, charge: float)
 signal hurt(player: Player, amount: float)
 signal went_down(player: Player)
 signal revived(player: Player)
@@ -59,6 +59,8 @@ var partner: Player = null
 var firmware: Dictionary = {}
 var hook_active := false
 var hook_anchor := Vector2.ZERO
+## Schuettel-Aufladung der Dose (0 bis 1), solange Schiessen gehalten wird.
+var shake_charge := 0.0
 # Dauerhafte Boni aus Perks und Items (Anteile, ausser max_hp als fester Wert).
 var mods := {"damage": 0.0, "fire_rate": 0.0, "speed": 0.0, "max_hp": 0.0, "dmg_taken": 0.0,
 	"dash_cd": 0.0, "pickup": 0.0, "gold": 0.0}
@@ -81,6 +83,8 @@ var _slamming := false
 var _hook_time := 0.0
 var _hook_cooldown := 0.0
 var _drop_time := 0.0
+var _lob_charging := false
+var _shake_tick := 0.0
 
 
 func setup(index: int, new_class_id: String) -> void:
@@ -141,6 +145,8 @@ func take_hit(amount: float, from: Vector2) -> bool:
 		hp = 0.0
 		downed = true
 		revive_progress = 0.0
+		shake_charge = 0.0
+		_lob_charging = false
 		velocity = Vector2(velocity.x * 0.3, velocity.y)
 		went_down.emit(self)
 	return true
@@ -441,12 +447,42 @@ func _rotate_weapon() -> void:
 		return
 	weapon_index = (weapon_index + 1) % weapons.size()
 	_switch_cooldown = 0.2
+	shake_charge = 0.0
+	_lob_charging = false
 	Sfx.play("switch")
+
+
+## Dosenwurf: Feuer halten schuettelt die Dose (laedt auf), Loslassen wirft sie
+## im Bogen. Je laenger geschuettelt, desto weiter, schneller und explosiver.
+func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
+	var held := Input.is_action_pressed(_prefix + "fire")
+	if held and _fire_cooldown <= 0.0 and _switch_cooldown <= 0.0 and _can_fire(weapon_id):
+		_lob_charging = true
+		shake_charge = minf(1.0, shake_charge + delta / float(weapon.shake_time))
+		_shake_tick -= delta
+		if _shake_tick <= 0.0:
+			_shake_tick = 0.07
+			Sfx.play("shake", 0.2)
+	elif _lob_charging and not held:
+		_lob_charging = false
+		_fire_cooldown = 1.0 / (float(weapon.fire_rate) * (1.0 + float(mods.fire_rate)))
+		var origin: Vector2 = global_position + aim_dir * (float(stats.radius) + float(weapon.barrel))
+		velocity -= aim_dir * float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
+		var thrown_charge := shake_charge
+		shake_charge = 0.0
+		fired.emit(self, weapon_id, origin, aim_dir, thrown_charge)
+	elif not held:
+		shake_charge = 0.0
 
 
 func _handle_fire(_delta: float) -> void:
 	if Input.is_action_just_pressed(_prefix + "weapon"):
 		_rotate_weapon()
+	var current := Weapons.get_weapon(current_weapon_id())
+	if current.kind == "lob":
+		_handle_lob(current_weapon_id(), current, _delta)
+		return
+	shake_charge = 0.0
 	if not Input.is_action_pressed(_prefix + "fire"):
 		return
 	if _fire_cooldown > 0.0 or _switch_cooldown > 0.0:
@@ -455,13 +491,15 @@ func _handle_fire(_delta: float) -> void:
 	if not _can_fire(weapon_id):
 		return
 	var weapon := Weapons.get_weapon(weapon_id)
+	if weapon.kind == "lob":
+		return
 	_fire_cooldown = 1.0 / (float(weapon.fire_rate) * (1.0 + float(mods.fire_rate)))
 	var origin: Vector2 = global_position + aim_dir * (float(stats.radius) + float(weapon.barrel))
 	# Rueckstoss: am Boden schwaecher, in der Luft staerker.
 	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
 	if not (stats.stationary_fire and weapon_id == stats.weapons[0]):
 		velocity -= aim_dir * kick
-	fired.emit(self, weapon_id, origin, aim_dir)
+	fired.emit(self, weapon_id, origin, aim_dir, 0.0)
 
 
 func _draw() -> void:
@@ -485,10 +523,15 @@ func _draw() -> void:
 	if hook_active:
 		draw_line(Vector2.ZERO, to_local(hook_anchor), Color(0.9, 0.9, 0.5), 2.0)
 		draw_circle(to_local(hook_anchor), 5.0, Color(0.9, 0.9, 0.5))
+	if shake_charge > 0.0:
+		draw_set_transform(Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * shake_charge * 4.0)
 	_draw_body(r, body_color, outline)
 	_draw_face(r, alpha)
 	_draw_weapon(r, outline)
+	draw_set_transform(Vector2.ZERO)
 	_draw_dash_pips(r)
+	if shake_charge > 0.0:
+		_draw_lob_preview(r)
 
 
 func _draw_downed() -> void:
@@ -558,6 +601,24 @@ func _draw_weapon(r: float, outline: Color) -> void:
 		color = Color(0.5, 0.5, 0.5, outline.a)
 	draw_line(aim_dir * (r * 0.5), aim_dir * length, color, 6.0)
 	draw_circle(aim_dir * length, 3.5, weapon.color)
+
+
+func _draw_lob_preview(r: float) -> void:
+	# Ladering und gepunktete Flugbahn der Dose.
+	var weapon := Weapons.get_weapon(current_weapon_id())
+	var ring_color := Color(0.4, 0.95, 0.55).lerp(Color(1, 1, 1), shake_charge)
+	draw_arc(Vector2.ZERO, r + 14.0, -PI / 2.0, -PI / 2.0 + TAU * shake_charge, 32, ring_color, 4.0)
+	var speed := lerpf(float(weapon.speed), float(weapon.speed_max), shake_charge)
+	var gravity: float = weapon.gravity
+	var pos := aim_dir * (r + float(weapon.barrel))
+	var vel := aim_dir * speed
+	var step := 0.06
+	for i in 24:
+		vel.y += gravity * step
+		pos += vel * step
+		if global_position.y + pos.y > 1250.0:
+			break
+		draw_circle(pos, 3.0, Color(ring_color, 0.55))
 
 
 func _draw_dash_pips(r: float) -> void:

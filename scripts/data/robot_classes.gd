@@ -51,7 +51,7 @@ const DATA := {
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
 		"stationary_fire": false,
-		"weapons": ["rocket"],
+		"weapons": ["can"],
 		"damage_mult": 1.2,
 	},
 	"printer": {

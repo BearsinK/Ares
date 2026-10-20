@@ -3,8 +3,9 @@ extends RefCounted
 ## Waffenwerte. Waffen sind neutral, Elemente kommen spaeter ueber Module.
 ## kind "projectile": fliegende Geschosse (auch Schrot und Raketen)
 ## kind "hitscan": sofortiger Treffer entlang einer Linie (Strahl, Sniper)
+## kind "lob": Bogenwurf mit Schuettel-Aufladung (Feuer halten = schuetteln, loslassen = werfen)
 
-const ALL_IDS: Array[String] = ["dust", "rapid", "shotgun", "rocket", "beam", "sniper"]
+const ALL_IDS: Array[String] = ["dust", "rapid", "shotgun", "rocket", "beam", "sniper", "can"]
 
 const DATA := {
 	"dust": {
@@ -37,6 +38,17 @@ const DATA := {
 		"fire_rate": 20.0, "damage": 3.5, "range": 650.0, "pierce": 99,
 		"width": 5.0, "tracer_life": 0.06,
 		"recoil": 15.0, "shake": 0.6, "sound": "beam", "barrel": 16.0,
+	},
+	"can": {
+		"name": "Dose", "kind": "lob", "color": Color(0.4, 0.95, 0.55),
+		"fire_rate": 2.8, "damage": 12.0, "pellets": 1, "spread": 0.0,
+		"speed": 700.0, "speed_max": 1000.0, "gravity": 1400.0, "lifetime": 4.0,
+		"pierce": 0, "size": 9.0,
+		# Schuetteln: Aufladezeit bis voll, ab min_shake explodiert die Dose beim Aufprall.
+		"shake_time": 1.2, "min_shake": 0.2,
+		"explosion_radius": 70.0, "explosion_radius_max": 190.0,
+		"explosion_damage": 30.0, "explosion_damage_max": 100.0,
+		"recoil": 60.0, "shake": 2.0, "sound": "can_throw", "barrel": 16.0,
 	},
 	"sniper": {
 		"name": "Sniper", "kind": "hitscan", "color": Color(1.0, 1.0, 1.0),

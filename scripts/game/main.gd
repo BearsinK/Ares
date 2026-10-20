@@ -8,8 +8,9 @@ const FLOOR_Y := 1250.0
 const WORLD_COLOR := Color(0.2, 0.22, 0.3)
 const BG_COLOR := Color(0.08, 0.09, 0.13)
 
-# Welche Klassen die beiden Spieler spielen (roomba, hexapod, vending, printer).
-const PLAYER_CLASSES: Array[String] = ["roomba", "hexapod"]
+# Standardklassen (roomba, hexapod, vending, printer). F4 / F5 wechseln sie im Spiel.
+const DEFAULT_CLASSES: Array = ["roomba", "hexapod"]
+const ALL_CLASSES: Array = ["roomba", "hexapod", "vending", "printer"]
 
 # Testausstattung: jeder Spieler bekommt drei Waffen zum Ausprobieren.
 # Mit Dreieck (Controller) oder der Waffen-Taste wechselt man durch.
@@ -135,6 +136,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_cycle_weapon(1)
 		elif event.keycode == KEY_F3:
 			_grant_test_loadout()
+		elif event.keycode == KEY_F4:
+			_switch_class(0)
+		elif event.keycode == KEY_F5:
+			_switch_class(1)
 
 
 func _grant_test_loadout() -> void:
@@ -211,10 +216,22 @@ func _on_joy_connection_changed(device: int, connected: bool) -> void:
 	print("Controller %d %s: %s" % [device, "verbunden" if connected else "getrennt", Input.get_joy_name(device)])
 
 
+## Gewaehlte Klassen bleiben ueber Neustarts erhalten (F4 / F5 wechseln sie).
+func _class_for(index: int) -> String:
+	return Engine.get_meta("classes", DEFAULT_CLASSES)[index]
+
+
+func _switch_class(index: int) -> void:
+	var classes: Array = Engine.get_meta("classes", DEFAULT_CLASSES).duplicate()
+	classes[index] = ALL_CLASSES[(ALL_CLASSES.find(classes[index]) + 1) % ALL_CLASSES.size()]
+	Engine.set_meta("classes", classes)
+	get_tree().reload_current_scene()
+
+
 func _spawn_players() -> void:
 	for i in 2:
 		var player := Player.new()
-		player.setup(i + 1, PLAYER_CLASSES[i])
+		player.setup(i + 1, _class_for(i))
 		if test_loadout:
 			player.weapons.clear()
 			player.modules.clear()
@@ -397,7 +414,7 @@ func _setup_camera() -> void:
 	camera.global_position = (players[0].global_position + players[1].global_position) * 0.5
 
 
-func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2) -> void:
+func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2, charge := 0.0) -> void:
 	var weapon := Weapons.get_weapon(weapon_id)
 	var damage := float(weapon.damage) * player.damage_mult()
 	var element := player.current_module()
@@ -405,10 +422,35 @@ func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direct
 	Sfx.play(weapon.sound)
 	camera.add_shake(float(weapon.shake))
 	fx.muzzle(origin, direction, color)
-	if weapon.kind == "hitscan":
+	if weapon.kind == "lob":
+		_fire_lob(player, weapon, origin, direction, damage, element, color, charge)
+	elif weapon.kind == "hitscan":
 		_fire_hitscan(player, weapon, origin, direction, damage, element, color)
 	else:
 		_fire_projectiles(player, weapon, origin, direction, damage, element, color)
+
+
+func _fire_lob(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color, charge: float) -> void:
+	var can := Projectile.new()
+	can.position = origin
+	can.direction = direction
+	can.speed = lerpf(float(weapon.speed), float(weapon.speed_max), charge)
+	can.arc_gravity = float(weapon.gravity)
+	can.damage = damage
+	can.lifetime = float(weapon.lifetime)
+	can.size = float(weapon.size)
+	can.color = color
+	can.element = element
+	can.shooter = player
+	can.collide_platforms = true
+	can.charge = charge
+	# Nur geschuettelte Dosen explodieren, Staerke und Radius wachsen mit dem Schuetteln.
+	if charge >= float(weapon.min_shake):
+		can.shaken = true
+		can.explosion_radius = lerpf(float(weapon.explosion_radius), float(weapon.explosion_radius_max), charge)
+		can.explosion_damage = lerpf(float(weapon.explosion_damage), float(weapon.explosion_damage_max), charge) * player.damage_mult()
+	can.hit.connect(_on_projectile_hit)
+	projectiles.add_child(can)
 
 
 func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
@@ -460,12 +502,15 @@ func _fire_hitscan(player: Player, weapon: Dictionary, origin: Vector2, directio
 func _on_projectile_hit(projectile: Projectile, pos: Vector2, _target: Node) -> void:
 	fx.spark(pos, projectile.color, 4)
 	if projectile.explosion_radius > 0.0:
-		_explode(pos, projectile.explosion_radius, projectile.explosion_damage, projectile.shooter, projectile.color, projectile.element)
+		var shake_amount := 10.0 if projectile.arc_gravity <= 0.0 else 4.0 + 8.0 * projectile.charge
+		_explode(pos, projectile.explosion_radius, projectile.explosion_damage, projectile.shooter, projectile.color, projectile.element, shake_amount)
+	elif projectile.arc_gravity > 0.0:
+		Sfx.play("pop")
 
 
-func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: Color, element := "") -> void:
+func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: Color, element := "", shake_amount := 10.0) -> void:
 	fx.explosion(pos, radius, color)
-	camera.add_shake(10.0)
+	camera.add_shake(shake_amount)
 	Sfx.play("explosion")
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		var distance: float = enemy.global_position.distance_to(pos)
