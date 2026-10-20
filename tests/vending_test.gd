@@ -193,7 +193,7 @@ func _polish() -> void:
 	p1.iframes = 0.0
 	p1.take_hit(9999.0, p1.global_position + Vector2(10.0, 0.0))
 	await _frames(80)
-	_check(absf(float(p1._art_state().tilt)) > 0.25, "Ausgeschaltet kippt er um (%.2f)" % float(p1._art_state().tilt))
+	_check(float(p1._art_state().down) > 0.95, "Ausgeschaltet kippt er um (%.2f)" % float(p1._art_state().down))
 	p1.revive(0.5)
 	await _frames(80)
 	_check(absf(float(p1._art_state().tilt)) < 0.05, "Wiederbelebt richtet er sich auf")

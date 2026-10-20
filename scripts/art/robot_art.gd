@@ -7,6 +7,10 @@ extends RefCounted
 ## grounded, clinging, cling_dir, planted, mood, firing (0 bis 1), charge (0 bis 1),
 ## weapon_color, accent (Spielerfarbe), eye_color.
 
+## Absenkung beim Umdrehen (Schwerpunkt liegt nach der Drehung hoeher als der Boden).
+const DOWN_DROP := {"roomba": 0.0, "hexapod": 9.0, "vending": 0.0, "printer": -5.0}
+
+
 static func draw_player(c: CanvasItem, class_id: String, s: Dictionary, offset := Vector2.ZERO, zoom := 1.0) -> void:
 	var facing: float = s.facing
 	# Kopfueber an der Decke: halbe Drehung, die Blickrichtung wird dafuer gespiegelt.
@@ -24,7 +28,22 @@ static func draw_player(c: CanvasItem, class_id: String, s: Dictionary, offset :
 		offset += Vector2(float(s.cling_dir) * 5.0 * cling, 0.0)
 	# Quetschen und Strecken um die Fusspunkte (Landung, Sprung, Dash).
 	var squash: Vector2 = s.get("squash", Vector2.ONE)
-	var foot_y: float = RobotClasses.get_stats(class_id).size.y * 0.5
+	var size: Vector2 = RobotClasses.get_stats(class_id).size
+	var foot_y: float = size.y * 0.5
+	# Ausgeschaltet liegt der Roboter wirklich am Boden: Schrank und Drucker kippen auf den Ruecken,
+	# Roomba und Hexapod drehen sich auf den Kopf (Schildkroete).
+	var down := float(s.get("down", 0.0))
+	if down > 0.0:
+		# Bodenschatten bleibt flach, auch wenn der Koerper kippt.
+		c.draw_set_transform(offset + Vector2(0.0, foot_y * zoom), 0.0, Vector2.ONE * zoom)
+		Art.shadow(c, Vector2.ZERO, maxf(size.x, size.y) * 0.45, 3.5, 0.35 * down)
+		var side := -facing
+		if class_id == "vending" or class_id == "printer":
+			lean = lerpf(lean, side * PI / 2.0, down)
+			offset += Vector2(0.0, ((size.y - size.x) * 0.5 + float(DOWN_DROP[class_id])) * zoom * down)
+		else:
+			lean = lerpf(lean, side * PI, down)
+			offset += Vector2(0.0, float(DOWN_DROP.get(class_id, 0.0)) * zoom * down)
 	var pivot_offset := Vector2(0.0, foot_y * zoom * (1.0 - squash.y))
 	c.draw_set_transform(offset + pivot_offset, lean, Vector2(facing * zoom * squash.x, zoom * squash.y))
 	match class_id:
@@ -68,7 +87,7 @@ static func _roomba(c: CanvasItem, s: Dictionary) -> void:
 	var bob := sin(t * 3.0) * 0.4
 	var accent: Color = s.accent
 	var silver := Color(0.78, 0.81, 0.9)
-	Art.shadow(c, Vector2(0, 13), 34.0, 3.2)
+	Art.shadow(c, Vector2(0, 13), 34.0, 3.2, 0.35 * (1.0 - float(s.get("down", 0.0))))
 
 	# Antriebsrad, zur Haelfte unter der Schuerze verborgen.
 	var spin := float(s.walk) * 0.9
@@ -177,7 +196,7 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 	var firing := float(s.firing)
 	var wall_blend := maxf(float(s.get("cling", 0.0)), float(s.get("ceiling", 0.0)))
 	if wall_blend < 0.5:
-		Art.shadow(c, Vector2(0, 23), 28.0 + 3.0 * deploy, 3.5)
+		Art.shadow(c, Vector2(0, 23), 28.0 + 3.0 * deploy, 3.5, 0.35 * (1.0 - float(s.get("down", 0.0))))
 
 	var cling := float(s.get("cling", 0.0))
 	var down := float(s.get("down", 1.0 if downed else 0.0))
@@ -406,7 +425,7 @@ static func _vending_cabinet(c: CanvasItem, s: Dictionary) -> void:
 
 
 static func _vending_tracks(c: CanvasItem, s: Dictionary) -> void:
-	Art.shadow(c, Vector2(0, 54), 38.0, 4.0)
+	Art.shadow(c, Vector2(0, 54), 38.0, 4.0, 0.35 * (1.0 - float(s.get("down", 0.0))))
 	# Dreieckiges Raupenlaufwerk wie bei Schneefahrzeugen: abgerundetes Dreieck mit flacher
 	# Auflage, Rollen an den Ecken und umlaufenden Stollen.
 	var spin := float(s.walk) * 0.5
@@ -488,8 +507,14 @@ static func _vending_slot(c: CanvasItem, s: Dictionary) -> void:
 
 # ---------------------------------------------------------------- Drucker
 
-## Breite der Drohne pro Schicht von unten nach oben (Kufen, Rumpf, Mast, Rotorarme).
-const DRONE_LAYERS := [10.0, 10.0, 16.0, 19.0, 20.0, 20.0, 19.0, 16.0, 7.0, 7.0, 26.0, 26.0, 5.0]
+## Schichten der gedruckten Drohne von unten nach oben: Breite, Loch in der Mitte (Kufen), Farbe
+## (0 Grau, 1 Orange). Von der Seite ein flacher Quadcopter mit Armen und Mast.
+const DRONE_LAYERS := [
+	[24.0, 16.0, 0], [24.0, 16.0, 0], [12.0, 0.0, 0],
+	[18.0, 0.0, 1], [20.0, 0.0, 1], [20.0, 0.0, 1], [18.0, 0.0, 1],
+	[36.0, 0.0, 0], [36.0, 0.0, 0],
+	[6.0, 0.0, 1], [4.0, 0.0, 0],
+]
 
 
 ## Zeichnet die gedruckte Drohne bis zur aktuellen Schicht. Beim Start (launch 0..1)
@@ -504,19 +529,31 @@ static func _print_drone(c: CanvasItem, base: Vector2, progress: float, t: float
 	for k in total:
 		if float(k) >= done:
 			break
-		var width: float = DRONE_LAYERS[k]
+		var layer: Array = DRONE_LAYERS[k]
+		var width: float = layer[0]
+		var hole: float = layer[1]
 		var y := base.y - (k + 1) * layer_height - lift
 		var shade := 0.0 if k % 2 == 0 else 0.1
-		var color := Color(0.95, 0.56 + shade, 0.2)
-		c.draw_rect(Rect2(base.x - width * 0.5, y, width, layer_height), color)
-		c.draw_line(Vector2(base.x - width * 0.5, y), Vector2(base.x + width * 0.5, y), Color(1.0, 0.85, 0.6, 0.7), 0.8)
-	if launch >= 0.0:
-		# Rotoren drehen beim Abheben.
-		var rotor_y := base.y - 11.5 * layer_height - lift
-		Art.ellipse(c, Vector2(base.x - 10.0, rotor_y - 1.0), 6.0, 1.5, Color(0.9, 0.93, 1.0, 0.6))
-		Art.ellipse(c, Vector2(base.x + 10.0, rotor_y - 1.0), 6.0, 1.5, Color(0.9, 0.93, 1.0, 0.6))
-		return
-	if progress >= 1.0:
+		var color := Color(0.95, 0.56 + shade, 0.2) if int(layer[2]) == 1 else Color(0.62 + shade, 0.65 + shade, 0.74)
+		var line := Color(1.0, 0.85, 0.6, 0.6) if int(layer[2]) == 1 else Color(1, 1, 1, 0.45)
+		if hole > 0.0:
+			var foot_w := (width - hole) * 0.5
+			for side in [-1.0, 1.0]:
+				var fx: float = base.x + side * (hole * 0.5 + foot_w * 0.5)
+				c.draw_rect(Rect2(fx - foot_w * 0.5, y, foot_w, layer_height), color)
+		else:
+			c.draw_rect(Rect2(base.x - width * 0.5, y, width, layer_height), color)
+			c.draw_line(Vector2(base.x - width * 0.5, y), Vector2(base.x + width * 0.5, y), line, 0.8)
+	# Rotorflaechen auf den Armen, sobald diese gedruckt sind.
+	var arm_layer := 8.0
+	if done >= arm_layer:
+		var rotor_y := base.y - (arm_layer + 0.5) * layer_height - lift - 2.5
+		var spin := launch >= 0.0
+		for side in [-1.0, 1.0]:
+			var rx: float = 5.0 if not spin else 4.0 + 3.0 * absf(cos(t * 40.0 + side))
+			Art.ellipse(c, Vector2(base.x + side * 15.0, rotor_y), rx, 1.3, Color(0.9, 0.93, 1.0, 0.75 if spin else 0.5))
+			c.draw_line(Vector2(base.x + side * 15.0, rotor_y + 1.0), Vector2(base.x + side * 15.0, rotor_y + 3.5), Art.OUTLINE, 1.2)
+	if launch >= 0.0 or progress >= 1.0:
 		return
 	# Portal und Druckkopf an der aktuellen Schicht.
 	var top_y := base.y - done * layer_height
@@ -538,14 +575,14 @@ static func _printer(c: CanvasItem, s: Dictionary) -> void:
 	var firing := float(s.firing)
 	var speed_factor := clampf(absf(float(s.vx)) / 300.0, 0.0, 1.0) if bool(s.grounded) else 0.0
 	var lights_on := down < 0.5 and (hurt <= 0.0 or fmod(t, 0.12) < 0.06)
-	Art.shadow(c, Vector2(0, 37), 26.0, 3.5)
+	Art.shadow(c, Vector2(0, 37), 26.0, 3.5, 0.35 * (1.0 - down))
 	# Alles liegt um zehn Pixel nach oben verschoben, darunter laufen die gedruckten Beine.
 	# Das Gehaeuse atmet, wippt im Gang, federt beim Schuss und zittert bei Treffern.
 	var body_off := Vector2(0.0, sin(t * 2.0) * 0.4 * (1.0 - speed_factor) - absf(sin(float(s.walk) * 0.5)) * 1.4 * speed_factor + recoil * 0.9)
 	body_off += Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 1.8 * hurt
 	var sh := Vector2(0.0, -10.0) + body_off
 
-	# Zwei selbst gedruckte Beine: sichtbare Schichtlinien, verschiedene Filamentfarben, plumpe Fuesse.
+	# Zwei selbst gedruckte Beine: sichtbare Schichtlinien, gleiche Filamentfarbe, plumpe Fuesse.
 	for i in 2:
 		var hip := Vector2(-14.0 + i * 28.0, 12.0) + body_off * 0.5
 		var phase := float(s.walk) * 0.5 + (PI if i == 1 else 0.0)
@@ -555,7 +592,7 @@ static func _printer(c: CanvasItem, s: Dictionary) -> void:
 		if down > 0.0:
 			# Ausgeschaltet knicken die Beine weg und rutschen auseinander.
 			foot = foot.lerp(Vector2(hip.x + (-1.0 if i == 0 else 1.0) * 17.0, 37.0), down)
-		var leg_color := Color(0.95, 0.5, 0.12) if i == 0 else Color(0.9, 0.92, 0.97)
+		var leg_color := Color(0.95, 0.5, 0.12)
 		var joint := Art.limb(c, hip, foot, 13.0, 13.0, 7.0, leg_color, 1.0, leg_color.darkened(0.15))
 		# Schichtlinien quer zu den Segmenten (so sieht man, dass die Beine gedruckt sind).
 		var knee := hip + (foot - hip) * 0.5
@@ -622,47 +659,6 @@ static func _printer(c: CanvasItem, s: Dictionary) -> void:
 		Art.led(c, Vector2(-6, -21) + sh, 1.8, Color(0.4, 1.0, 0.5), lights_on and fmod(t, 0.8) < 0.5)
 	var la := _local_aim(s)
 	Art.face(c, Vector2(21, -13) + sh, Vector2(11, 11), s.eye_color, la, s.mood, t)
-
-	# Filament-Pistole oben: Schlauch von der Spule, Mantel mit Heissduese. Rohr federt beim Schuss
-	# zurueck und glueht bei Dauerfeuer.
-	var mount := Vector2(0, -38) + sh
-	var tube_from := spool + Vector2(2, -8)
-	var tube_to := mount + Vector2(-6, 2)
-	var tube_mid := (tube_from + tube_to) * 0.5 + Vector2(-4.0, -9.0 + sin(t * 3.0) * 0.8)
-	var tube := PackedVector2Array()
-	for k in 13:
-		var f := float(k) / 12.0
-		var p := tube_from.lerp(tube_mid, f).lerp(tube_mid.lerp(tube_to, f), f)
-		tube.append(p)
-	c.draw_polyline(tube, Art.OUTLINE, 3.6, true)
-	c.draw_polyline(tube, Color(0.3, 0.32, 0.4), 2.2, true)
-	c.draw_polyline(tube, Color(0.95, 0.5, 0.12, 0.8), 1.0, true)
-	if firing > 0.0:
-		for k in 3:
-			var index := int(fposmod(t * 14.0 + k * 4.0, 12.0))
-			c.draw_circle(tube[index], 1.3, Color(1.0, 0.85, 0.5))
-	Art.panel(c, Rect2(mount + Vector2(-7, -3), Vector2(14, 7)), Color(0.28, 0.3, 0.38), 2.5)
-	var pivot := mount + Vector2(0, -2)
-	var barrel_len := 12.0 - 3.5 * recoil
-	var tip := pivot + la * barrel_len
-	var barrel_color := Color(0.5, 0.53, 0.62).lerp(Color(1.0, 0.5, 0.2), clampf(heat * 0.9, 0.0, 0.9))
-	Art.bar(c, pivot, tip, 5.5, barrel_color)
-	var side_vec := la.orthogonal()
-	var nozzle_base := tip - la * 2.0
-	c.draw_colored_polygon(PackedVector2Array([nozzle_base + side_vec * 2.6, tip + la * 3.5, nozzle_base - side_vec * 2.6]), Color(1.0, 0.55, 0.18).lerp(Color(1.0, 0.9, 0.5), heat))
-	if heat > 0.5:
-		for k in 2:
-			var life := fposmod(t * 1.5 + k * 0.5, 1.0)
-			c.draw_circle(tip + Vector2(0.0, -3.0 - life * 10.0), 1.4 + life * 2.0, Color(0.85, 0.87, 0.92, 0.35 * (1.0 - life)))
-	if firing > 0.35:
-		var star := PackedVector2Array()
-		var rot := randf() * TAU
-		for k in 8:
-			var ang := rot + k * TAU / 8.0
-			star.append(tip + la * 3.0 + Vector2(cos(ang), sin(ang)) * (6.5 if k % 2 == 0 else 2.5) * firing)
-		c.draw_colored_polygon(star, Color(1.0, 0.7, 0.25, 0.9))
-	if firing > 0.0:
-		Art.glow(c, tip, 10.0 + 8.0 * firing, s.weapon_color)
 
 	# Rauch bei wenig Leben, Funken kurz vor dem Ausfall.
 	if low > 0.0:

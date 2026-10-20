@@ -28,7 +28,7 @@ func _vending_poses() -> Array:
 		["Treffer", {"mood": "hurt", "hurt": 1.0}],
 		["Wenig Leben", {"low": 1.0}],
 		["Münze", {"coin": 1.0, "mood": "happy"}],
-		["Am Boden", {"mood": "dead", "downed": true, "down": 1.0, "tilt": 0.32}],
+		["Am Boden", {"mood": "dead", "downed": true, "down": 1.0}],
 	]
 
 
@@ -46,12 +46,15 @@ func _printer_poses() -> Array:
 		["Landung", {"squash": Vector2(1.18, 0.8), "print": 0.5}],
 		["Treffer", {"mood": "hurt", "hurt": 1.0, "print": 0.5}],
 		["Wenig Leben", {"low": 1.0, "print": 0.5}],
-		["Am Boden", {"mood": "dead", "downed": true, "down": 1.0, "tilt": 0.32, "print": 0.5}],
+		["Am Boden", {"mood": "dead", "downed": true, "down": 1.0, "print": 0.5}],
 	]
 
 
 func _draw() -> void:
 	var cls := OS.get_environment("POSE_CLASS") if OS.get_environment("POSE_CLASS") != "" else "hexapod"
+	if cls == "down":
+		_draw_down_sheet()
+		return
 	var poses: Array = _hexapod_poses() if cls == "hexapod" else (_printer_poses() if cls == "printer" else _vending_poses())
 	_draw_poses(cls, poses)
 
@@ -89,3 +92,21 @@ func _draw_poses(cls: String, poses: Array) -> void:
 		draw_line(center + Vector2(-120, 23 * 3.2 if cls == "hexapod" else 54 * 2.2), center + Vector2(120, 23 * 3.2 if cls == "hexapod" else 54 * 2.2), Color(1, 1, 1, 0.12))
 		RobotArt.draw_player(self, cls, s, center, 3.2 if cls == "hexapod" else 2.4)
 		draw_string(font, center + Vector2(-100, 100), poses[i][0], HORIZONTAL_ALIGNMENT_CENTER, 200.0, 20, Color.WHITE)
+
+
+## Alle vier Klassen im Zustand "am Boden" (Uebergang und liegend).
+func _draw_down_sheet() -> void:
+	var font := ThemeDB.fallback_font
+	var classes := ["roomba", "hexapod", "vending", "printer"]
+	for row in 3:
+		var amount: float = [0.0, 0.5, 1.0][row]
+		for i in classes.size():
+			var s := _base()
+			s.merge({"mood": "dead", "downed": amount > 0.0, "down": amount}, true)
+			var center := Vector2(200.0 + i * 360.0, 150.0 + row * 270.0)
+			var zoom := 2.6 if classes[i] != "hexapod" else 3.0
+			var stats: Dictionary = RobotClasses.get_stats(classes[i])
+			var floor_y: float = center.y + stats.size.y * 0.5 * zoom
+			draw_line(Vector2(center.x - 150.0, floor_y), Vector2(center.x + 150.0, floor_y), Color(1, 1, 1, 0.25))
+			RobotArt.draw_player(self, classes[i], s, center, zoom)
+			draw_string(font, Vector2(center.x - 100.0, floor_y + 24.0), "%s %.1f" % [classes[i], amount], HORIZONTAL_ALIGNMENT_CENTER, 200.0, 18, Color.WHITE)

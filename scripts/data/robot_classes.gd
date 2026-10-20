@@ -86,6 +86,7 @@ const DATA := {
 		"tips_over": true,
 		"step": "step",
 		"kill_cooldown": 0.3,
+		"escort_drones": 2,
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
 		"stationary_fire": false,

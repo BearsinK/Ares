@@ -121,6 +121,9 @@ var _ceiling_amount := 0.0
 var _ceiling_cooldown := 0.0
 var _coin_flash := 0.0
 var _down_amount := 0.0
+## Begleitdrohnen des Druckers: aus ihnen kommen die Schüsse.
+var escorts: Array[Drone] = []
+var _escort_turn := 0
 
 var ability: Ability
 
@@ -260,6 +263,8 @@ func _ready() -> void:
 	ability = Ability.new()
 	add_child(ability)
 	ability.setup(self)
+	if int(stats.get("escort_drones", 0)) > 0:
+		_spawn_escorts.call_deferred()
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = stats.size
@@ -721,7 +726,8 @@ func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 		_lob_charging = false
 		_fire_cooldown = 1.0 / (float(weapon.fire_rate) * fire_rate_mult())
 		var origin: Vector2 = global_position + _muzzle_offset() + aim_dir * float(weapon.barrel)
-		velocity -= aim_dir * float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
+		if escorts.is_empty():
+			velocity -= aim_dir * float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
 		var thrown_charge := shake_charge
 		shake_charge = 0.0
 		_fire_flash = 1.0
@@ -730,6 +736,7 @@ func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 			# Schaum spritzt aus dem Ausgabefach.
 			Fx.instance.spark(origin, Color(1.0, 1.0, 1.0, 0.9), 4 + int(8.0 * thrown_charge), 220.0)
 		fired.emit(self, weapon_id, origin, aim_dir, thrown_charge)
+		_after_shot()
 	elif not held:
 		shake_charge = 0.0
 
@@ -754,18 +761,19 @@ func _handle_fire(_delta: float) -> void:
 		return
 	_fire_cooldown = 1.0 / (float(weapon.fire_rate) * fire_rate_mult())
 	var origin: Vector2 = global_position + _muzzle_offset() + aim_dir * float(weapon.barrel)
-	# Rueckstoss: am Boden schwaecher, in der Luft staerker.
+	# Rueckstoss: am Boden schwaecher, in der Luft staerker. Drohnenschuesse stossen den Koerper nicht.
 	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
-	if not (stats.stationary_fire and weapon_id == stats.weapons[0]):
+	if not (stats.stationary_fire and weapon_id == stats.weapons[0]) and escorts.is_empty():
 		velocity -= aim_dir * kick
 	_fire_flash = 1.0
-	_recoil = 1.0
+	_recoil = 1.0 if escorts.is_empty() else 0.0
 	_heat = minf(1.0, _heat + 0.2)
 	if class_id == "hexapod":
 		# Huelse fliegt seitlich aus dem Gehaeuse.
 		if Fx.instance:
 			Fx.instance.spark(global_position + Vector2(-5.0 * facing, -14.0), Color(1.0, 0.82, 0.4), 1, 150.0)
 	fired.emit(self, weapon_id, origin, aim_dir, 0.0)
+	_after_shot()
 
 
 ## Zustand fuer die Zeichenfunktionen (siehe RobotArt).
@@ -805,7 +813,7 @@ func _art_state() -> Dictionary:
 	# Neigung: Walze lehnt sich nach vorn, ausgeschaltete schwere Klassen kippen um.
 	var tilt := 0.0
 	if bool(stats.get("tips_over", false)):
-		tilt = (0.1 if ability.is_active("roll") else 0.0) * facing + 0.32 * facing * _down_amount
+		tilt = (0.1 if ability.is_active("roll") else 0.0) * facing
 	# Kletternder Spinnenroboter dreht sich mit dem Bauch zur Wand.
 	var cling_rotation := -_cling_dir * PI / 2.0 * _cling_amount if bool(stats.get("wall_climb", false)) else 0.0
 	return {
@@ -920,7 +928,37 @@ func _draw_lob_preview(size: Vector2) -> void:
 
 
 ## Position des Waffenansatzes relativ zum Koerpermittelpunkt (beruecksichtigt die Blickrichtung).
+func _spawn_escorts() -> void:
+	for i in int(stats.escort_drones):
+		var drone := Drone.new()
+		drone.escort = true
+		drone.owner_player = self
+		drone.slot = i
+		get_parent().add_child(drone)
+		drone.global_position = global_position + Vector2(0.0, -30.0)
+		escorts.append(drone)
+
+
+## Drohne, aus der der nächste Schuss kommt (abwechselnd), oder null.
+func _escort_gun() -> Drone:
+	for i in escorts.size():
+		var drone := escorts[(_escort_turn + i) % escorts.size()]
+		if is_instance_valid(drone):
+			return drone
+	return null
+
+
+func _after_shot() -> void:
+	var drone := _escort_gun()
+	if drone != null:
+		drone.kick()
+		_escort_turn = (_escort_turn + 1) % escorts.size()
+
+
 func _muzzle_offset() -> Vector2:
+	var gun := _escort_gun()
+	if gun != null:
+		return gun.global_position - global_position
 	var muzzle: Vector2 = stats.muzzle
 	var local := Vector2(muzzle.x * facing, muzzle.y)
 	if _ceiling:

@@ -155,6 +155,27 @@ func _vending_and_printer() -> void:
 	await _frames(10)
 	_check(get_tree().get_nodes_in_group("drones").is_empty(), "Drohnen verschwinden nach Ablauf")
 
+	# Der Drucker schiesst nur ueber seine Begleitdrohnen und wird dabei nicht zurueckgestossen.
+	_check(p2.escorts.size() == 2 and get_tree().get_nodes_in_group("escorts").size() == 2, "Drucker hat zwei Begleitdrohnen")
+	await _frames(40)
+	p2.velocity = Vector2.ZERO
+	var origins: Array[Vector2] = []
+	p2.fired.connect(func(_p: Player, _w: String, origin: Vector2, _d: Vector2, _c: float) -> void:
+		origins.append(origin))
+	Input.action_press("p2_fire", 1.0)
+	await _frames(20)
+	Input.action_release("p2_fire")
+	_check(origins.size() >= 2, "Drucker feuert (%d Schuesse)" % origins.size())
+	var from_drone := origins.size() >= 2
+	for origin in origins:
+		var near := false
+		for drone in p2.escorts:
+			if origin.distance_to(drone.global_position) < 60.0:
+				near = true
+		from_drone = from_drone and near
+	_check(from_drone, "Schuesse kommen aus den Drohnen")
+	_check(absf(p2.velocity.x) < 1.0, "Drohnenschuesse stossen den Drucker nicht zurueck (%.1f)" % p2.velocity.x)
+
 	# Druckbot: Kills verkuerzen die Abklingzeit, Drohnen erben das Modul.
 	var cd_before: float = p2.ability.cooldown
 	var victim := _enemy("brute", p2.global_position + Vector2(60.0, 0.0))
