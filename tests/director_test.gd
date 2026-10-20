@@ -41,7 +41,7 @@ func _run() -> void:
 	_check(not kinds.has("brute"), "Brute erscheint nicht zu frueh")
 
 	# Zeit vorspulen
-	director.time = 300.0
+	director.wave = 4
 	await _frames(60 * 10)
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		kinds[enemy.kind] = true

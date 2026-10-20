@@ -50,7 +50,7 @@ func _run() -> void:
 	_check(elite.elite and not normal.elite, "Elite-Flag wird gesetzt")
 	_check(elite.max_hp > normal.max_hp * 3.0, "Elite hat deutlich mehr Leben (%d zu %d)" % [elite.max_hp, normal.max_hp])
 	_check(elite.radius() > normal.radius() * 1.2, "Elite ist groesser")
-	main.director.time = 100.0
+	main.director.wave = 3
 	_check(main.director.elite_chance() >= 0.04 and main.director.elite_chance() <= 0.15, "Elite-Anteil bleibt im Rahmen")
 	var xp_normal: int = normal.data.xp
 	var before_gold := _count("gold")

@@ -14,6 +14,7 @@ Godot 4.7.2 Linux liegt (falls noch vorhanden) im Scratchpad unter godot-dl, son
 https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip laden.
 - Import: godot --headless --path . --import
 - Tests: godot --headless --path . res://tests/<name>_test.tscn (smoke, combat, element, progression, wave, movement, director, vending, hexapod, menu, ability, loop)
+- Balance: SIM_CLASSES=roomba,hexapod SIM_SCALE=8 godot --headless --path . res://tests/balance_sim.tscn (Bot spielt schneller als Echtzeit, nur Entwicklerwerkzeug; Ergebnisse streuen stark, mehrere Laeufe vergleichen)
 - Screenshots: xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --rendering-driver opengl3 <szene>
 - Autoloads (Sfx, InputSetup) gibt es nur in Szenen, nicht im --script Modus.
 

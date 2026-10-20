@@ -20,26 +20,49 @@ var players: Array[Player] = []
 var enemies: Array[Enemy] = []
 var parent_node: Node = null
 var time := 0.0
+var wave := 1
+var wave_progress := 0.0
 
 var _credits := 4.0
 var _spawn_timer := 1.0
+var _next_kind := ""
+var _next_elite := false
+
+
+## Schwierigkeit: 0 am Anfang, waechst mit jeder Welle um 1 (innerhalb der Welle stetig).
+func difficulty() -> float:
+	return float(wave - 1) + clampf(wave_progress, 0.0, 1.0)
+
+
+## Zeit-Aequivalent fuer das Freischalten von Gegnertypen (100 s pro Schwierigkeitsstufe).
+func unlock_time() -> float:
+	return difficulty() * 100.0
 
 
 func current_cap() -> int:
-	return mini(30 + int(time / 5.0), 200)
+	return mini(20 + int(difficulty() * 4.5), 200)
 
 
 ## Anteil der Spawns, die als Elite erscheinen (ab ELITE_FROM, wachsend bis 15 Prozent).
 func elite_chance() -> float:
-	return clampf(0.04 + (time - ELITE_FROM) / 1500.0, 0.0, 0.15)
+	return clampf(0.04 + (unlock_time() - ELITE_FROM) / 1500.0, 0.0, 0.15)
 
 
 func hp_scale() -> float:
-	return 1.0 + time / 120.0
+	return 1.0 + difficulty() * 0.3
 
 
 func damage_scale() -> float:
-	return 1.0 + time / 300.0
+	return 1.0 + difficulty() * 0.12
+
+
+## Neue Welle: die Punkte beginnen mit einem kleinen Startvorrat.
+func start_wave(new_wave: int) -> void:
+	wave = new_wave
+	wave_progress = 0.0
+	_credits = 4.0
+	_spawn_timer = 1.0
+	_next_kind = ""
 
 
 func alive_count() -> int:
@@ -54,20 +77,23 @@ func _physics_process(delta: float) -> void:
 	if not enabled:
 		return
 	time += delta
-	_credits += (1.2 + time / 45.0) * delta
+	_credits += (0.8 + 0.45 * difficulty()) * delta
 	_spawn_timer -= delta
 	if _spawn_timer > 0.0 or enemies.size() >= current_cap():
 		return
-	var kind := _choose_kind()
-	if kind == "":
-		return
-	var elite := time >= ELITE_FROM and randf() < elite_chance()
-	var cost := float(EnemyTypes.get_type(kind).cost) * (ELITE_COST_MULT if elite else 1.0)
+	# Der naechste Typ wird vorab gewuerfelt und dann abgewartet, bis die Punkte reichen.
+	# Sonst wuerden teure Typen nie erscheinen, weil billige die Punkte aufbrauchen.
+	if _next_kind == "":
+		_next_kind = _choose_kind()
+		_next_elite = unlock_time() >= ELITE_FROM and randf() < elite_chance()
+	var cost := float(EnemyTypes.get_type(_next_kind).cost) * (ELITE_COST_MULT if _next_elite else 1.0)
 	if cost > _credits:
-		elite = false
-		cost = float(EnemyTypes.get_type(kind).cost)
+		return
 	_spawn_timer = SPAWN_INTERVAL
 	_credits -= cost
+	var kind := _next_kind
+	var elite := _next_elite
+	_next_kind = ""
 	spawn(kind, null, elite)
 
 
@@ -76,12 +102,10 @@ func _choose_kind() -> String:
 	var weights: Array[float] = []
 	for kind in EnemyTypes.DATA:
 		var info: Dictionary = EnemyTypes.DATA[kind]
-		if time >= float(info.from_time) and _credits >= float(info.cost):
+		if unlock_time() >= float(info.from_time):
 			options.append(kind)
 			# Billige Gegner sind haeufiger.
 			weights.append(1.0 / float(info.cost))
-	if options.is_empty():
-		return ""
 	var total := 0.0
 	for weight in weights:
 		total += weight

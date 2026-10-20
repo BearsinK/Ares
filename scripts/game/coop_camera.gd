@@ -30,6 +30,12 @@ func _process(delta: float) -> void:
 		max_pos = max_pos.max(target.global_position)
 
 	var center := (min_pos + max_pos) * 0.5
+	# Leichter Vorlauf in Laufrichtung, damit man mehr von dem sieht, worauf man zuläuft.
+	var look := 0.0
+	for target in targets:
+		if target is Player and not target.downed:
+			look += clampf(target.velocity.x * 0.18, -110.0, 110.0)
+	center.x += look / targets.size()
 	var needed := (max_pos - min_pos) + margin * 2.0
 	var view := get_viewport_rect().size
 	var zoom_value := clampf(minf(view.x / needed.x, view.y / needed.y), min_zoom, max_zoom)

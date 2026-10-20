@@ -10,7 +10,7 @@ const ALL_IDS: Array[String] = ["dust", "rapid", "shotgun", "rocket", "beam", "s
 const DATA := {
 	"dust": {
 		"name": "Staubkugeln", "kind": "projectile", "color": Color(0.8, 0.92, 1.0),
-		"fire_rate": 6.0, "damage": 7.0, "pellets": 1, "spread": 0.04,
+		"fire_rate": 6.0, "damage": 8.0, "pellets": 1, "spread": 0.04,
 		"speed": 950.0, "lifetime": 0.9, "pierce": 0, "size": 4.0,
 		"recoil": 40.0, "shake": 1.0, "sound": "shoot", "barrel": 14.0,
 	},

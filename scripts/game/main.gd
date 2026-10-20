@@ -29,7 +29,7 @@ const TEST_MODULES := [
 const DUMMY_RESPAWN_TIME := 4.0
 const RESULT_DELAY := 1.4
 const CLEAR_DELAY := 3.0
-const HEALTH_DROP_CHANCE := 0.04
+const HEALTH_DROP_CHANCE := 0.07
 const HEALTH_DROP_HEAL := 0.25
 
 enum Phase { WAVE, CLEARING, SHOP, VICTORY }
@@ -170,6 +170,7 @@ func _update_wave(delta: float) -> void:
 			if not director_enabled or game_over:
 				return
 			wave_time_left -= delta
+			director.wave_progress = 1.0 - wave_time_left / wave_duration
 			if wave_time_left <= 0.0:
 				_end_wave()
 		Phase.CLEARING:
@@ -211,6 +212,7 @@ func _open_shop() -> void:
 func _on_shop_closed() -> void:
 	wave += 1
 	wave_time_left = wave_duration
+	director.start_wave(wave)
 	phase = Phase.WAVE
 	director.enabled = director_enabled
 
@@ -309,7 +311,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	kills += 1
 	var info: Dictionary = enemy.data
 	_spawn_pickup("xp", int(info.xp) * (3 if enemy.elite else 1), enemy.global_position)
-	var gold_value := 1 + int(director.time / 90.0)
+	var gold_value := 1 + int(director.difficulty() * 1.1)
 	var coins := int(float(info.gold_chance)) + (1 if randf() < fmod(float(info.gold_chance), 1.0) else 0)
 	if enemy.elite:
 		coins += 3
