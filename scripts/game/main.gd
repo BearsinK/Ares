@@ -647,7 +647,8 @@ func _on_enemy_died(enemy: Enemy) -> void:
 		if not player.downed and float(player.mods.kill_heal) > 0.0:
 			player.hp = minf(player.max_health(), player.hp + float(player.mods.kill_heal))
 	for player in players:
-		player.ability.reduce_cooldown(float(player.stats.get("kill_cooldown", 0.0)))
+		player.ability.reduce_cooldown(float(player.stats.get("kill_cooldown", 0.0)) + Perks.RECYCLE_SECONDS * float(player.mods.recycle))
+		player.register_kill()
 	_spawn_scrap(enemy)
 	var blast := 0.0
 	for player in players:

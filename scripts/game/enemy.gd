@@ -113,6 +113,8 @@ func _ready() -> void:
 func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element := "", from_effect := false) -> void:
 	if _dead:
 		return
+	if source is Player and not from_effect:
+		amount *= source.hit_multiplier(self)
 	if element != "" and not from_effect:
 		amount = statuses.process_hit(element, source, amount)
 		if _dead:
@@ -134,8 +136,31 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 	Sfx.play("hit")
 	if Fx.instance:
 		Fx.instance.number(global_position + Vector2(0.0, -radius() - 8.0), amount, Elements.color_of(element, Color(1, 1, 0.5)))
+	if hp > 0.0 and source is Player and not from_effect and float(source.mods.arc) > 0.0:
+		_arc_proc(source, amount)
 	if hp <= 0.0:
 		_die()
+
+
+## Arc Coil: ein Treffer springt auf den naechsten Gegner in der Naehe.
+func _arc_proc(source: Player, amount: float) -> void:
+	if randf() >= Perks.ARC_CHANCE * float(source.mods.arc):
+		return
+	var best: Enemy = null
+	var best_distance := Perks.ARC_RANGE
+	for other in siblings:
+		if other == self or not is_instance_valid(other) or other._dead:
+			continue
+		var distance := other.global_position.distance_to(global_position)
+		if distance < best_distance:
+			best_distance = distance
+			best = other
+	if best == null:
+		return
+	if Fx.instance:
+		Fx.instance.tracer(global_position, best.global_position, Color(0.95, 0.9, 0.35), 3.0, 0.15)
+	Sfx.play("zap", 0.1)
+	best.take_damage(maxf(1.0, amount * Perks.ARC_DAMAGE), source, Vector2.ZERO, "", true)
 
 
 func stun(duration: float) -> void:

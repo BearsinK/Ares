@@ -132,7 +132,7 @@ func _draw_wave_clear(view: Vector2) -> void:
 
 func _draw_hints(view: Vector2) -> void:
 	var visible_time := 16.0
-	if _age > visible_time or main.wave > 1 or main.phase != main.Phase.WAVE:
+	if _age > visible_time or main.wave > 1 or main.phase != main.Phase.WAVE or main.levelup_menu.is_open or main.shop_menu.is_open:
 		return
 	var alpha := clampf(minf(_age / 0.6, (visible_time - _age) / 1.5), 0.0, 1.0)
 	var panel := Rect2(Vector2(view.x * 0.5 - 430.0, view.y - 250.0), Vector2(860.0, 112.0))
@@ -224,6 +224,10 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 		var x := bar.position.x + bar.size.x * float(i) / float(segments)
 		_canvas.draw_line(Vector2(x, bar.position.y + 2), Vector2(x, bar.end.y - 2), Color(0, 0, 0, 0.35), 1.5)
 	Art.rrect_line(_canvas, bar, Color(1, 1, 1, 0.3), 5.0, 1.5)
+	if player.shield > 0.0:
+		# Schild: cyanfarbene Leiste ueber der Lebensleiste, im Massstab der Leben.
+		var shield_width := minf(bar.size.x * player.shield / player.max_health(), bar.size.x)
+		Art.rrect(_canvas, Rect2(bar.position + Vector2(0, -4), Vector2(maxf(shield_width, 6.0), 5.0)), Color(0.5, 0.88, 1.0), 2.5)
 	_text(origin + Vector2(8, 41), "%d / %d" % [int(ceil(player.hp)), int(player.max_health())], 13, Color(1, 1, 1, 0.95))
 
 	# Dash-Aufladungen als Kapseln.
@@ -269,9 +273,19 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 		var count: int = player.firmware[id]
 		fw_parts.append(Firmware.SHORT[id] + (" x%d" % count if count > 1 else ""))
 	if not fw_parts.is_empty():
-		_text(origin + Vector2(0, 108), "  ".join(fw_parts), 13, Color(0.55, 0.92, 0.7))
+		_text(origin + Vector2(0, 110), "  ".join(fw_parts), 13, Color(0.55, 0.92, 0.7), HORIZONTAL_ALIGNMENT_RIGHT, PANEL_WIDTH)
 	if player.downed:
 		_text(origin + Vector2(0, 108), "AM BODEN: Partner hält Interagieren", 14, Color(1.0, 0.5, 0.4))
+	else:
+		# Persoenliche Items (Shop, Kisten) als Symbole mit Zaehler.
+		var item_x := 12.0
+		for id in player.items:
+			var item_center := origin + Vector2(item_x, 104.0)
+			PerkArt.draw(_canvas, id, item_center, 22.0)
+			var count: int = player.items[id]
+			if count > 1:
+				_text(item_center + Vector2(7.0, 12.0), "x%d" % count, 12, Color(1.0, 0.95, 0.6))
+			item_x += 30.0
 
 
 func _draw_boss_bar(view: Vector2, boss: Boss) -> void:

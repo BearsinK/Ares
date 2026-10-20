@@ -82,7 +82,15 @@ var purchases := 0
 # Dauerhafte Boni aus Perks und Items (Anteile, ausser max_hp als fester Wert).
 var mods := {"damage": 0.0, "fire_rate": 0.0, "speed": 0.0, "max_hp": 0.0, "dmg_taken": 0.0,
 	"dash_cd": 0.0, "pickup": 0.0, "gold": 0.0, "ability_cd": 0.0, "crit": 0.0, "kill_heal": 0.0,
-	"pierce": 0.0, "death_blast": 0.0, "link": 0.0}
+	"pierce": 0.0, "death_blast": 0.0, "link": 0.0, "frenzy": 0.0, "arc": 0.0, "dash_blast": 0.0, "thorns": 0.0,
+	"rage": 0.0, "shield": 0.0, "recycle": 0.0, "execute": 0.0, "close": 0.0, "far": 0.0}
+## Persoenliche Items (Shop, Kisten): Perk-Id -> Anzahl. Team-Perks vom Level-Up stehen nicht hier.
+var items := {}
+## Schild aus Shield Cell: schluckt Schaden, laedt nach einer Weile ohne Treffer wieder auf.
+var shield := 0.0
+var frenzy_stacks := 0
+var _frenzy_time := 0.0
+var _since_hit := 99.0
 
 var _prefix := "p1_"
 var _coyote := 0.0
@@ -193,7 +201,8 @@ func move_speed() -> float:
 func base_speed() -> float:
 	var rolling := 1.7 if ability != null and ability.is_active("roll") else 1.0
 	var slowed := 0.6 if slow_time > 0.0 else 1.0
-	return float(stats.speed) * (1.0 + float(mods.speed)) * rolling * slowed
+	var rage := Perks.RAGE_SPEED * float(mods.rage) if low_health() else 0.0
+	return float(stats.speed) * (1.0 + float(mods.speed) + rage) * rolling * slowed
 
 
 ## Hexapod: beim Schiessen mit der Klassenwaffe nur halbes Tempo (am Boden, an der Wand, an der Decke).
@@ -208,7 +217,7 @@ func fire_move_factor() -> float:
 ## Feuerrate-Faktor aus Perks und Overwatch.
 func fire_rate_mult() -> float:
 	var boost := 2.0 if ability != null and ability.is_active("overwatch") else 1.0
-	return (1.0 + float(mods.fire_rate)) * boost
+	return (1.0 + float(mods.fire_rate) + float(mods.frenzy) * float(frenzy_stacks)) * boost
 
 
 ## Kabelbaum: aktiv, solange der Partner steht und nah genug ist.
@@ -219,7 +228,8 @@ func link_active() -> bool:
 
 func damage_mult() -> float:
 	var link := 0.15 * float(mods.link) if link_active() else 0.0
-	return float(stats.damage_mult) * (1.0 + float(mods.damage) + link)
+	var rage := Perks.RAGE_DAMAGE * float(mods.rage) if low_health() else 0.0
+	return float(stats.damage_mult) * (1.0 + float(mods.damage) + link + rage)
 
 
 func add_mods(new_mods: Dictionary) -> void:
@@ -227,6 +237,49 @@ func add_mods(new_mods: Dictionary) -> void:
 		mods[key] = float(mods[key]) + float(new_mods[key])
 	if new_mods.has("max_hp") and not downed:
 		hp += float(new_mods.max_hp)
+	if new_mods.has("shield"):
+		shield += float(new_mods.shield)
+
+
+## Perk als persoenliches Item aufnehmen (Shop, Kiste): Werte der Klassenvariante, mit Zaehler fuers HUD.
+func add_item(perk_id: String) -> void:
+	add_mods(Perks.mods_for(perk_id, class_id))
+	items[perk_id] = int(items.get(perk_id, 0)) + 1
+
+
+func max_shield() -> float:
+	return float(mods.shield)
+
+
+func low_health() -> bool:
+	return float(mods.rage) > 0.0 and not downed and hp <= max_health() * Perks.RAGE_THRESHOLD
+
+
+## Ein Kill im Team: Frenzy stapelt sich.
+func register_kill() -> void:
+	if float(mods.frenzy) > 0.0 and not downed:
+		frenzy_stacks = mini(Perks.FRENZY_STACKS, frenzy_stacks + 1)
+		_frenzy_time = Perks.FRENZY_TIME
+
+
+## Schadensfaktor eines Treffers auf einen Gegner: Executioner, Close Quarters, Long Shot.
+func hit_multiplier(target: Node2D) -> float:
+	var factor := 1.0
+	if float(mods.execute) > 0.0 and "hp" in target and "max_hp" in target and float(target.hp) < float(target.max_hp) * Perks.EXECUTE_THRESHOLD:
+		factor += float(mods.execute)
+	var distance := global_position.distance_to(target.global_position)
+	if float(mods.close) > 0.0 and distance < Perks.CLOSE_RANGE:
+		factor += float(mods.close)
+	if float(mods.far) > 0.0 and distance > Perks.FAR_RANGE:
+		factor += float(mods.far)
+	return factor
+
+
+## Explosion rund um den Spieler (Dash Blast, Thorns), ueber die Hauptszene.
+func _burst(radius: float, damage: float, color: Color) -> void:
+	var main := get_parent()
+	if main != null and main.has_method("_explode"):
+		main._explode(global_position, radius, damage * damage_mult(), self, color, "", 4.0)
 
 
 ## Gibt true zurueck, wenn der Treffer ankam (nicht unverwundbar oder am Boden).
@@ -239,6 +292,18 @@ func take_hit(amount: float, from: Vector2) -> bool:
 	# Stellung: Ein schiessender Hexapod steckt Treffer besser weg.
 	if float(stats.get("fire_slow", 1.0)) < 1.0 and _deploy_amount > 0.8:
 		final_amount *= 0.8
+	_since_hit = 0.0
+	if shield > 0.0:
+		var absorbed := minf(shield, final_amount)
+		shield -= absorbed
+		final_amount -= absorbed
+		if final_amount <= 0.0:
+			# Der Schild hat alles geschluckt: kurze Schutzzeit, kein Treffer-Effekt am Koerper.
+			iframes = HIT_IFRAMES * 0.6
+			Sfx.play("freeze", 0.05)
+			if Fx.instance:
+				Fx.instance.ring(global_position, maxf(stats.size.x, stats.size.y) * 0.5 + 14.0, Color(0.5, 0.85, 1.0))
+			return true
 	hp -= final_amount
 	iframes = HIT_IFRAMES
 	_hurt_timer = 0.45
@@ -247,6 +312,8 @@ func take_hit(amount: float, from: Vector2) -> bool:
 	velocity += Vector2(away.x * 320.0, -260.0) * push
 	Sfx.play("hurt")
 	hurt.emit(self, final_amount)
+	if float(mods.thorns) > 0.0 and hp > 0.0:
+		_burst(Perks.THORNS_RADIUS, Perks.THORNS_DAMAGE * float(mods.thorns), Color(1.0, 0.5, 0.35))
 	if hp <= 0.0:
 		hp = 0.0
 		downed = true
@@ -439,6 +506,13 @@ func _update_juice(delta: float) -> void:
 
 func _update_timers(delta: float) -> void:
 	iframes = maxf(0.0, iframes - delta)
+	_since_hit += delta
+	if frenzy_stacks > 0:
+		_frenzy_time -= delta
+		if _frenzy_time <= 0.0:
+			frenzy_stacks = 0
+	if shield < max_shield() and _since_hit >= Perks.SHIELD_DELAY:
+		shield = minf(max_shield(), shield + Perks.SHIELD_RATE * delta)
 	slow_time = maxf(0.0, slow_time - delta)
 	if link_active() and hp < max_health():
 		hp = minf(max_health(), hp + float(mods.link) * delta)
@@ -796,6 +870,8 @@ func _try_dash() -> void:
 	iframes = maxf(iframes, DASH_IFRAMES)
 	Sfx.play("dash")
 	_puff(Vector2(-_dash_dir.x * 20.0, float(stats.size.y) * 0.5 if is_on_floor() else 0.0), 6, 170.0)
+	if float(mods.dash_blast) > 0.0:
+		_burst(Perks.DASH_BLAST_RADIUS, Perks.DASH_BLAST_DAMAGE * float(mods.dash_blast), Color(0.5, 0.9, 1.0))
 
 
 func _spawn_ghost() -> void:
@@ -860,6 +936,8 @@ func _process_dash(delta: float) -> void:
 		# Momentum: nach dem Dash bleibt etwas Schwung erhalten.
 		velocity = _dash_dir * base_speed() * DASH_END_MOMENTUM
 		velocity.y = minf(velocity.y, 0.0)
+		if float(mods.dash_blast) > 0.0:
+			_burst(Perks.DASH_BLAST_RADIUS, Perks.DASH_BLAST_DAMAGE * float(mods.dash_blast), Color(0.5, 0.9, 1.0))
 
 
 func current_weapon_id() -> String:
@@ -1055,6 +1133,20 @@ func _draw() -> void:
 		_draw_slam_streaks(size)
 	if hook_active:
 		_draw_hook()
+
+	if not downed:
+		var body := maxf(size.x, size.y) * 0.5
+		if max_shield() > 0.0 and shield > 0.0:
+			var fill := shield / max_shield()
+			draw_arc(Vector2.ZERO, body + 10.0, 0.0, TAU, 32, Color(0.5, 0.85, 1.0, 0.25 + 0.4 * fill), 2.5, true)
+			draw_circle(Vector2.ZERO, body + 9.0, Color(0.5, 0.85, 1.0, 0.06 * fill))
+		if low_health():
+			var pulse := 0.5 + 0.5 * sin(_art_time * 9.0)
+			draw_arc(Vector2.ZERO, body + 6.0, 0.0, TAU, 28, Color(1.0, 0.3, 0.25, 0.35 + 0.3 * pulse), 3.0, true)
+		for k in frenzy_stacks:
+			var px := (float(k) - (frenzy_stacks - 1) * 0.5) * 9.0
+			draw_circle(Vector2(px, -size.y * 0.5 - 22.0), 3.2, Color(0.05, 0.03, 0.02, 0.8))
+			draw_circle(Vector2(px, -size.y * 0.5 - 22.0), 2.4, Color(1.0, 0.6, 0.2))
 
 	# Blinken waehrend der Unverwundbarkeit nach einem Treffer.
 	var blink := iframes > 0.0 and _dash_time_left <= 0.0 and not downed and fmod(iframes, 0.12) < 0.06

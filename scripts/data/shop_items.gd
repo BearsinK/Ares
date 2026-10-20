@@ -105,7 +105,7 @@ static func apply(player: Player, offer: Dictionary, slot := -1) -> void:
 		"repair":
 			player.hp = minf(player.max_health(), player.hp + player.max_health() * REPAIR_HEAL)
 		"perk":
-			player.add_mods(Perks.mods_for(offer.id, player.class_id))
+			player.add_item(offer.id)
 		"module":
 			player.set_module(offer.id, slot)
 		"weapon":

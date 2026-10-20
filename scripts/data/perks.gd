@@ -108,6 +108,75 @@ const DATA := {
 			"roomba": {"damage": 0.25, "fire_rate": 0.1},
 		},
 	},
+	"frenzy": {
+		"name": "Frenzy",
+		"mods": {
+			"default": {"frenzy": 0.05},
+			"hexapod": {"frenzy": 0.07},
+		},
+	},
+	"arccoil": {
+		"name": "Arc Coil",
+		"mods": {
+			"default": {"arc": 1.0},
+			"printer": {"arc": 1.5},
+		},
+	},
+	"dashblast": {
+		"name": "Dash Blast",
+		"mods": {
+			"default": {"dash_blast": 1.0},
+			"vending": {"dash_blast": 1.6},
+		},
+	},
+	"thorns": {
+		"name": "Thorns",
+		"mods": {
+			"default": {"thorns": 1.0},
+			"vending": {"thorns": 1.5},
+		},
+	},
+	"laststand": {
+		"name": "Last Stand",
+		"mods": {
+			"default": {"rage": 1.0},
+		},
+	},
+	"shieldcell": {
+		"name": "Shield Cell",
+		"mods": {
+			"default": {"shield": 18.0},
+			"printer": {"shield": 24.0},
+			"hexapod": {"shield": 16.0},
+		},
+	},
+	"recycler": {
+		"name": "Recycler",
+		"mods": {
+			"default": {"recycle": 1.0},
+		},
+	},
+	"executioner": {
+		"name": "Executioner",
+		"mods": {
+			"default": {"execute": 0.5},
+		},
+	},
+	"closequarters": {
+		"name": "Close Quarters",
+		"mods": {
+			"default": {"close": 0.25},
+			"roomba": {"close": 0.35},
+			"vending": {"close": 0.4},
+		},
+	},
+	"longshot": {
+		"name": "Long Shot",
+		"mods": {
+			"default": {"far": 0.3},
+			"hexapod": {"far": 0.45},
+		},
+	},
 }
 
 const LABELS := {
@@ -116,7 +185,29 @@ const LABELS := {
 	"dmg_taken": "weniger Schaden", "max_hp": "Leben",
 	"ability_cd": "Fähigkeits-Ladezeit", "crit": "Crit-Chance", "kill_heal": "Leben pro Kill",
 	"pierce": "Durchschlag", "death_blast": "Explosionsschaden", "link": "Cable Link",
+	"frenzy": "Frenzy", "arc": "Arc", "dash_blast": "Dash Blast", "thorns": "Thorns", "rage": "Last Stand",
+	"shield": "Schild", "recycle": "Recycler", "execute": "Executioner", "close": "Nahkampf", "far": "Fernkampf",
 }
+
+## Stapelbare Verhaltens-Perks (nicht nur Zahlen): Anteil pro Stapel und Schwellen, einmal definiert fuer Spiel und Text.
+const FRENZY_STACKS := 5
+const FRENZY_TIME := 4.0
+const ARC_CHANCE := 0.15
+const ARC_DAMAGE := 0.7
+const ARC_RANGE := 260.0
+const DASH_BLAST_DAMAGE := 14.0
+const DASH_BLAST_RADIUS := 120.0
+const THORNS_DAMAGE := 12.0
+const THORNS_RADIUS := 170.0
+const RAGE_THRESHOLD := 0.35
+const RAGE_DAMAGE := 0.35
+const RAGE_SPEED := 0.15
+const SHIELD_DELAY := 4.0
+const SHIELD_RATE := 24.0
+const RECYCLE_SECONDS := 0.6
+const EXECUTE_THRESHOLD := 0.3
+const CLOSE_RANGE := 240.0
+const FAR_RANGE := 650.0
 
 
 static func mods_for(perk_id: String, class_id: String) -> Dictionary:
@@ -143,6 +234,26 @@ static func describe(perk_id: String, class_id: String) -> String:
 			parts.append("Besiegte Gegner explodieren (%d Schaden)" % int(value))
 		elif key == "dmg_taken":
 			parts.append("%d%% %s" % [int(value * 100.0), LABELS[key]])
+		elif key == "frenzy":
+			parts.append("Kill: +%d%% Feuerrate, %d s (bis %dx)" % [int(round(value * 100.0)), int(FRENZY_TIME), FRENZY_STACKS])
+		elif key == "arc":
+			parts.append("%d%% Chance: Treffer springt weiter (%d%% Schaden)" % [int(round(ARC_CHANCE * value * 100.0)), int(ARC_DAMAGE * 100.0)])
+		elif key == "dash_blast":
+			parts.append("Dash sprengt an Start und Ziel (%d Schaden)" % int(round(DASH_BLAST_DAMAGE * value)))
+		elif key == "thorns":
+			parts.append("Getroffen: Schockwelle (%d Schaden)" % int(round(THORNS_DAMAGE * value)))
+		elif key == "rage":
+			parts.append("Unter %d%% Leben: +%d%% Schaden, +%d%% Tempo" % [int(RAGE_THRESHOLD * 100.0), int(RAGE_DAMAGE * value * 100.0), int(RAGE_SPEED * value * 100.0)])
+		elif key == "shield":
+			parts.append("+%d Schild, lädt nach %d s ohne Treffer auf" % [int(value), int(SHIELD_DELAY)])
+		elif key == "recycle":
+			parts.append("Kill verkürzt Fähigkeits-Ladezeit um %s s" % ("%.1f" % (RECYCLE_SECONDS * value)).trim_suffix(".0"))
+		elif key == "execute":
+			parts.append("+%d%% Schaden auf Gegner unter %d%% Leben" % [int(value * 100.0), int(EXECUTE_THRESHOLD * 100.0)])
+		elif key == "close":
+			parts.append("+%d%% Schaden auf unter %d px" % [int(value * 100.0), int(CLOSE_RANGE)])
+		elif key == "far":
+			parts.append("+%d%% Schaden auf über %d px" % [int(value * 100.0), int(FAR_RANGE)])
 		else:
 			parts.append("+%d%% %s" % [int(value * 100.0), LABELS[key]])
 	return ", ".join(parts)
