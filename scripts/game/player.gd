@@ -9,6 +9,7 @@ signal hurt(player: Player, amount: float)
 signal went_down(player: Player)
 signal revived(player: Player)
 signal slam_landed(player: Player, position: Vector2)
+signal heavy_landed(player: Player, strength: float)
 
 const GRAVITY := 2000.0
 const FALL_GRAVITY_MULT := 1.35
@@ -115,6 +116,7 @@ var _deployed_flag := false
 var _climb_phase := 0.0
 var _step_acc := 0.0
 var _cling_amount := 0.0
+var _coin_flash := 0.0
 var _down_amount := 0.0
 
 var ability: Ability
@@ -204,7 +206,8 @@ func take_hit(amount: float, from: Vector2) -> bool:
 	iframes = HIT_IFRAMES
 	_hurt_timer = 0.45
 	var away := (global_position - from).normalized()
-	velocity += Vector2(away.x * 320.0, -260.0)
+	var push := 1.0 - float(stats.get("knockback_resist", 0.0))
+	velocity += Vector2(away.x * 320.0, -260.0) * push
 	Sfx.play("hurt")
 	hurt.emit(self, final_amount)
 	if hp <= 0.0:
@@ -312,6 +315,11 @@ func _physics_process(delta: float) -> void:
 
 
 ## Aufgestellt: der Hexapod steht im Geschuetzmodus (Stand oder Overwatch).
+## Kurzes Aufleuchten (Muenzschlitz des Automaten) beim Einsammeln von Gold.
+func gold_flash() -> void:
+	_coin_flash = 1.0
+
+
 func is_deployed() -> bool:
 	return bool(stats.stationary_fire) and (_stand_time >= DEPLOY_TIME or ability.is_active("overwatch")) and not downed
 
@@ -330,12 +338,20 @@ func _update_juice(delta: float) -> void:
 	elif not _was_grounded and _fall_speed > 260.0 and not _clinging:
 		_land_squash = clampf(_fall_speed / 900.0, 0.25, 1.0)
 		_puff(Vector2(0.0, float(stats.size.y) * 0.5), 4 + int(4.0 * _land_squash), 140.0)
-		Sfx.play("land", 0.15)
+		if bool(stats.get("heavy", false)) and _fall_speed > 550.0:
+			# Schwere Klassen lassen beim harten Aufprall den Boden beben.
+			_puff(Vector2(-22.0, float(stats.size.y) * 0.5), 4, 170.0)
+			_puff(Vector2(22.0, float(stats.size.y) * 0.5), 4, 170.0)
+			Sfx.play("land_heavy", 0.1)
+			heavy_landed.emit(self, _land_squash)
+		else:
+			Sfx.play("land", 0.15)
 	if grounded:
 		_fall_speed = 0.0
 	_was_grounded = grounded
 	_land_squash = move_toward(_land_squash, 0.0, delta * 5.0)
 	_recoil = maxf(0.0, _recoil - delta * 9.0)
+	_coin_flash = maxf(0.0, _coin_flash - delta * 2.0)
 	_heat = maxf(0.0, _heat - delta * 0.45)
 
 	var planted := is_deployed()
@@ -657,6 +673,10 @@ func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 		var thrown_charge := shake_charge
 		shake_charge = 0.0
 		_fire_flash = 1.0
+		_recoil = 0.5 + 0.5 * thrown_charge
+		if Fx.instance and thrown_charge > 0.2:
+			# Schaum spritzt aus dem Ausgabefach.
+			Fx.instance.spark(origin, Color(1.0, 1.0, 1.0, 0.9), 4 + int(8.0 * thrown_charge), 220.0)
 		fired.emit(self, weapon_id, origin, aim_dir, thrown_charge)
 	elif not held:
 		shake_charge = 0.0
@@ -707,6 +727,10 @@ func _art_state() -> Dictionary:
 		mood = "dead"
 	elif _hurt_timer > 0.0:
 		mood = "hurt"
+	elif ability.is_active("roll"):
+		mood = "angry"
+	elif _coin_flash > 0.3:
+		mood = "happy"
 	elif _fire_flash > 0.3 or shake_charge > 0.0 or _deploy_amount > 0.85:
 		mood = "focus"
 	elif _happy_timer > 0.0:
@@ -726,12 +750,17 @@ func _art_state() -> Dictionary:
 		squash = Vector2(1.0 - stretch * 0.6, 1.0 + stretch)
 	elif _dash_time_left > 0.0:
 		squash = Vector2(1.12, 0.9)
+	# Neigung: Walze lehnt sich nach vorn, ausgeschaltete schwere Klassen kippen um.
+	var tilt := 0.0
+	if bool(stats.get("tips_over", false)):
+		tilt = (0.1 if ability.is_active("roll") else 0.0) * facing + 0.32 * facing * _down_amount
 	# Kletternder Spinnenroboter dreht sich mit dem Bauch zur Wand.
 	var cling_rotation := -_cling_dir * PI / 2.0 * _cling_amount if bool(stats.get("wall_climb", false)) else 0.0
 	return {
 		"cling": _cling_amount, "rot": cling_rotation, "down": _down_amount, "vy": velocity.y,
 		"squash": squash, "deploy": _deploy_amount, "recoil": _recoil, "heat": _heat, "climb": _climb_phase,
-		"hurt": _hurt_timer / 0.45, "downed": downed, "overdrive": 1.0 if ability.is_active("overwatch") else 0.0,
+		"hurt": _hurt_timer / 0.45, "downed": downed, "overdrive": 1.0 if ability.is_active() else 0.0,
+		"coin": _coin_flash, "low": clampf((0.3 - hp / max_health()) / 0.3, 0.0, 1.0) if not downed else 0.0, "tilt": tilt,
 		"print": print_progress, "launch": launch,
 		"facing": facing, "aim": aim_dir, "t": _art_time, "vx": 0.0 if downed else velocity.x,
 		"walk": _walk_phase, "grounded": is_on_floor(), "clinging": _clinging, "cling_dir": _cling_dir,

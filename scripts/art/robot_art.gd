@@ -10,6 +10,7 @@ extends RefCounted
 static func draw_player(c: CanvasItem, class_id: String, s: Dictionary, offset := Vector2.ZERO, zoom := 1.0) -> void:
 	var facing: float = s.facing
 	var lean := clampf(float(s.vx) / 1100.0, -0.07, 0.07)
+	lean += float(s.get("tilt", 0.0))
 	var cling := float(s.get("cling", 0.0))
 	if cling > 0.0:
 		# An der Wand dreht sich der Koerper, der Bauch zeigt zur Wand.
@@ -26,7 +27,7 @@ static func draw_player(c: CanvasItem, class_id: String, s: Dictionary, offset :
 		"hexapod":
 			_hexapod(c, s)
 		"vending":
-			_vending(c, s)
+			_vending(c, s, offset, zoom, lean, squash, pivot_offset, facing)
 		"printer":
 			_printer(c, s)
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -301,12 +302,41 @@ static func hull_clockwise(points: PackedVector2Array) -> bool:
 	return area > 0.0
 
 
-static func _vending(c: CanvasItem, s: Dictionary) -> void:
+## Versatz des Schranks gegen das Fahrwerk: Brummen, Federung beim Fahren, Rueckstoss beim Wurf
+## und Zittern bei Treffern. Gefedert wird der Schrank, nicht die Raupen.
+static func _vending_offset(s: Dictionary) -> Vector2:
+	var t: float = s.t
+	var speed_factor := clampf(absf(float(s.vx)) / 220.0, 0.0, 1.0) if bool(s.grounded) else 0.0
+	var hum := Vector2(sin(t * 170.0) * 0.16, cos(t * 143.0) * 0.14) * (1.0 - float(s.get("down", 0.0)))
+	var bob := Vector2(0.0, -absf(sin(float(s.walk) * 0.5)) * 1.3 * speed_factor)
+	var kick: Vector2 = -_local_aim(s) * 2.6 * float(s.get("recoil", 0.0))
+	var jitter := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 1.8 * float(s.get("hurt", 0.0))
+	return hum + bob + kick + jitter
+
+
+## Zeichnet den Automaten in drei Teilen: Schrank (mit eigenem Versatz), Raupen, Ausgabefach.
+static func _vending(c: CanvasItem, s: Dictionary, offset: Vector2, zoom: float, lean: float, squash: Vector2, pivot_offset: Vector2, facing: float) -> void:
+	var local := _vending_offset(s)
+	var world := Vector2(local.x * facing * squash.x, local.y * squash.y) * zoom
+	c.draw_set_transform(offset + pivot_offset + world, lean, Vector2(facing * zoom * squash.x, zoom * squash.y))
+	_vending_cabinet(c, s)
+	c.draw_set_transform(offset + pivot_offset, lean, Vector2(facing * zoom * squash.x, zoom * squash.y))
+	_vending_tracks(c, s)
+	c.draw_set_transform(offset + pivot_offset + world, lean, Vector2(facing * zoom * squash.x, zoom * squash.y))
+	_vending_slot(c, s)
+
+
+static func _vending_cabinet(c: CanvasItem, s: Dictionary) -> void:
 	var t: float = s.t
 	var accent: Color = s.accent
 	var charge: float = s.charge
 	var firing: float = s.firing
-	Art.shadow(c, Vector2(0, 54), 38.0, 4.0)
+	var down := float(s.get("down", 0.0))
+	var hurt := float(s.get("hurt", 0.0))
+	var roll := float(s.get("overdrive", 0.0))
+	var low := float(s.get("low", 0.0))
+	var speed_factor := clampf(absf(float(s.vx)) / 220.0, 0.0, 1.0)
+	var lights_on := down < 0.5 and (hurt <= 0.0 or fmod(t, 0.12) < 0.06)
 	# Schrank.
 	var green := Color(0.24, 0.36, 0.36)
 	Art.panel(c, Rect2(-31, -54, 62, 92), green, 7.0)
@@ -314,17 +344,23 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 	Art.rrect_line(c, Rect2(-31, -54, 62, 12), Art.OUTLINE, 6.0, 2.0)
 	# Blitz-Logo der erfundenen Marke.
 	c.draw_colored_polygon(PackedVector2Array([Vector2(-6, -52), Vector2(4, -52), Vector2(-1, -47), Vector2(5, -47), Vector2(-7, -40), Vector2(-3, -46), Vector2(-8, -46)]), Color(0.85, 0.72, 0.4))
-	Art.led(c, Vector2(22, -48), 2.0, accent)
-	Art.led(c, Vector2(-24, -48), 2.0, Color(0.85, 0.4, 0.35), fmod(t, 1.6) < 0.8)
+	Art.led(c, Vector2(22, -48), 2.0, accent, lights_on)
+	Art.led(c, Vector2(-24, -48), 2.0, Color(0.85, 0.4, 0.35), lights_on and fmod(t, 1.6) < 0.8)
+	# Walze: Warnstreifen blinken am Kopf des Schranks.
+	if roll > 0.0 and fmod(t, 0.3) < 0.15:
+		for k in 6:
+			var sx := -29.0 + k * 10.0
+			c.draw_colored_polygon(PackedVector2Array([Vector2(sx, -42), Vector2(sx + 5, -42), Vector2(sx + 9, -46), Vector2(sx + 4, -46)]), Color(0.95, 0.75, 0.12, 0.9))
 
 	# Glasfront mit Dosen, beim Schuetteln wackeln sie.
 	var glass := Rect2(-25, -37, 34, 56)
-	Art.rrect(c, glass, Color(0.05, 0.12, 0.16), 3.0)
+	Art.rrect(c, glass, Color(0.05, 0.12, 0.16) if down < 0.5 else Color(0.03, 0.05, 0.07), 3.0)
 	var can_colors := [Color(0.62, 0.66, 0.72), Color(0.46, 0.5, 0.58), Color(0.62, 0.66, 0.72), Color(0.78, 0.6, 0.35)]
 	for row in 5:
 		for col in 3:
 			var can_color: Color = can_colors[(row + col * 2) % 4]
-			var wobble := Vector2(sin(t * 70.0 + row * 2.0 + col), cos(t * 63.0 + col)) * charge * 1.4
+			var rattle := charge * 1.4 + speed_factor * 0.35 + hurt * 1.2 + roll * 0.8 + (1.0 - float(s.squash.y) if s.has("squash") else 0.0) * 4.0
+			var wobble := Vector2(sin(t * 70.0 + row * 2.0 + col), cos(t * 63.0 + col)) * rattle
 			var pos := Vector2(-22.0 + col * 10.5, -34.0 + row * 10.5) + wobble
 			Art.rrect(c, Rect2(pos, Vector2(8, 9)), can_color, 2.0)
 			c.draw_line(pos + Vector2(0, 2), pos + Vector2(8, 2), Color(1, 1, 1, 0.5), 1.0)
@@ -338,11 +374,28 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 		for col in 2:
 			Art.disc(c, Vector2(16.0 + col * 7.0, -16.0 + row * 7.0), 2.1, Color(0.82, 0.84, 0.9) if (row + col) % 2 == 0 else Color(0.62, 0.66, 0.74))
 	Art.rrect(c, Rect2(15, 8, 10, 3), Color(0.05, 0.08, 0.1), 1.5)
+	var coin := float(s.get("coin", 0.0))
+	if coin > 0.0:
+		Art.rrect(c, Rect2(15, 8, 10, 3), Color(1.0, 0.85, 0.3, 0.9 * coin), 1.5)
+		Art.glow(c, Vector2(20, 9.5), 9.0 * coin + 3.0, Color(1.0, 0.8, 0.3))
 	Art.rivet(c, Vector2(-28, -38))
 	Art.rivet(c, Vector2(28, -38))
 	Art.rivet(c, Vector2(-28, 33))
 	Art.rivet(c, Vector2(28, 33))
 
+	# Rauch und Funken: bei wenig Leben qualmt er, als Walze stoesst er Abgase aus.
+	if low > 0.0 or roll > 0.0:
+		for k in 3:
+			var life := fposmod(t * 0.8 + k * 0.33, 1.0)
+			var puff := Vector2(-20.0 + k * 5.0 + sin(t * 3.0 + k) * 3.0, -56.0 - life * 22.0)
+			c.draw_circle(puff, 3.0 + life * 5.0, Color(0.22, 0.22, 0.25, 0.5 * (1.0 - life) * maxf(low, roll)))
+	if low > 0.5 and fmod(t, 0.9) < 0.08:
+		c.draw_line(Vector2(-12, -20), Vector2(-18, -14), Color(1.0, 0.85, 0.4), 1.5, true)
+		c.draw_line(Vector2(-18, -14), Vector2(-14, -10), Color(1.0, 0.85, 0.4), 1.5, true)
+
+
+static func _vending_tracks(c: CanvasItem, s: Dictionary) -> void:
+	Art.shadow(c, Vector2(0, 54), 38.0, 4.0)
 	# Dreieckiges Raupenlaufwerk wie bei Schneefahrzeugen: abgerundetes Dreieck mit flacher
 	# Auflage, Rollen an den Ecken und umlaufenden Stollen.
 	var spin := float(s.walk) * 0.5
@@ -390,6 +443,12 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 		Art.disc(c, center, 1.4, Color(0.2, 0.22, 0.28))
 	Art.bar(c, Vector2(-8, 45.0), Vector2(14, 41.5), 3.0, Color(0.4, 0.42, 0.5), false)
 
+
+
+static func _vending_slot(c: CanvasItem, s: Dictionary) -> void:
+	var t: float = s.t
+	var charge: float = s.charge
+	var firing: float = s.firing
 	# Ausgabefach unten: hier kommen die Dosen heraus. Die Klappe schwingt beim Wurf auf.
 	var slot := Rect2(-25, 24, 34, 11)
 	Art.rrect(c, slot, Color(0.03, 0.05, 0.07), 3.0)
@@ -404,7 +463,10 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 			c.draw_circle(Vector2(-8, 28) + Vector2(cos(a) * (4.0 + 6.0 * charge), -absf(sin(a)) * (3.0 + 8.0 * charge)), 1.4 + charge * 1.2, Color(1, 1, 1, 0.8))
 	# Klappe: geschlossen deckt sie das Fach, beim Wurf klappt sie nach oben weg (von vorn gesehen
 	# wird sie dabei flach) und gibt den Blick auf die Dose frei.
-	var open := clampf(maxf(firing * 1.4, charge * 0.7), 0.0, 1.0)
+	# Im Leerlauf klappt die Ausgabeklappe ab und zu kurz auf, als wuerde eine Dose nachrutschen.
+	var idle_phase := fposmod(t, 9.0)
+	var idle_open := sin(idle_phase / 0.45 * PI) * 0.45 if idle_phase < 0.45 else 0.0
+	var open := clampf(maxf(maxf(firing * 1.4, charge * 0.7), idle_open), 0.0, 1.0)
 	var flap_height := lerpf(11.0, 2.5, open)
 	var flap_rect := Rect2(Vector2(-25, 24), Vector2(34, flap_height))
 	Art.panel(c, flap_rect, Color(0.66, 0.7, 0.8), 2.0)

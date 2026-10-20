@@ -45,6 +45,8 @@ func _ready() -> void:
 	_streams["pop"] = _synth(500.0, 120.0, 0.1, "square", 0.3, 0.5)
 	_streams["turret"] = _synth(950.0, 220.0, 0.11, "saw", 0.3, 0.35)
 	_streams["turret_over"] = _synth(1250.0, 300.0, 0.08, "saw", 0.3, 0.35)
+	_streams["land_heavy"] = _synth(110.0, 38.0, 0.22, "saw", 0.45, 0.6)
+	_streams["tread"] = _synth(120.0, 70.0, 0.05, "square", 0.1, 0.7)
 	_streams["deploy"] = _synth(320.0, 110.0, 0.09, "saw", 0.28, 0.5)
 	_streams["step"] = _synth(1000.0, 520.0, 0.03, "square", 0.07, 0.5)
 	_streams["land"] = _synth(170.0, 60.0, 0.09, "sine", 0.3, 0.3)

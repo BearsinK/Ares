@@ -336,6 +336,7 @@ func _spawn_players() -> void:
 		player.fired.connect(_on_player_fired)
 		player.went_down.connect(_on_player_down)
 		player.hurt.connect(_on_player_hurt)
+		player.heavy_landed.connect(func(_p: Player, strength: float) -> void: camera.add_shake(5.0 + 8.0 * strength))
 		player.slam_landed.connect(_on_slam_landed)
 		player.add_mods(Meta.player_mods())
 		player.gold = Meta.start_gold()
@@ -460,6 +461,7 @@ func _on_pickup_collected(pickup: Pickup, player: Player) -> void:
 		if Fx.instance:
 			Fx.instance.number(player.global_position + Vector2(0.0, -70.0), heal, Color(0.5, 1.0, 0.6), 24)
 	else:
+		player.gold_flash()
 		player.gold += maxi(1, int(round(pickup.value * (1.0 + float(player.mods.gold)))))
 		Sfx.play("coin")
 

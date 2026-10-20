@@ -149,5 +149,51 @@ func _run() -> void:
 	Input.action_release("p1_fire")
 	_check(p1.shake_charge == 0.0 and p1.downed, "Am Boden ist die Aufladung weg")
 
+	await _polish()
 	print("Fertig, Fehler: ", failures)
 	get_tree().quit(failures)
+
+
+func _polish() -> void:
+	p1.revive(1.0)
+	p1.hp = p1.max_health()
+	await _frames(30)
+	# Schwerer Aufprall: Beben und Signal.
+	var landed := [0.0]
+	p1.heavy_landed.connect(func(_p: Player, strength: float) -> void: landed[0] = strength)
+	p1.global_position = Vector2(850.0, 600.0)
+	p1.velocity = Vector2.ZERO
+	await _frames(120)
+	_check(landed[0] > 0.3, "Harter Aufprall loest ein Beben aus (%.2f)" % landed[0])
+
+	# Stabil: Rueckstoss bei Treffern nur halb so stark wie beim Roomba.
+	p1.iframes = 0.0
+	p1.velocity = Vector2.ZERO
+	p1.take_hit(10.0, p1.global_position + Vector2(40.0, 0.0))
+	var push_vending := absf(p1.velocity.x)
+	var other: Player = main.players[1]
+	other.iframes = 0.0
+	other.velocity = Vector2.ZERO
+	other.take_hit(10.0, other.global_position + Vector2(40.0, 0.0))
+	_check(push_vending < absf(other.velocity.x) * 0.6, "Der Automat wird kaum zurueckgestossen (%d zu %d)" % [push_vending, absf(other.velocity.x)])
+
+	# Muenze, Walze, Umkippen.
+	await _frames(40)
+	p1.gold_flash()
+	var state := p1._art_state()
+	_check(float(state.coin) > 0.9 and state.mood == "happy", "Gold laesst den Muenzschlitz aufleuchten")
+	p1.ability.cooldown = 0.0
+	p1.iframes = 0.0
+	p1.ability.try_use()
+	state = p1._art_state()
+	_check(state.mood == "angry" and absf(float(state.tilt)) > 0.05 and float(state.overdrive) > 0.5, "Als Walze lehnt er sich vor und schaut boese")
+	p1.ability.time = 0.0
+	p1.hp = p1.max_health() * 0.1
+	_check(float(p1._art_state().low) > 0.5, "Bei wenig Leben qualmt er")
+	p1.iframes = 0.0
+	p1.take_hit(9999.0, p1.global_position + Vector2(10.0, 0.0))
+	await _frames(80)
+	_check(absf(float(p1._art_state().tilt)) > 0.25, "Ausgeschaltet kippt er um (%.2f)" % float(p1._art_state().tilt))
+	p1.revive(0.5)
+	await _frames(80)
+	_check(absf(float(p1._art_state().tilt)) < 0.05, "Wiederbelebt richtet er sich auf")

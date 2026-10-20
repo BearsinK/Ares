@@ -57,6 +57,7 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Wellen-Modifikatoren ab Welle 2: Swarm, Elite Rush, Heavy Metal, Air Raid, Overdrive. Der Shop bietet auch Reparaturen, und jeder Kauf macht weitere teurer
 - Perk Cable Link: nah beim Partner mehr Schaden und Regeneration
 - Musik wird im Code erzeugt und lässt sich im Menü abschalten, F11 schaltet Vollbild um
+- Hexapod und Vendor sind animiert und poliert: Atmen, Gangwippen, Aufstellen mit Stabilisatoren, Rückstoß, Hitze, Wandklettern mit gedrehtem Körper, Landestauchung, Umkippen und Aufstehen. Der Hexapod steckt aufgestellt 20 % weniger ein, der Vendor wird kaum zurückgestoßen und lässt den Boden beben. Eine Pose-Tafel (`tests/pose_sheet.tscn`, `POSE_CLASS=vending`) zeigt alle Zustände
 - Pausemenü (Weiter, Steuerung, Neustart, Hauptmenü mit Rückfrage) und Ergebnisbildschirm nach Game Over oder Sieg
 - Spieler-Leben mit Unverwundbarkeit nach Treffer, Wiederbeleben durch Halten von Interagieren (Kreis), Game Over wenn beide am Boden liegen
 
