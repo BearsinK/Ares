@@ -649,8 +649,8 @@ func _apply_sandbox() -> void:
 				player.add_firmware(id)
 		for id in data.perks:
 			for k in int(data.perks[id]):
-				player.add_mods(Perks.mods_for(id, player.class_id))
-				perks_taken[id] = int(perks_taken.get(id, 0)) + 1
+				# Als persoenliche Items, damit sie unter dem Spielerpanel stehen.
+				player.add_item(id)
 		player.gold = int(config.gold)
 		player.invulnerable = bool(config.god)
 		player.hp = player.max_health()
@@ -795,7 +795,8 @@ func _clear_chests() -> void:
 
 
 func chest_price(large := false) -> int:
-	var base := (10.0 + 4.0 * float(wave)) * (1.0 + 0.1 * float(chests_opened)) * (2.4 if large else 1.0)
+	# Steigt etwas schneller als linear, weil die Einnahmen mit der Welle ebenfalls anziehen (Beute wird mit der Schwierigkeit mehr wert).
+	var base := (12.0 + 5.0 * float(wave)) * (1.0 + 0.06 * float(wave)) * (1.0 + 0.1 * float(chests_opened)) * (2.4 if large else 1.0)
 	return int(round(base))
 
 
