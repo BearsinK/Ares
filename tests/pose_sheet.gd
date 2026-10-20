@@ -10,7 +10,7 @@ func _base() -> Dictionary:
 		"facing": 1.0, "aim": Vector2(1, -0.15), "t": 1.0, "vx": 0.0, "walk": 0.0, "grounded": true,
 		"clinging": false, "cling_dir": 0.0, "planted": false, "mood": "normal", "firing": 0.0, "charge": 0.0, "arm": 0.0,
 		"weapon_color": Color(0.8, 0.92, 1.0), "accent": Color(0.3, 0.7, 1.0), "eye_color": Color(0.4, 0.8, 1.0),
-		"cling": 0.0, "rot": 0.0, "down": 0.0, "coin": 0.0, "low": 0.0, "tilt": 0.0, "vy": 0.0, "deploy": 0.0, "recoil": 0.0, "heat": 0.0, "climb": 0.0, "hurt": 0.0, "downed": false, "overdrive": 0.0, "squash": Vector2.ONE,
+		"cling": 0.0, "ceiling": 0.0, "rot": 0.0, "down": 0.0, "coin": 0.0, "low": 0.0, "tilt": 0.0, "vy": 0.0, "deploy": 0.0, "recoil": 0.0, "heat": 0.0, "climb": 0.0, "hurt": 0.0, "downed": false, "overdrive": 0.0, "squash": Vector2.ONE,
 	}
 
 
@@ -51,6 +51,8 @@ func _hexapod_poses() -> Array:
 		["Landung", {"squash": Vector2(1.18, 0.78)}],
 		["Klettern 1", {"clinging": true, "cling_dir": 1.0, "climb": 0.0, "cling": 1.0, "rot": -PI / 2.0, "vy": -300.0, "grounded": false}],
 		["Klettern 2", {"clinging": true, "cling_dir": 1.0, "climb": 2.0, "cling": 1.0, "rot": -PI / 2.0, "vy": -300.0, "grounded": false}],
+		["Decke", {"ceiling": 1.0, "grounded": false, "aim": Vector2(0.4, 1.0)}],
+		["Decke Lauf", {"ceiling": 1.0, "grounded": false, "vx": 200.0, "walk": 3.0, "aim": Vector2(0.4, 1.0)}],
 		["Aufstehen", {"mood": "happy", "down": 0.5, "downed": false}],
 		["Treffer", {"mood": "hurt", "hurt": 1.0}],
 		["Am Boden", {"mood": "dead", "downed": true, "down": 1.0}],

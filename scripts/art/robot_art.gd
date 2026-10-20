@@ -9,8 +9,14 @@ extends RefCounted
 
 static func draw_player(c: CanvasItem, class_id: String, s: Dictionary, offset := Vector2.ZERO, zoom := 1.0) -> void:
 	var facing: float = s.facing
+	# Kopfueber an der Decke: halbe Drehung, die Blickrichtung wird dafuer gespiegelt.
+	var ceiling := float(s.get("ceiling", 0.0))
+	if ceiling > 0.5:
+		facing = -facing
 	var lean := clampf(float(s.vx) / 1100.0, -0.07, 0.07)
 	lean += float(s.get("tilt", 0.0))
+	if ceiling > 0.0:
+		lean = lerpf(lean, PI, ceiling)
 	var cling := float(s.get("cling", 0.0))
 	if cling > 0.0:
 		# An der Wand dreht sich der Koerper, der Bauch zeigt zur Wand.
@@ -35,9 +41,11 @@ static func draw_player(c: CanvasItem, class_id: String, s: Dictionary, offset :
 
 static func _local_aim(s: Dictionary) -> Vector2:
 	# Aufgehaengt an der Wand ist der Koerper gedreht: Zielrichtung in dessen Raum umrechnen.
-	var angle := lerpf(0.0, float(s.get("rot", 0.0)), float(s.get("cling", 0.0)))
+	var ceiling := float(s.get("ceiling", 0.0))
+	var angle := lerpf(0.0, float(s.get("rot", 0.0)), float(s.get("cling", 0.0))) + PI * ceiling
 	var turned: Vector2 = Vector2(s.aim).rotated(-angle)
-	return Vector2(turned.x * float(s.facing), turned.y)
+	var facing := float(s.facing) * (-1.0 if ceiling > 0.5 else 1.0)
+	return Vector2(turned.x * facing, turned.y)
 
 
 static func _nozzle(c: CanvasItem, from: Vector2, direction: Vector2, length: float, width: float, color: Color, glow_color: Color, firing: float) -> void:
@@ -167,17 +175,20 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 	var overdrive := float(s.get("overdrive", 0.0))
 	var climb := float(s.get("climb", 0.0))
 	var firing := float(s.firing)
-	var wall_blend := float(s.get("cling", 0.0))
+	var wall_blend := maxf(float(s.get("cling", 0.0)), float(s.get("ceiling", 0.0)))
 	if wall_blend < 0.5:
 		Art.shadow(c, Vector2(0, 23), 28.0 + 3.0 * deploy, 3.5)
 
 	var cling := float(s.get("cling", 0.0))
 	var down := float(s.get("down", 1.0 if downed else 0.0))
 	var on_wall := cling > 0.5
-	var speed_factor := clampf(absf(float(s.vx)) / 300.0, 0.0, 1.0) if bool(s.grounded) else 0.0
+	var on_ceiling := float(s.get("ceiling", 0.0)) > 0.5
+	var speed_factor := clampf(absf(float(s.vx)) / 300.0, 0.0, 1.0) if (bool(s.grounded) or on_ceiling) else 0.0
 	if on_wall:
 		speed_factor = clampf(absf(float(s.get("vy", 0.0))) / 300.0, 0.0, 1.0)
 	var walk := float(s.walk) if not on_wall else climb
+	if on_ceiling:
+		walk = float(s.walk)
 	# Koerperhaltung: atmet im Stand, wippt im Gang, senkt sich beim Aufstellen,
 	# federt beim Schuss zurueck, zittert bei Treffern und sackt ein, wenn er ausgeschaltet ist
 	# (und steht beim Wiederbeleben wieder auf).
@@ -203,7 +214,7 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 			var foot := Vector2(knee.x + fx, 23.0)
 			var color := Color(0.14, 0.15, 0.2) if far else Color(0.24, 0.25, 0.32)
 			var stab := 0.0
-			if not bool(s.grounded) and not on_wall:
+			if not bool(s.grounded) and not on_wall and not on_ceiling:
 				knee = hip + Vector2(kx * 0.8, -float(knee_rise[i]) - 2.0)
 				foot = Vector2(knee.x + fx * 0.5, 17.0 + sin(t * 4.0 + i) * 0.8)
 			else:

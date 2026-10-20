@@ -624,6 +624,10 @@ func _add_block(rect: Rect2, kind := "platform") -> void:
 	shape.one_way_collision_margin = 10.0
 	body.add_child(shape)
 
+	# Unterseiten, an denen der Hexapod haengen kann (Plattformen und Decke).
+	if kind == "platform" or kind == "ceiling":
+		body.add_to_group("ceilings")
+		body.set_meta("rect", rect)
 	var art := BlockArt.new()
 	art.kind = kind
 	art.size = rect.size

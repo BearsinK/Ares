@@ -151,6 +151,7 @@ func _run() -> void:
 	await _frames(30)
 	_check(hexapod.global_position.y < 690.0 and hexapod.is_on_floor(), "Hexapod klettert den Schacht hoch und steht oben (y=%.0f)" % hexapod.global_position.y)
 
+	await _ceiling()
 	await _polish()
 	print("Fertig, Fehler: ", failures)
 	get_tree().quit(failures)
@@ -208,3 +209,61 @@ func _polish() -> void:
 		await get_tree().physics_frame
 		saw_squash = saw_squash or hexapod._land_squash > 0.3
 	_check(saw_squash, "Nach einem Fall staucht sich der Hexapod beim Landen")
+
+
+func _ceiling() -> void:
+	hexapod.revive(1.0)
+	hexapod.weapon_index = 0
+	# Unter einer Plattform festhalten (Plattform 1000..2100 bei y 1100..1124).
+	_place(hexapod, Vector2(1500.0, 1150.0))
+	await _frames(2)
+	Input.action_press("p2_up")
+	await _frames(20)
+	_check(hexapod._ceiling and absf(hexapod.global_position.y - (1124.0 + 23.0 + 1.0)) < 2.0, "Hexapod haelt sich unter der Plattform fest (y=%.0f)" % hexapod.global_position.y)
+	_check(hexapod._ceiling_amount > 0.9 and absf(float(hexapod._art_state().ceiling)) > 0.9, "Kopfueber: Zeichenzustand zeigt die Decke")
+	# Er bleibt haengen und laeuft kopfueber entlang.
+	var y0 := hexapod.global_position.y
+	await _frames(30)
+	_check(absf(hexapod.global_position.y - y0) < 1.0, "Haengend faellt er nicht")
+	var x0 := hexapod.global_position.x
+	Input.action_press("p2_right")
+	await _frames(40)
+	_check(hexapod._ceiling and hexapod.global_position.x > x0 + 80.0, "Er laeuft kopfueber entlang (%d px)" % (hexapod.global_position.x - x0))
+	Input.action_release("p2_right")
+	# Haengend im Stand ist er aufgestellt und kann schiessen.
+	await _frames(30)
+	_check(hexapod.is_deployed() and hexapod._can_fire("turret"), "Haengend im Stand ist das Geschuetz bereit")
+	# Runter laesst ihn fallen.
+	Input.action_release("p2_up")
+	Input.action_press("p2_down")
+	await _frames(25)
+	Input.action_release("p2_down")
+	_check(not hexapod._ceiling and hexapod.global_position.y > y0 + 20.0, "Runter loest ihn von der Decke")
+	# Ohne Hoch-Taste greift er nicht.
+	_place(hexapod, Vector2(1500.0, 1150.0))
+	await _frames(10)
+	_check(not hexapod._ceiling, "Ohne Hoch haelt er sich nicht fest")
+	# Am Plattformrand faellt er herunter.
+	_place(hexapod, Vector2(1500.0, 1150.0))
+	Input.action_press("p2_up")
+	await _frames(10)
+	Input.action_press("p2_right")
+	await _frames(240)
+	Input.action_release("p2_right")
+	Input.action_release("p2_up")
+	_check(not hexapod._ceiling, "Am Ende der Plattform loest er sich")
+	# Die Hallendecke geht auch.
+	_place(hexapod, Vector2(800.0, 40.0))
+	Input.action_press("p2_up")
+	await _frames(15)
+	Input.action_release("p2_up")
+	_check(hexapod._ceiling and hexapod.global_position.y < 30.0, "Auch an der Hallendecke haelt er sich fest (y=%.0f)" % hexapod.global_position.y)
+	Input.action_press("p2_down")
+	await _frames(15)
+	Input.action_release("p2_down")
+	# Roomba kann das nicht.
+	_place(roomba, Vector2(1500.0, 1140.0))
+	Input.action_press("p1_up")
+	await _frames(20)
+	Input.action_release("p1_up")
+	_check(not roomba._ceiling, "Nur der Hexapod klettert an Decken")

@@ -116,6 +116,9 @@ var _deployed_flag := false
 var _climb_phase := 0.0
 var _step_acc := 0.0
 var _cling_amount := 0.0
+var _ceiling := false
+var _ceiling_amount := 0.0
+var _ceiling_cooldown := 0.0
 var _coin_flash := 0.0
 var _down_amount := 0.0
 
@@ -213,6 +216,7 @@ func take_hit(amount: float, from: Vector2) -> bool:
 	if hp <= 0.0:
 		hp = 0.0
 		downed = true
+		_ceiling = false
 		revive_progress = 0.0
 		shake_charge = 0.0
 		_lob_charging = false
@@ -304,7 +308,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if belt_push != 0.0 and is_on_floor():
 		move_and_collide(Vector2(belt_push * delta, 0.0))
-	var still := (is_on_floor() and absf(velocity.x) < 30.0) or (_clinging and absf(velocity.y) < 30.0)
+	var still := ((is_on_floor() or _ceiling) and absf(velocity.x) < 30.0) or (_clinging and absf(velocity.y) < 30.0)
 	if still and _dash_time_left <= 0.0 and not hook_active:
 		_stand_time += delta
 	else:
@@ -365,6 +369,7 @@ func _update_juice(delta: float) -> void:
 		_deployed_flag = false
 
 	_cling_amount = move_toward(_cling_amount, 1.0 if _clinging else 0.0, delta * 7.0)
+	_ceiling_amount = move_toward(_ceiling_amount, 1.0 if _ceiling else 0.0, delta * 8.0)
 	_down_amount = move_toward(_down_amount, 1.0 if downed else 0.0, delta * (3.0 if downed else 2.2))
 	if _clinging:
 		_climb_phase += velocity.y * delta * 0.045
@@ -395,7 +400,7 @@ func _update_timers(delta: float) -> void:
 	_happy_timer = maxf(0.0, _happy_timer - delta)
 	var arm_target := 1.0 if (Input.is_action_pressed(_prefix + "fire") or _fire_flash > 0.05) and not downed else 0.0
 	_arm_deploy = move_toward(_arm_deploy, arm_target, delta * 8.0)
-	_walk_phase += velocity.x * facing * delta * 0.12 if is_on_floor() or _clinging else 0.0
+	_walk_phase += velocity.x * facing * delta * 0.12 if is_on_floor() or _clinging or _ceiling else 0.0
 
 	if dash_charges < dash_max():
 		_dash_recharge += delta
@@ -435,6 +440,8 @@ func _process_movement(delta: float, move: float) -> void:
 	var down := Input.get_axis(_prefix + "up", _prefix + "down")
 	var accel: float = stats.accel if on_floor else stats.air_accel
 
+	if stats.get("wall_climb", false) and _process_ceiling(delta, move, down):
+		return
 	if stats.get("wall_climb", false) and _process_climb(move, down):
 		return
 	if _slamming:
@@ -502,6 +509,49 @@ func _process_movement(delta: float, move: float) -> void:
 
 ## Wandklettern (Hexapod): Gegen die Wand druecken haelt ihn fest, hoch/runter klettert.
 ## Gibt true zurueck, wenn die Bewegung dieses Frames damit erledigt ist.
+## Unterseite einer Plattform oder der Decke direkt ueber dem Kopf (leer, wenn keine in Reichweite).
+func _ceiling_above() -> Dictionary:
+	var size: Vector2 = stats.size
+	var head_y: float = global_position.y - size.y * 0.5
+	for body in get_tree().get_nodes_in_group("ceilings"):
+		var rect: Rect2 = body.get_meta("rect")
+		var bottom := rect.end.y
+		if global_position.x < rect.position.x + 6.0 or global_position.x > rect.end.x - 6.0:
+			continue
+		# Der Spieler muss unter der Platte sein (Mitte darunter) und der Kopf nahe an der Unterseite.
+		if global_position.y > bottom and absf(head_y - bottom) < 24.0:
+			return {"y": bottom, "rect": rect}
+	return {}
+
+
+## Deckenklettern (Hexapod): Hoch gedrueckt haelt er sich an der Unterseite fest, laeuft dort
+## kopfueber entlang und laesst sich mit Runter oder Sprung fallen.
+func _process_ceiling(delta: float, move: float, vertical: float) -> bool:
+	_ceiling_cooldown = maxf(0.0, _ceiling_cooldown - delta)
+	var info := _ceiling_above()
+	if _ceiling:
+		if info.is_empty() or vertical > 0.3 or _jump_buffer > 0.0 or _dash_time_left > 0.0:
+			_ceiling = false
+			_ceiling_cooldown = 0.3
+			if _jump_buffer > 0.0:
+				_jump_buffer = 0.0
+			velocity = Vector2(velocity.x * 0.5, 140.0)
+			return false
+	elif vertical < -0.4 and _ceiling_cooldown <= 0.0 and not info.is_empty() and velocity.y < 400.0 and _dash_time_left <= 0.0:
+		_ceiling = true
+		_clinging = false
+		_air_jumps_left = fw("double_jump")
+		Sfx.play("deploy", 0.05)
+		_puff(Vector2(0.0, -float(stats.size.y) * 0.5), 3, 80.0)
+	else:
+		return false
+	global_position.y = float(info.y) + float(stats.size.y) * 0.5 + 1.0
+	velocity.y = 0.0
+	if _wall_lock <= 0.0:
+		velocity.x = move_toward(velocity.x, move * move_speed() * 0.85, float(stats.accel) * delta)
+	return true
+
+
 func _process_climb(move: float, vertical: float) -> bool:
 	if _wall_lock > 0.0 or _slamming:
 		_clinging = false
@@ -594,6 +644,8 @@ func _try_dash() -> void:
 	if dir.length() < AIM_THRESHOLD:
 		dir = Vector2(facing, 0.0)
 	_dash_dir = dir.normalized()
+	_ceiling = false
+	_ceiling_cooldown = 0.3
 	_dash_time_left = DASH_TIME
 	dash_charges -= 1
 	iframes = maxf(iframes, DASH_IFRAMES)
@@ -757,7 +809,7 @@ func _art_state() -> Dictionary:
 	# Kletternder Spinnenroboter dreht sich mit dem Bauch zur Wand.
 	var cling_rotation := -_cling_dir * PI / 2.0 * _cling_amount if bool(stats.get("wall_climb", false)) else 0.0
 	return {
-		"cling": _cling_amount, "rot": cling_rotation, "down": _down_amount, "vy": velocity.y,
+		"ceiling": _ceiling_amount, "cling": _cling_amount, "rot": cling_rotation, "down": _down_amount, "vy": velocity.y,
 		"squash": squash, "deploy": _deploy_amount, "recoil": _recoil, "heat": _heat, "climb": _climb_phase,
 		"hurt": _hurt_timer / 0.45, "downed": downed, "overdrive": 1.0 if ability.is_active() else 0.0,
 		"coin": _coin_flash, "low": clampf((0.3 - hp / max_health()) / 0.3, 0.0, 1.0) if not downed else 0.0, "tilt": tilt,
@@ -870,4 +922,10 @@ func _draw_lob_preview(size: Vector2) -> void:
 ## Position des Waffenansatzes relativ zum Koerpermittelpunkt (beruecksichtigt die Blickrichtung).
 func _muzzle_offset() -> Vector2:
 	var muzzle: Vector2 = stats.muzzle
-	return Vector2(muzzle.x * facing, muzzle.y)
+	var local := Vector2(muzzle.x * facing, muzzle.y)
+	if _ceiling:
+		# Kopfueber sitzt das Geschuetz unten am Koerper.
+		return Vector2(muzzle.x * facing, -muzzle.y)
+	if _clinging:
+		return local.rotated(-_cling_dir * PI / 2.0)
+	return local
