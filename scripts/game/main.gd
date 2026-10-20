@@ -322,7 +322,7 @@ func _update_guardian() -> void:
 	if _guardian_spawned or not is_guardian_wave() or director.wave_progress < 0.35:
 		return
 	_guardian_spawned = true
-	guardian = director.spawn("brute", null, true, "", true)
+	guardian = director.spawn(String(EnemyTypes.GUARDIANS.get(wave, "brute")), null, true, "", true)
 	guardian_banner_time = 3.4
 	camera.add_shake(9.0)
 	Sfx.play("levelup")

@@ -456,7 +456,7 @@ func _draw_guardian(view: Vector2) -> void:
 	if guardian.shield > 0.0:
 		_canvas.draw_rect(Rect2(bar.position + Vector2(0, -3), Vector2(bar.size.x * clampf(guardian.shield / guardian.max_shield, 0.0, 1.0), 4.0)), Color(0.5, 0.88, 1.0))
 	Art.rrect_line(_canvas, bar, Color(1, 1, 1, 0.4), 6.0, 1.5)
-	_text(Vector2(0, bar.position.y - 6.0), "WÄCHTER  %s" % String(kind_info.name), 17, accent.lightened(0.25), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(0, bar.position.y - 6.0), "WÄCHTER  %s  %s" % [String(guardian.data.name).to_upper(), String(kind_info.name)], 17, accent.lightened(0.25), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	# Pfeil am Bildrand, solange er nicht zu sehen ist.
 	var xf: Transform2D = main.get_viewport().get_canvas_transform()
 	var inner := Rect2(Vector2(70.0, 240.0), view - Vector2(140.0, 370.0))

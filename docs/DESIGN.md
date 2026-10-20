@@ -277,7 +277,7 @@ Grundlage: Risk of Rain 1 (Karten erkunden, Kisten und Altäre gegen Gold, steig
 
 Was wir daraus gemacht haben:
 - Bedeutsame Entscheidungen: Vertragswahl vor jeder Welle (sicherer Standard gegen zwei riskante Modifikatoren mit Gold-Prämie), Slot-Wahl im Shop, Items mit Verhalten statt nur Prozentwerten
-- Risiko gegen Belohnung: Verträge, die große Goldkiste am entlegensten Punkt der Karte, der Wächter am Ende jeder Karte, Schwierigkeitsstufen mit Chips-Faktor (Rookie x0,6, Hardcore x1,7)
+- Risiko gegen Belohnung: Verträge, die große Goldkiste am entlegensten Punkt der Karte, der Wächter am Ende jeder Karte (Brute, Rammtank, Mörser), Schwierigkeitsstufen mit Chips-Faktor (Rookie x0,6, Hardcore x1,7)
 - Erkunden lohnt sich: Altäre (Blut gegen Gold, Glück gegen Item mit Risiko) und Kisten auf den großen Karten (Gold gegen Item, Preis steigt mit Welle und geöffneten Kisten), Randmarker mit Preis, Lichtsäule als Orientierung
 - Synergien und Build-Identität: zehn Verhaltens-Perks (Frenzy, Arc Coil, Dash Blast, Thorns, Last Stand, Shield Cell, Recycler, Executioner, Close Quarters, Long Shot). Sie stapeln, wirken je nach Klasse unterschiedlich und greifen ineinander (Close Quarters mit Thorns, Executioner mit Arc Coil, Recycler mit Fähigkeiten)
 - Spannungskurve: Pro Karte ein Höhepunkt (Wächter in Welle 3, 6, 9), danach Kartenwechsel hinter den Toren, am Ende der Smelter. Wellen mit Modifikatoren bringen Abwechslung dazwischen

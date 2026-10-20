@@ -32,7 +32,7 @@ const DATA := {
 		"hp": 70.0, "speed": 110.0, "movement": "ground", "jump": 520.0,
 		"attack": "charge", "keep_distance": 280.0, "range": 480.0,
 		"windup": 0.8, "lock_time": 0.2, "cooldown": 2.6, "damage": 18.0,
-		"charge_speed": 820.0, "charge_time": 0.5, "knockback": 0.5,
+		"charge_speed": 820.0, "charge_time": 0.5, "knockback": 0.5, "champion_hp": 1000.0,
 		"xp": 3, "gold_chance": 0.7, "cost": 3.0, "from_time": 110.0,
 	},
 	"mortar": {
@@ -40,14 +40,14 @@ const DATA := {
 		"hp": 45.0, "speed": 60.0, "movement": "ground", "jump": 450.0,
 		"attack": "strike", "keep_distance": 650.0, "range": 1000.0,
 		"windup": 0.6, "lock_time": 0.0, "cooldown": 3.8, "damage": 20.0,
-		"strike_radius": 95.0, "strike_delay": 1.2, "knockback": 0.8,
+		"strike_radius": 95.0, "strike_delay": 1.2, "knockback": 0.8, "champion_hp": 800.0,
 		"xp": 3, "gold_chance": 0.7, "cost": 4.0, "from_time": 190.0,
 	},
 	"brute": {
 		"name": "Brute", "color": Color(0.55, 0.2, 0.25), "radius": 26.0,
 		"hp": 240.0, "speed": 65.0, "movement": "ground", "jump": 540.0,
 		"attack": "melee", "melee_shape": "circle", "reach": 105.0,
-		"windup": 0.9, "cooldown": 2.6, "damage": 25.0, "knockback": 0.2,
+		"windup": 0.9, "cooldown": 2.6, "damage": 25.0, "knockback": 0.2, "champion_hp": 1200.0,
 		"xp": 6, "gold_chance": 1.0, "cost": 6.0, "from_time": 150.0,
 	},
 	# Sprengi: rennt los und sprengt sich nach kurzer Warnung selbst. Ohne Beute, wenn er sich sprengt: abschiessen, bevor er da ist.
@@ -67,6 +67,10 @@ const DATA := {
 		"xp": 4, "gold_chance": 0.9, "cost": 4.0, "from_time": 170.0,
 	},
 }
+
+
+## Wächter pro Karte (Welle 3, 6, 9): jeder Typ spielt sich anders.
+const GUARDIANS := {3: "brute", 6: "charger", 9: "mortar"}
 
 
 ## Elite-Arten: jede hat eine eigene Farbe, einen Namen und eine Mechanik (siehe Enemy._update_elite).

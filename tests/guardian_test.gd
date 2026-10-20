@@ -121,6 +121,20 @@ func _run() -> void:
 		rare = rare or Perks.RARE_IDS.has(id)
 	_check(chest.is_open and p1.gold == 0 and rare, "Die Kiste ist gratis und enthaelt ein Verhaltens-Item (%s)" % str(p1.items))
 
+	# Jede Karte hat ihren eigenen Waechter-Typ.
+	var kinds := {}
+	for number in [3, 6, 9]:
+		await _start_guardian_wave(number)
+		kinds[number] = main.guardian.kind if main.guardian != null else "-"
+		if main.guardian != null:
+			_check(main.guardian.max_hp > 400.0, "Waechter in Welle %d (%s) hat genug Leben (%d)" % [number, kinds[number], main.guardian.max_hp])
+			main.guardian.queue_free()
+		main.guardian = null
+	_check(kinds[3] == "brute" and kinds[6] == "charger" and kinds[9] == "mortar", "Waechter: Brute, Rammtank, Moerser (%s)" % str(kinds))
+	for leftover in main.chests.get_children():
+		if leftover is Chest and leftover.bounty:
+			leftover.queue_free()
+
 	# Verlaengerung: Ist die Zeit um und der Waechter lebt, geht der Kampf weiter, ohne neue Gegner.
 	await _start_guardian_wave(3)
 	main.director.enabled = true

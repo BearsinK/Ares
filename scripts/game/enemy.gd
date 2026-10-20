@@ -82,7 +82,11 @@ func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_playe
 	elite = new_elite or champion
 	elite_kind = (new_elite_kind if new_elite_kind != "" else EnemyTypes.random_elite_kind()) if elite else ""
 	body_scale = CHAMPION_SCALE if champion else (ELITE_SCALE if elite else 1.0)
-	max_hp = float(data.hp) * hp_scale * (CHAMPION_HP_MULT if champion else (ELITE_HP_MULT if elite else 1.0))
+	if champion:
+		# Waechter haben einen festen Lebenswert je Typ (Rammtank und Moerser sind von Haus aus zerbrechlicher als der Brute).
+		max_hp = float(data.get("champion_hp", float(data.hp) * CHAMPION_HP_MULT)) * hp_scale
+	else:
+		max_hp = float(data.hp) * hp_scale * (ELITE_HP_MULT if elite else 1.0)
 	hp = max_hp
 	if elite_kind == "shield":
 		max_shield = max_hp * 0.6
