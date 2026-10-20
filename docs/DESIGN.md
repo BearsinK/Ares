@@ -270,3 +270,23 @@ Noch offen:
 - Item-System mit Procs und Stacking, Team-Items (Kabelbaum u.a.)
 - Perma-Progression und Meta-Menü, Musik
 - Balancing durch Spieltests
+
+## Designregeln und Entscheidungen (Runde Risk of Rain und Roguelike-Regeln)
+
+Grundlage: Risk of Rain 1 (Karten erkunden, Kisten und Altäre gegen Gold, steigende Schwierigkeit mit der Zeit, stapelbare Items) und allgemeine Roguelike-Regeln (bedeutsame Entscheidungen ohne dominante Antwort, Risiko gegen Belohnung, Synergien, Niederlagen nachvollziehbar, Schwierigkeit als Kurve statt Zahl).
+
+Was wir daraus gemacht haben:
+- Bedeutsame Entscheidungen: Vertragswahl vor jeder Welle (sicherer Standard gegen zwei riskante Modifikatoren mit Gold-Prämie), Slot-Wahl im Shop, Items mit Verhalten statt nur Prozentwerten
+- Risiko gegen Belohnung: Verträge, die große Goldkiste am entlegensten Punkt der Karte, der Wächter am Ende jeder Karte, Schwierigkeitsstufen mit Chips-Faktor (Rookie x0,6, Hardcore x1,7)
+- Erkunden lohnt sich: Kisten auf den großen Karten (Gold gegen Item, Preis steigt mit Welle und geöffneten Kisten), Randmarker mit Preis, Lichtsäule als Orientierung
+- Synergien und Build-Identität: zehn Verhaltens-Perks (Frenzy, Arc Coil, Dash Blast, Thorns, Last Stand, Shield Cell, Recycler, Executioner, Close Quarters, Long Shot). Sie stapeln, wirken je nach Klasse unterschiedlich und greifen ineinander (Close Quarters mit Thorns, Executioner mit Arc Coil, Recycler mit Fähigkeiten)
+- Spannungskurve: Pro Karte ein Höhepunkt (Wächter in Welle 3, 6, 9), danach Kartenwechsel hinter den Toren, am Ende der Smelter. Wellen mit Modifikatoren bringen Abwechslung dazwischen
+- Niederlagen nachvollziehbar: Gegnergeschosse haben eine eigene Form und Farbe, Zielstrahl und Warndreieck vor jedem Angriff, langsamere Geschosse, Medic und Sprengi sind erkennbare Prioritätsziele
+- Wiederspielwert: Kartenreihenfolge und Spiegelung zufällig, jede Karte bevorzugt eigene Gegnertypen, Schwierigkeitsstufen, Sandbox zum Ausprobieren
+- Coop: Items und Kisten sind persönlich, Verträge und Level-Up-Perks gemeinsam. Wiederbeleben hat Vorrang vor Kisten öffnen. Die Wächterbeute bekommt, wer sie holt, sonst der Nächste
+
+Offene Punkte nach dieser Runde:
+- Balance ist geschätzt, nur der Bot (der Hindernissen kaum ausweicht) und Tests sind Maßstab. Echte Spieltests entscheiden über Preise, Prämien und Gegnerwerte
+- Altäre (Blut gegen Gold, Glück) als weitere Risiko-Orte auf den Karten
+- Items nach Seltenheit stufen und im Shop sichtbar machen
+- Freischaltungen über Herausforderungen statt nur über Chips
