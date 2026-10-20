@@ -52,6 +52,11 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Reparaturkits (grünes Kreuz) heilen den Spieler, der sie braucht. Treffer erzeugen Kamerawackeln, roten Bildschirmrand und einen kurzen Hitstop
 - Dreizehn Perks mit Symbolen, darunter Glückschip (Crit), Notstrom (Heilung pro Kill), Durchschlag, Sprengkapsel (Kettenexplosionen) und Kühlkreislauf (Fähigkeit lädt schneller)
 - Endboss "Der Schmelzer" nach Welle 10 (nach einem letzten Shop): Die Halle wird zum Laufband-Ofen. Das Band zieht alles am Boden nach links in den Verbrennungsofen (Feuer, 30 Schaden). Der Boss rechts schickt Hindernisse aufs Band: Kisten und Stapel (springen, mit Anlauf), rollende Sägen (springen) und hängende Träger (drunter durchlaufen). Plattformen über dem Band sind sicher. Dazu Feuersalven mit Zielstrahl, Ascheregen mit Warnkreisen und ab Phase 3 Schweißdrohnen. Sein Panzer nimmt nur 25 Prozent Schaden, nur im Vent (Kern offen) volle. Wasser +50 Prozent, Eis +25 Prozent, Feuer -40 Prozent. Bei 66 und 33 Prozent Leben wechselt die Phase, das Band wird schneller
+- Werkstatt im Hauptmenü: Am Ende jedes Laufs gibt es Chips (mehr für Wellen, Kills, Stufe und den Boss). Damit kauft man dauerhafte Upgrades (Leben, Schaden, Startgold, Erfahrung, Tempo, gratis Reroll) und schaltet Automat, Drucker und weitere Waffen frei. Der Spielstand liegt in `user://ares_save.json`
+- Elites haben eine Art mit eigener Mechanik: Brandherd (legt Feuerstellen), Schildträger, Sturmbot (Blitzfächer), Frostwache (bremst in der Nähe)
+- Wellen-Modifikatoren ab Welle 2: Schwarm, Elite-Welle, Panzerwelle, Luftalarm, Sturm. Der Shop bietet auch Reparaturen, und jeder Kauf macht weitere teurer
+- Perk Kabelbaum: nah beim Partner mehr Schaden und Regeneration
+- Musik wird im Code erzeugt und lässt sich im Menü abschalten, F11 schaltet Vollbild um
 - Pausemenü (Weiter, Steuerung, Neustart, Hauptmenü mit Rückfrage) und Ergebnisbildschirm nach Game Over oder Sieg
 - Spieler-Leben mit Unverwundbarkeit nach Treffer, Wiederbeleben durch Halten von Interagieren (Kreis), Game Over wenn beide am Boden liegen
 
@@ -61,7 +66,7 @@ Welche Klassen gespielt werden, legt der Titelbildschirm fest (`scripts/game/tit
 
 ## Optik
 
-Alles wird im Code gezeichnet (kein Asset-Import). `scripts/art/` enthält die Zeichenhilfen (`art.gd`), die Roboter und Gegner (`robot_art.gd`), Level-Blöcke (`block_art.gd`), den Parallax-Hintergrund (`backdrop.gd`), Requisiten und Dampf (`props.gd`) und die Vignette. Mit der Szene `tests/art_gallery.tscn` kannst du alle Figuren nebeneinander ansehen. Die Roboter sind für die Seitenansicht gebaut: Roomba flach (68x26, dunkle Scheibe mit Silberring, Knopf, Stoßstange und Arm), Hexapod mit Beinen, Automat groß (68x108, die Dosen kommen aus dem Ausgabefach unten), Drucker auf zwei selbst gedruckten Beinen mit Fenster und Drohnen.
+Alles wird im Code gezeichnet (kein Asset-Import). `scripts/art/` enthält die Zeichenhilfen (`art.gd`), die Roboter und Gegner (`robot_art.gd`), Level-Blöcke (`block_art.gd`), den Parallax-Hintergrund (`backdrop.gd`), Requisiten und Dampf (`props.gd`) und die Vignette. Mit der Szene `tests/art_gallery.tscn` kannst du alle Figuren nebeneinander ansehen. Die Roboter sind für die Seitenansicht gebaut: Roomba flach (68x26, dunkle Scheibe mit Silberring, Knopf, Stoßstange und Arm), Hexapod mit Beinen, Automat groß (68x108, die Dosen kommen aus dem Ausgabefach unten), Drucker auf zwei selbst gedruckten Beinen, der in seiner Kammer Drohnen Schicht für Schicht druckt (die Tür öffnet sich, wenn die Fähigkeit sie losschickt).
 
 ## Struktur
 
