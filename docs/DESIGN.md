@@ -257,10 +257,15 @@ Umgesetzt und automatisch getestet:
 - XP und Gold als Pickups, Level-Ups mit gemeinsamer Team-Perk-Wahl (klassenabhängige Wirkung)
 - Wellen mit Zeitlimit und Shop (Buffs, Module, Waffen, Firmware, Reroll), Sieg-Bildschirm
 - Bewegungs-Firmware: Doppelsprung, Wandsprung, Gleiten, Bodenstoß, Greifhaken, Dash-Ladungen; durchlässige Plattformen
+- Titelbildschirm mit Klassenauswahl, Pausemenü, Ergebnisbildschirm
+- Klassenfähigkeiten auf L2: Sog, Overwatch, Walze, Druck (Drohnen)
+- Gegner: Rammbock (Ansturm) und Mörser (Flächenschlag) zusätzlich, Elites (größer, zäher, mehr Beute), Reparaturkits
+- Perks mit Procs: Crit, Heilung pro Kill, Durchschlag, Kettenexplosion, Fähigkeits-Ladezeit
+- Treffer-Rückmeldung: Wackeln, roter Rand, Hitstop
 
 Noch offen:
-- Klassenfähigkeiten (L2) und die Klassenmechaniken von Roomba (Müll saugen), Automat (Walze), Drucker (Drohnen), Hexapod (Geschützmodus)
-- Bosse (Bullet-Hell, Elementschwäche, Schwachpunkte, Laufband-Ofen), Elites mit Element und Mechanik
+- Roomba saugt noch keine Beute-Kategorien (Müll als Munition), Drucker druckt noch keine Zusatzwaffen
+- Bosse (Bullet-Hell, Elementschwäche, Schwachpunkte, Laufband-Ofen), Elites mit Element und Mechanik (aktuell nur größer und zäher)
 - Item-System mit Procs und Stacking, Team-Items (Kabelbaum u.a.)
-- Perma-Progression und Meta-Menü, Klassenauswahl, Optik (LCD-Gesichter, Assets)
+- Perma-Progression und Meta-Menü, Musik
 - Balancing durch Spieltests

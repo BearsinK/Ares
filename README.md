@@ -20,13 +20,14 @@ Beide Spieler können Controller und Tastatur gleichzeitig nutzen. Spieler 1 bek
 | Sprung | L1 | Leertaste | Pfeil hoch |
 | Dash | R1 | Shift | Schrägstrich |
 | Schießen | R2 | Linke Maustaste oder F | Punkt |
+| Klassenfähigkeit | L2 | E | Komma |
 | Waffe wechseln | Dreieck | Q | M |
 | Haken (Firmware) | Quadrat | R | N |
 | Menüs | Links/Rechts, Kreuz bestätigen, Kreis zurück | A/D, Enter | Pfeile, Rechts-Alt oder \ |
 
-Interagieren (Kreis / G / L) belebt den Partner (halten). Die Klassenfähigkeit (L2) hat noch keine Funktion.
+Interagieren (Kreis / G / L) belebt den Partner (halten). Die Klassenfähigkeit auf L2 (Taste E bzw. Komma) hat eine Abklingzeit, die Leiste im HUD zeigt sie. Escape oder Options öffnet die Pause.
 
-Klassen wechseln: F4 (Spieler 1) und F5 (Spieler 2) schalten durch Roomba, Hexapod, Automat und Drucker (startet die Szene neu). Der Drucker ist noch ein Platzhalter.
+Das Spiel startet im Titelbildschirm: Spielen, dann wählt jeder Spieler seine Klasse (Links/Rechts, Kreuz bestätigt, Kreis nimmt zurück). Im Spiel wechseln F4 (Spieler 1) und F5 (Spieler 2) die Klasse (startet die Szene neu).
 
 Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die nächste, F3 gibt beiden das komplette Testset (alle Waffen mit Modulen).
 
@@ -46,11 +47,16 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Elemente als Module an Waffen (Feuer, Wasser, Eis, Blitz) mit kurzen Statuseffekten und Kombos: Wasser+Blitz (x1,5, Kettenblitz), Wasser+Eis (eingefroren), Wasser+Feuer (Dampfexplosion), Feuer+Eis (schmilzt). Setzt ein anderer Spieler den Status, ist die Kombo deutlich stärker (Coop-Bonus). Zum Testen tragen die Waffen schon Module (Punkt im HUD zeigt das Element)
 - Wellen mit Zeitlimit (Standard 120 s, 10 Wellen), danach räumt sich das Feld, alle stehen auf und der Shop öffnet. Jeder kauft persönlich ein: Buffs, Elementmodule, Waffen, Bewegungs-Firmware, Reroll. Nach der letzten Welle erscheint ein Sieg-Bildschirm (der Endboss fehlt noch)
 - Bewegungs-Firmware: Doppelsprung, Wandsprung (rutschen und abspringen), Gleitschirm, Bodenstoß, Greifhaken, mehr Dash-Ladungen. Plattformen sind von unten durchlässig, mit nach unten + Sprung fällt man durch
+- Klassenfähigkeiten auf L2: Roomba Sog (zieht Gegner und Beute heran und kaut sie an), Hexapod Overwatch (4 s doppelte Feuerrate, auch in Bewegung), Automat Walze (3 s schneller, halber Schaden, rammt Gegner), Drucker Druck (zwei Drohnen mit Explosivschüssen)
+- Sechs Gegnertypen: dazu Rammbock (kündigt einen Ansturm an, der Schaden macht, wenn man im Weg steht) und Mörser (Warnkreis am Boden, dann Einschlag). Ab etwa einer Minute erscheinen Elites: größer, zäher, goldene Aura, viel Beute und ein Reparaturkit
+- Reparaturkits (grünes Kreuz) heilen den Spieler, der sie braucht. Treffer erzeugen Kamerawackeln, roten Bildschirmrand und einen kurzen Hitstop
+- Dreizehn Perks mit Symbolen, darunter Glückschip (Crit), Notstrom (Heilung pro Kill), Durchschlag, Sprengkapsel (Kettenexplosionen) und Kühlkreislauf (Fähigkeit lädt schneller)
+- Pausemenü (Weiter, Steuerung, Neustart, Hauptmenü mit Rückfrage) und Ergebnisbildschirm nach Game Over oder Sieg
 - Spieler-Leben mit Unverwundbarkeit nach Treffer, Wiederbeleben durch Halten von Interagieren (Kreis), Game Over wenn beide am Boden liegen
 
 Waffenwerte stehen in `scripts/data/weapons.gd`, Das Testset steht in `scripts/game/main.gd` (`TEST_LOADOUTS`, `TEST_MODULES`). Ein normaler Lauf startet nur mit der Klassenwaffe.
 
-Welche Klassen gespielt werden, steht in `scripts/game/main.gd` (`PLAYER_CLASSES`).
+Welche Klassen gespielt werden, legt der Titelbildschirm fest (`scripts/game/title_screen.gd`), Standard sind Roomba und Hexapod.
 
 ## Optik
 
@@ -77,6 +83,9 @@ godot --headless --path . res://tests/wave_test.tscn
 godot --headless --path . res://tests/movement_test.tscn
 godot --headless --path . res://tests/vending_test.tscn
 godot --headless --path . res://tests/hexapod_test.tscn
+godot --headless --path . res://tests/menu_test.tscn
+godot --headless --path . res://tests/ability_test.tscn
+godot --headless --path . res://tests/loop_test.tscn
 ```
 
 Die Tests simulieren Eingaben und prüfen Bewegung, Waffen, Gegnerangriffe, Wiederbeleben, Game Over und den Director.
