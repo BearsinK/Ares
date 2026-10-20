@@ -648,7 +648,10 @@ func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direct
 		damage *= 2.0
 	var element := player.current_module()
 	var color := Elements.color_of(element, weapon.color)
-	Sfx.play(weapon.sound)
+	var sound: String = weapon.sound
+	if sound == "turret" and player.ability.is_active("overwatch"):
+		sound = "turret_over"
+	Sfx.play(sound)
 	camera.add_shake(float(weapon.shake))
 	fx.muzzle(origin, direction, color)
 	if weapon.kind == "lob":

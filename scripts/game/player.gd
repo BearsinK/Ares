@@ -114,6 +114,8 @@ var _deploy_amount := 0.0
 var _deployed_flag := false
 var _climb_phase := 0.0
 var _step_acc := 0.0
+var _cling_amount := 0.0
+var _down_amount := 0.0
 
 var ability: Ability
 
@@ -346,6 +348,8 @@ func _update_juice(delta: float) -> void:
 	elif not planted and _deployed_flag:
 		_deployed_flag = false
 
+	_cling_amount = move_toward(_cling_amount, 1.0 if _clinging else 0.0, delta * 7.0)
+	_down_amount = move_toward(_down_amount, 1.0 if downed else 0.0, delta * (3.0 if downed else 2.2))
 	if _clinging:
 		_climb_phase += velocity.y * delta * 0.045
 	if grounded and not _clinging and absf(velocity.x) > 70.0 and stats.get("step", "") != "":
@@ -722,7 +726,10 @@ func _art_state() -> Dictionary:
 		squash = Vector2(1.0 - stretch * 0.6, 1.0 + stretch)
 	elif _dash_time_left > 0.0:
 		squash = Vector2(1.12, 0.9)
+	# Kletternder Spinnenroboter dreht sich mit dem Bauch zur Wand.
+	var cling_rotation := -_cling_dir * PI / 2.0 * _cling_amount if bool(stats.get("wall_climb", false)) else 0.0
 	return {
+		"cling": _cling_amount, "rot": cling_rotation, "down": _down_amount, "vy": velocity.y,
 		"squash": squash, "deploy": _deploy_amount, "recoil": _recoil, "heat": _heat, "climb": _climb_phase,
 		"hurt": _hurt_timer / 0.45, "downed": downed, "overdrive": 1.0 if ability.is_active("overwatch") else 0.0,
 		"print": print_progress, "launch": launch,

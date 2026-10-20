@@ -10,6 +10,11 @@ extends RefCounted
 static func draw_player(c: CanvasItem, class_id: String, s: Dictionary, offset := Vector2.ZERO, zoom := 1.0) -> void:
 	var facing: float = s.facing
 	var lean := clampf(float(s.vx) / 1100.0, -0.07, 0.07)
+	var cling := float(s.get("cling", 0.0))
+	if cling > 0.0:
+		# An der Wand dreht sich der Koerper, der Bauch zeigt zur Wand.
+		lean = lerpf(lean, float(s.get("rot", 0.0)), cling)
+		offset += Vector2(float(s.cling_dir) * 5.0 * cling, 0.0)
 	# Quetschen und Strecken um die Fusspunkte (Landung, Sprung, Dash).
 	var squash: Vector2 = s.get("squash", Vector2.ONE)
 	var foot_y: float = RobotClasses.get_stats(class_id).size.y * 0.5
@@ -28,7 +33,10 @@ static func draw_player(c: CanvasItem, class_id: String, s: Dictionary, offset :
 
 
 static func _local_aim(s: Dictionary) -> Vector2:
-	return Vector2(float(s.aim.x) * float(s.facing), float(s.aim.y))
+	# Aufgehaengt an der Wand ist der Koerper gedreht: Zielrichtung in dessen Raum umrechnen.
+	var angle := lerpf(0.0, float(s.get("rot", 0.0)), float(s.get("cling", 0.0)))
+	var turned: Vector2 = Vector2(s.aim).rotated(-angle)
+	return Vector2(turned.x * float(s.facing), turned.y)
 
 
 static func _nozzle(c: CanvasItem, from: Vector2, direction: Vector2, length: float, width: float, color: Color, glow_color: Color, firing: float) -> void:
@@ -158,16 +166,22 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 	var overdrive := float(s.get("overdrive", 0.0))
 	var climb := float(s.get("climb", 0.0))
 	var firing := float(s.firing)
-	Art.shadow(c, Vector2(0, 23), 28.0 + 3.0 * deploy, 3.5)
+	var wall_blend := float(s.get("cling", 0.0))
+	if wall_blend < 0.5:
+		Art.shadow(c, Vector2(0, 23), 28.0 + 3.0 * deploy, 3.5)
 
+	var cling := float(s.get("cling", 0.0))
+	var down := float(s.get("down", 1.0 if downed else 0.0))
+	var on_wall := cling > 0.5
 	var speed_factor := clampf(absf(float(s.vx)) / 300.0, 0.0, 1.0) if bool(s.grounded) else 0.0
-	var cling_side := float(s.cling_dir) * float(s.facing)
-	var walk := float(s.walk)
+	if on_wall:
+		speed_factor = clampf(absf(float(s.get("vy", 0.0))) / 300.0, 0.0, 1.0)
+	var walk := float(s.walk) if not on_wall else climb
 	# Koerperhaltung: atmet im Stand, wippt im Gang, senkt sich beim Aufstellen,
-	# federt beim Schuss zurueck, zittert bei Treffern und sackt ein, wenn er ausgeschaltet ist.
+	# federt beim Schuss zurueck, zittert bei Treffern und sackt ein, wenn er ausgeschaltet ist
+	# (und steht beim Wiederbeleben wieder auf).
 	var body_y := sin(t * 2.2) * 0.5 * (1.0 - deploy) - absf(sin(walk * 0.35)) * 1.6 * speed_factor + 2.2 * deploy + recoil * 1.1
-	if downed:
-		body_y = 9.0
+	body_y = lerpf(body_y, 9.0, down)
 	var body_off := Vector2(0.0, body_y) + Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 2.0 * hurt
 
 	# Sechs Beine, erst die fernen (dunkler), dann die nahen. Vorn greifen sie nach vorn,
@@ -180,40 +194,38 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 		for i in 3:
 			var hip := Vector2(-13.0 + i * 13.0 + (3.0 if far else 0.0), 1.0) + body_off
 			var side := -1.0 if i == 0 else (1.0 if i == 2 else (-1.0 if far else 1.0))
-			var kx := absf(float(knee_reach[i])) * side
-			var fx := absf(float(foot_reach[i])) * side
-			var knee := hip + Vector2(kx, -float(knee_rise[i]) - body_off.y * 0.0)
+			# An der Wand liegen die Beine enger zusammen, damit die Silhouette nicht aus der Hitbox faellt.
+			var spread := lerpf(1.0, 0.6, cling)
+			var kx := absf(float(knee_reach[i])) * side * spread
+			var fx := absf(float(foot_reach[i])) * side * spread
+			var knee := hip + Vector2(kx, -float(knee_rise[i]))
 			var foot := Vector2(knee.x + fx, 23.0)
 			var color := Color(0.14, 0.15, 0.2) if far else Color(0.24, 0.25, 0.32)
-			if downed:
-				knee = hip + Vector2(kx * 0.75, -5.0)
-				foot = Vector2(knee.x + fx * 1.6, 23.0)
-				_spider_leg(c, hip, knee, foot, color)
-				continue
-			if clinging:
-				# Kletterbewegung: die Beine greifen abwechselnd nach, drei Beine bewegen sich gemeinsam.
-				var phase := climb + i * 2.1 + (PI if far else 0.0)
-				var wall_foot := Vector2(cling_side * 32.0, -14.0 + i * 16.0 + (9.0 if far else 0.0))
-				wall_foot.y += sin(phase) * 5.0
-				wall_foot.x -= cling_side * maxf(0.0, cos(phase)) * 5.0
-				var wall_knee := hip + (wall_foot - hip) * 0.42 + Vector2(-cling_side * 2.0, -13.0 - float(i) * 2.0)
-				_spider_leg(c, hip, wall_knee, wall_foot, color)
-				continue
-			if not bool(s.grounded):
+			var stab := 0.0
+			if not bool(s.grounded) and not on_wall:
 				knee = hip + Vector2(kx * 0.8, -float(knee_rise[i]) - 2.0)
 				foot = Vector2(knee.x + fx * 0.5, 17.0 + sin(t * 4.0 + i) * 0.8)
 			else:
 				# Aufstellen: Beine spreizen sich weit, Stabilisatoren fahren aus.
 				knee.x += side * 4.0 * deploy
 				foot.x += side * 7.0 * deploy
+				stab = deploy
 				# Dreibeingang: nahe und ferne Beine wechseln sich ab, sanfte Schritte.
+				# An der Wand laeuft dieselbe Bewegung entlang der Wand nach oben oder unten.
 				var gait := walk * 0.35 + (PI if (i % 2 == 0) != far else 0.0)
 				var swing := sin(gait) * 7.0 * speed_factor * (1.0 - deploy)
 				var lift := maxf(0.0, cos(gait))
 				lift = lift * lift * 7.0 * speed_factor * (1.0 - deploy)
 				foot += Vector2(swing, -lift)
 				knee += Vector2(swing * 0.5, -lift * 0.9)
-			_spider_leg(c, hip, knee, foot, color, deploy if bool(s.grounded) else 0.0)
+			if down > 0.0:
+				# Ausgeschaltet: Knie sacken ab, Fuesse rutschen nach aussen.
+				var low_knee := hip + Vector2(kx * 0.75, -5.0)
+				var low_foot := Vector2(low_knee.x + fx * 1.6, 23.0)
+				knee = knee.lerp(low_knee, down)
+				foot = foot.lerp(low_foot, down)
+				stab *= 1.0 - down
+			_spider_leg(c, hip, knee, foot, color, stab)
 
 	# Rumpf: flache, dunkle Panzerschale mit Sensorkopf.
 	var shell := PackedVector2Array([Vector2(-23, -1), Vector2(-17, -11), Vector2(13, -13), Vector2(23, -4), Vector2(19, 6), Vector2(-19, 6)])
@@ -230,9 +242,9 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 	var sway := sin(t * 3.1) * 1.2 - float(s.vx) / 300.0 * 4.0
 	var antenna_tip := antenna_base + Vector2(-3.0 + sway, -17.0)
 	var antenna_mid := antenna_base + Vector2(-1.5 + sway * 0.4, -9.0)
-	if downed:
-		antenna_tip = antenna_base + Vector2(-13.0, -6.0)
-		antenna_mid = antenna_base + Vector2(-8.0, -9.0)
+	if down > 0.0:
+		antenna_tip = antenna_tip.lerp(antenna_base + Vector2(-13.0, -6.0), down)
+		antenna_mid = antenna_mid.lerp(antenna_base + Vector2(-8.0, -9.0), down)
 	c.draw_polyline(PackedVector2Array([antenna_base, antenna_mid, antenna_tip]), Color(0.6, 0.62, 0.7), 1.3, true)
 	Art.led(c, antenna_tip, 1.5, Color(1.0, 0.3, 0.25), fmod(t, 1.2) < 0.6 and not downed)
 	var la := _local_aim(s)

@@ -1,5 +1,5 @@
 extends Node2D
-## Entwickler-Werkzeug: zeigt den Hexapod in allen Zustaenden nebeneinander (Pose-Tafel).
+## Entwickler-Werkzeug: zeigt eine Klasse (POSE_CLASS, Standard hexapod) in allen Zustaenden nebeneinander.
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(Color(0.16, 0.18, 0.24))
@@ -10,7 +10,7 @@ func _base() -> Dictionary:
 		"facing": 1.0, "aim": Vector2(1, -0.15), "t": 1.0, "vx": 0.0, "walk": 0.0, "grounded": true,
 		"clinging": false, "cling_dir": 0.0, "planted": false, "mood": "normal", "firing": 0.0, "charge": 0.0, "arm": 0.0,
 		"weapon_color": Color(0.8, 0.92, 1.0), "accent": Color(0.3, 0.7, 1.0), "eye_color": Color(0.4, 0.8, 1.0),
-		"deploy": 0.0, "recoil": 0.0, "heat": 0.0, "climb": 0.0, "hurt": 0.0, "downed": false, "overdrive": 0.0, "squash": Vector2.ONE,
+		"cling": 0.0, "rot": 0.0, "down": 0.0, "vy": 0.0, "deploy": 0.0, "recoil": 0.0, "heat": 0.0, "climb": 0.0, "hurt": 0.0, "downed": false, "overdrive": 0.0, "squash": Vector2.ONE,
 	}
 
 
@@ -25,10 +25,11 @@ func _draw() -> void:
 		["Overwatch", {"deploy": 1.0, "planted": true, "mood": "focus", "overdrive": 1.0, "heat": 1.0}],
 		["Sprung", {"grounded": false, "squash": Vector2(0.92, 1.1), "vx": 200.0}],
 		["Landung", {"squash": Vector2(1.18, 0.78)}],
-		["Klettern 1", {"clinging": true, "cling_dir": 1.0, "climb": 0.0}],
-		["Klettern 2", {"clinging": true, "cling_dir": 1.0, "climb": 2.0}],
+		["Klettern 1", {"clinging": true, "cling_dir": 1.0, "climb": 0.0, "cling": 1.0, "rot": -PI / 2.0, "vy": -300.0, "grounded": false}],
+		["Klettern 2", {"clinging": true, "cling_dir": 1.0, "climb": 2.0, "cling": 1.0, "rot": -PI / 2.0, "vy": -300.0, "grounded": false}],
+		["Aufstehen", {"mood": "happy", "down": 0.5, "downed": false}],
 		["Treffer", {"mood": "hurt", "hurt": 1.0}],
-		["Am Boden", {"mood": "dead", "downed": true}],
+		["Am Boden", {"mood": "dead", "downed": true, "down": 1.0}],
 	]
 	var font := ThemeDB.fallback_font
 	for i in poses.size():
@@ -39,5 +40,5 @@ func _draw() -> void:
 		var row := i / 5
 		var center := Vector2(160.0 + col * 310.0, 150.0 + row * 290.0)
 		draw_line(center + Vector2(-120, 23 * 3.2), center + Vector2(120, 23 * 3.2), Color(1, 1, 1, 0.12))
-		RobotArt.draw_player(self, "hexapod", s, center, 3.2)
+		RobotArt.draw_player(self, OS.get_environment("POSE_CLASS") if OS.get_environment("POSE_CLASS") != "" else "hexapod", s, center, 3.2)
 		draw_string(font, center + Vector2(-100, 100), poses[i][0], HORIZONTAL_ALIGNMENT_CENTER, 200.0, 20, Color.WHITE)

@@ -51,6 +51,7 @@ func _run() -> void:
 	Input.action_press("p1_up")
 	await _frames(80)
 	_check(hexapod.is_clinging() and hexapod.global_position.y < 900.0, "Hexapod klettert die Wand hoch (y=%.0f)" % hexapod.global_position.y)
+	_check(hexapod._cling_amount > 0.9 and absf(float(hexapod._art_state().rot)) > 1.2, "An der Wand dreht sich der Koerper zur Wand")
 	_check(absf(hexapod._climb_phase) > 0.5 and absf(hexapod._climb_phase) < 40.0, "Beim Klettern laeuft die Kletteranimation (%.1f)" % hexapod._climb_phase)
 	_check(roomba.global_position.y > 1150.0, "Roomba kann nicht klettern (y=%.0f)" % roomba.global_position.y)
 	Input.action_release("p1_left")
@@ -188,8 +189,17 @@ func _polish() -> void:
 	Input.action_release("p2_fire")
 	_check(saw_recoil and peak_heat > 0.2, "Schuss loest Rueckstoss und Hitze aus (Hitze %.2f)" % peak_heat)
 	var state := hexapod._art_state()
-	for key in ["squash", "deploy", "recoil", "heat", "climb", "hurt", "downed", "overdrive"]:
+	for key in ["squash", "deploy", "recoil", "heat", "climb", "hurt", "downed", "overdrive", "cling", "rot", "down"]:
 		_check(state.has(key), "Animationszustand enthaelt %s" % key)
+
+	# Ausfall und Wiederbeleben: Beine sacken ein und richten sich wieder auf.
+	hexapod.iframes = 0.0
+	hexapod.take_hit(9999.0, hexapod.global_position + Vector2(10.0, 0.0))
+	await _frames(60)
+	_check(hexapod.downed and hexapod._down_amount > 0.95, "Ausgeschaltet sackt er vollstaendig ein (%.2f)" % hexapod._down_amount)
+	hexapod.revive(0.5)
+	await _frames(70)
+	_check(hexapod._down_amount < 0.05, "Nach dem Wiederbeleben steht er wieder auf (%.2f)" % hexapod._down_amount)
 
 	# Landung: Stauchung nach hartem Fall.
 	_place(hexapod, Vector2(850.0, 700.0))
