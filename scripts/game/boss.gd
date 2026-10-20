@@ -424,9 +424,13 @@ func _draw_cannon() -> void:
 	Art.panel(self, Rect2(MUZZLE.x + 20.0, MUZZLE.y - 22.0, 100.0, 44.0), Color(0.24, 0.24, 0.3), 8.0)
 	Art.panel(self, Rect2(MUZZLE.x - 20.0, MUZZLE.y - 17.0, 60.0, 34.0), Color(0.15, 0.15, 0.2), 6.0)
 	if telegraphing:
-		Art.glow(self, MUZZLE, 26.0 + 22.0 * strongest, Color(1.0, 0.3, 0.2))
+		Art.glow(self, MUZZLE, 26.0 + 22.0 * strongest, Color(1.0, 0.18, 0.5))
 	for shot in _shots:
 		if shot.t < 0.9:
 			var alpha: float = 0.15 + 0.55 * (1.0 - float(shot.t) / 0.9)
 			var aim: Vector2 = shot.dir
-			draw_line(MUZZLE, MUZZLE + aim * 1500.0, Color(1.0, 0.3, 0.2, alpha), 2.0 + 3.0 * (1.0 - float(shot.t) / 0.9), true)
+			var locked: bool = shot.t <= 0.25
+			var width := 2.0 + 3.0 * (1.0 - float(shot.t) / 0.9)
+			# Dieselbe Schusslinie wie bei den Gegnern: dunkle Unterlage, magenta, kurz vor dem Schuss weiss.
+			draw_line(MUZZLE, MUZZLE + aim * 1500.0, Color(0.05, 0.02, 0.08, 0.45 * alpha), width + 3.0, true)
+			draw_line(MUZZLE, MUZZLE + aim * 1500.0, Color(1.0, 0.85, 0.9, 1.0) if locked else Color(1.0, 0.18, 0.5, alpha + 0.2), width, true)
