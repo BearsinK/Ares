@@ -393,7 +393,7 @@ func _draw_chest_markers(view: Vector2) -> void:
 	var xf: Transform2D = main.get_viewport().get_canvas_transform()
 	var inner := Rect2(Vector2(70.0, 200.0), view - Vector2(140.0, 330.0))
 	for chest in main.chests.get_children():
-		if not (chest is Chest) or chest.is_open:
+		if not (chest is Chest) or chest is Altar or chest.is_open:
 			continue
 		var screen: Vector2 = xf * (chest.global_position + Vector2(0.0, -30.0))
 		if inner.has_point(screen):

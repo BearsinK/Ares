@@ -119,6 +119,9 @@ const OVERTIME_MAX := 90.0
 var chests: Node2D
 var chests_enabled := true
 var chests_opened := 0
+## Wahrscheinlichkeit, dass der Gluecksaltar ein Item gibt (Tests koennen den Wurf festlegen).
+const CHANCE_ODDS := 0.55
+var chance_roll_override := -1.0
 var _large_chest_placed := false
 var wave_intro := 0.0
 ## Gewaehlte Team-Perks (id -> Anzahl) und das Banner nach der Wahl.
@@ -798,7 +801,10 @@ func chest_price(large := false) -> int:
 
 func _update_chest_prices() -> void:
 	for chest in chests.get_children():
-		if chest is Chest and not chest.is_open and not chest.bounty:
+		if chest is Altar:
+			# Gluecksaltar: halber Kistenpreis, jede Nutzung macht ihn teurer.
+			chest.price = int(round(float(chest_price(false)) * 0.5 * pow(1.4, float(Altar.MAX_USES - chest.uses_left))))
+		elif chest is Chest and not chest.is_open and not chest.bounty:
 			chest.price = chest_price(chest.large)
 
 
@@ -810,8 +816,13 @@ func _refresh_chests() -> void:
 	_update_chest_prices()
 	var live: Array[Vector2] = []
 	var normal := 0
+	var altar_kinds: Array[String] = []
 	for chest in chests.get_children():
-		if chest is Chest and not chest.is_open and not chest.bounty:
+		if chest is Altar:
+			if not chest.is_open:
+				live.append(chest.position)
+				altar_kinds.append(chest.kind)
+		elif chest is Chest and not chest.is_open and not chest.bounty:
 			live.append(chest.position)
 			if not chest.large:
 				normal += 1
@@ -831,38 +842,54 @@ func _refresh_chests() -> void:
 		_add_chest(spot, false)
 		live.append(spot)
 		normal += 1
+	# Altaere: einer pro Karte, ab Welle 4 zwei verschiedene.
+	var altar_target := 1 if wave < 4 else 2
+	tries = 0
+	while altar_kinds.size() < altar_target and tries < 12:
+		tries += 1
+		var spot := _chest_spot(live, false)
+		if spot == Vector2.INF:
+			continue
+		var kind := "chance" if altar_kinds.has("blood") else ("blood" if altar_kinds.has("chance") else ("blood" if randf() < 0.5 else "chance"))
+		_add_altar(spot, kind)
+		live.append(spot)
+		altar_kinds.append(kind)
 
 
 ## Ort fuer eine Kiste auf einer begehbaren Flaeche: weit weg von den Spielern und anderen Kisten.
 ## Die grosse Kiste kommt an den entlegensten, hoechsten Punkt der Karte (Belohnung fuers Erkunden).
 func _chest_spot(taken: Array[Vector2], large: bool) -> Vector2:
-	var best := Vector2.INF
-	var best_score := -INF
 	var ground: Array = stage_layout.ground
-	for k in 40:
-		var point: Vector2 = ground[randi() % ground.size()]
-		var ok := true
-		for other in taken:
-			if other.distance_to(point) < 900.0:
-				ok = false
-		for player in players:
-			if player.global_position.distance_to(point) < 600.0:
-				ok = false
-		for start: Vector2 in stage_layout.starts:
-			if start.distance_to(point) < 500.0:
-				ok = false
-		if not ok:
-			continue
-		var score := randf() * 300.0
-		if large:
-			var start_distance := 0.0
+	# Erst mit grossem Abstand suchen, wird es eng (viele Kisten und Altaere), mit kleinerem.
+	for spacing in [900.0, 650.0, 450.0, 300.0]:
+		var best := Vector2.INF
+		var best_score := -INF
+		for k in 40:
+			var point: Vector2 = ground[randi() % ground.size()]
+			var ok := true
+			for other in taken:
+				if other.distance_to(point) < spacing:
+					ok = false
+			for player in players:
+				if player.global_position.distance_to(point) < 600.0:
+					ok = false
 			for start: Vector2 in stage_layout.starts:
-				start_distance = maxf(start_distance, start.distance_to(point))
-			score += start_distance + (arena_size.y - point.y) * 0.6
-		if score > best_score:
-			best_score = score
-			best = point
-	return best
+				if start.distance_to(point) < 500.0:
+					ok = false
+			if not ok:
+				continue
+			var score := randf() * 300.0
+			if large:
+				var start_distance := 0.0
+				for start: Vector2 in stage_layout.starts:
+					start_distance = maxf(start_distance, start.distance_to(point))
+				score += start_distance + (arena_size.y - point.y) * 0.6
+			if score > best_score:
+				best_score = score
+				best = point
+		if best != Vector2.INF:
+			return best
+	return Vector2.INF
 
 
 func _add_chest(pos: Vector2, large: bool) -> void:
@@ -875,24 +902,69 @@ func _add_chest(pos: Vector2, large: bool) -> void:
 	chests.add_child(chest)
 
 
-func _on_chest_opened(chest: Chest, player: Player) -> void:
-	if not chest.bounty:
-		chests_opened += 1
-	var pool: Array = Perks.RARE_IDS if chest.large else Perks.DATA.keys()
-	# Nicht zweimal dasselbe in Folge, solange es Auswahl gibt.
+func _add_altar(pos: Vector2, kind: String) -> void:
+	var altar := Altar.new()
+	altar.players = players
+	altar.kind = kind
+	altar.price = int(round(float(chest_price(false)) * 0.5))
+	altar.position = pos
+	altar.opened.connect(_on_chest_opened)
+	chests.add_child(altar)
+
+
+## Altar benutzt: Blut gibt Gold, Glueck gibt mit Chance ein Item.
+func _on_altar_used(altar: Altar, player: Player) -> void:
+	var at := altar.global_position + Vector2(0.0, -130.0)
+	if altar.kind == "blood":
+		var gold := 16 + 6 * wave
+		player.gold += gold
+		player.gold_flash()
+		Sfx.play("coin")
+		if Fx.instance:
+			Fx.instance.ring(player.global_position, 130.0, Color(1.0, 0.3, 0.35))
+			Fx.instance.spark(player.global_position, Color(0.9, 0.15, 0.2), 14, 320.0)
+			Fx.instance.number_text(at, "+%d Gold" % gold, Color(1.0, 0.85, 0.3), 28, 2.4)
+			Fx.instance.number_text(at + Vector2(0.0, 24.0), "Blutzoll", Color(1.0, 0.45, 0.5), 17, 2.4)
+		camera.add_shake(4.0)
+	else:
+		var roll := chance_roll_override if chance_roll_override >= 0.0 else randf()
+		if roll < CHANCE_ODDS:
+			_grant_item(player, altar.global_position, Perks.RARE_IDS if randf() < 0.25 else Perks.DATA.keys(), 3.2)
+		else:
+			Sfx.play("hurt", 0.05)
+			if Fx.instance:
+				Fx.instance.number_text(at, "Niete", Color(0.7, 0.7, 0.78), 26, 2.0)
+				Fx.instance.spark(altar.global_position + Vector2(0.0, -56.0), Color(0.6, 0.55, 0.7), 8, 200.0)
+	_update_chest_prices()
+
+
+## Zufaelliges Item aus dem Pool fuer den Spieler, mit Symbol, Name und Wirkung.
+func _grant_item(player: Player, from: Vector2, pool: Array, life: float) -> void:
+	# Moeglichst etwas, das der Spieler noch nicht hat.
 	var options: Array = pool.filter(func(id: String) -> bool: return int(player.items.get(id, 0)) == 0)
 	if options.is_empty():
 		options = pool
 	var id: String = options[randi() % options.size()]
 	player.add_item(id)
 	var color := PerkArt.color_of(id)
-	var at := chest.global_position + Vector2(0.0, -118.0)
+	var at := from + Vector2(0.0, -118.0)
 	if Fx.instance:
-		Fx.instance.ring(chest.global_position + Vector2(0.0, -20.0), 170.0 if chest.large else 120.0, color)
-		Fx.instance.spark(chest.global_position + Vector2(0.0, -30.0), color, 22 if chest.large else 14, 420.0)
+		Fx.instance.ring(from + Vector2(0.0, -20.0), 130.0, color)
+		Fx.instance.spark(from + Vector2(0.0, -30.0), color, 16, 420.0)
 		Fx.instance.perk_icon(at + Vector2(0.0, -46.0), id)
-		Fx.instance.number_text(at, String(Perks.DATA[id].name), color, 30, 3.2)
-		Fx.instance.number_text(at + Vector2(0.0, 26.0), Perks.describe(id, player.class_id), Color(0.92, 0.94, 1.0), 17, 3.2)
+		Fx.instance.number_text(at, String(Perks.DATA[id].name), color, 30, life)
+		Fx.instance.number_text(at + Vector2(0.0, 26.0), Perks.describe(id, player.class_id), Color(0.92, 0.94, 1.0), 17, life)
+	Sfx.play("levelup")
+
+
+func _on_chest_opened(chest: Chest, player: Player) -> void:
+	if chest is Altar:
+		_on_altar_used(chest, player)
+		return
+	if not chest.bounty:
+		chests_opened += 1
+	var pool: Array = Perks.RARE_IDS if chest.large else Perks.DATA.keys()
+	_grant_item(player, chest.global_position, pool, 3.2)
 	camera.add_shake(7.0 if chest.large else 4.0)
 	Sfx.play("levelup")
 	_update_chest_prices()

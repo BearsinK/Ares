@@ -37,7 +37,15 @@ func _ready() -> void:
 func _live() -> Array[Chest]:
 	var result: Array[Chest] = []
 	for chest in main.chests.get_children():
-		if chest is Chest and not chest.is_open and not chest.is_queued_for_deletion():
+		if chest is Chest and not chest is Altar and not chest.is_open and not chest.is_queued_for_deletion():
+			result.append(chest)
+	return result
+
+
+func _altars() -> Array[Altar]:
+	var result: Array[Altar] = []
+	for chest in main.chests.get_children():
+		if chest is Altar and not chest.is_open and not chest.is_queued_for_deletion():
 			result.append(chest)
 	return result
 
@@ -75,7 +83,7 @@ func _run() -> void:
 	var spaced := true
 	for i in chests.size():
 		for j in range(i + 1, chests.size()):
-			if chests[i].position.distance_to(chests[j].position) < 899.0:
+			if chests[i].position.distance_to(chests[j].position) < 299.0:
 				spaced = false
 	_check(spaced, "Kisten liegen weit auseinander")
 	var on_ground := true
@@ -168,6 +176,59 @@ func _run() -> void:
 			larges += 1
 	_check(larges == 1, "Auch die neue Karte hat eine Goldkiste")
 
+	# Altaere: Blut gegen Gold, Glueck gegen Item.
+	main.wave = 4
+	main._refresh_chests()
+	var altars := _altars()
+	_check(altars.size() == 2 and altars[0].kind != altars[1].kind, "Ab Welle 4 stehen zwei verschiedene Altaere da (%d)" % altars.size())
+	var blood: Altar = null
+	var luck: Altar = null
+	for altar in altars:
+		if altar.kind == "blood":
+			blood = altar
+		else:
+			luck = altar
+	p1.global_position = blood.global_position + Vector2(0.0, -30.0)
+	p2.global_position = blood.global_position + Vector2(-1800.0, -30.0)
+	p1.hp = p1.max_health()
+	p1.gold = 0
+	await _frames(3)
+	await _tap("p1_interact")
+	_check(is_equal_approx(p1.hp, p1.max_health() * 0.7) and p1.gold == 16 + 6 * main.wave, "Blutaltar: 30%% Leben gegen Gold (HP %.0f, Gold %d)" % [p1.hp, p1.gold])
+	_check(blood.uses_left == 2 and not blood.is_open, "Der Altar bleibt nutzbar (%d Nutzungen uebrig)" % blood.uses_left)
+	await _tap("p1_interact")
+	await _tap("p1_interact")
+	_check(blood.is_open or blood.uses_left == 0 or p1.hp < p1.max_health() * 0.5, "Nach drei Nutzungen oder bei zu wenig Leben ist Schluss (HP %.0f)" % p1.hp)
+	p1.hp = p1.max_health() * 0.35
+	var gold_low := p1.gold
+	if not blood.is_open:
+		await _tap("p1_interact")
+		_check(p1.gold == gold_low and is_equal_approx(p1.hp, p1.max_health() * 0.35), "Zu wenig Leben: der Altar verweigert (Gold %d)" % p1.gold)
+
+	# Gluecksaltar: erzwungene Wuerfe.
+	p2.global_position = luck.global_position + Vector2(0.0, -30.0)
+	p1.global_position = luck.global_position + Vector2(-1800.0, -30.0)
+	p2.gold = 1000
+	main.chance_roll_override = 0.9
+	var luck_price := luck.price
+	var items_before := 0
+	for id in p2.items:
+		items_before += int(p2.items[id])
+	await _frames(3)
+	await _tap("p2_interact")
+	var items_unlucky := 0
+	for id in p2.items:
+		items_unlucky += int(p2.items[id])
+	_check(p2.gold == 1000 - luck_price and items_unlucky == items_before, "Gluecksaltar: Pech kostet Gold und gibt nichts (%d)" % p2.gold)
+	_check(luck.price > luck_price and luck.uses_left == 2, "Jede Nutzung macht ihn teurer (%d -> %d)" % [luck_price, luck.price])
+	main.chance_roll_override = 0.1
+	await _tap("p2_interact")
+	var got := 0
+	for id in p2.items:
+		got += int(p2.items[id])
+	_check(got == items_before + 1, "Mit Glueck faellt ein Item heraus (%s)" % str(p2.items))
+	main.chance_roll_override = -1.0
+
 	# Kartenwechsel und Auffuellen im selben Frame (ohne Vertragswahl): alte Kisten zaehlen nicht mehr mit.
 	main.wave = 7
 	main._change_stage()
@@ -185,7 +246,7 @@ func _run() -> void:
 	main._refresh_chests()
 	var normal := 0
 	for chest in main.chests.get_children():
-		if chest is Chest and not chest.is_open and not chest.large and not chest.is_queued_for_deletion():
+		if chest is Chest and not chest is Altar and not chest.is_open and not chest.large and not chest.is_queued_for_deletion():
 			normal += 1
 	_check(normal <= mini(4, 2 + (main.wave - 1) / 2), "Normale Kisten bleiben beim Soll (%d)" % normal)
 
