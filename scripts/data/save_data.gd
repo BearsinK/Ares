@@ -33,7 +33,7 @@ static func _defaults() -> Dictionary:
 	return {
 		"chips": 0, "levels": {}, "classes": [], "weapons": [],
 		"stats": {"runs": 0, "best_wave": 0, "kills": 0, "boss_kills": 0, "best_time": 0},
-		"music": true, "fullscreen": false,
+		"music": true, "fullscreen": false, "difficulty": 1,
 	}
 
 
@@ -113,6 +113,18 @@ static func stats() -> Dictionary:
 static func music_enabled() -> bool:
 	_ensure()
 	return bool(_data.music)
+
+
+## 0 = Rookie, 1 = Normal, 2 = Hardcore (siehe Meta.DIFFICULTIES).
+static func difficulty() -> int:
+	_ensure()
+	return int(_data.get("difficulty", 1))
+
+
+static func set_difficulty(value: int) -> void:
+	_ensure()
+	_data.difficulty = value
+	save()
 
 
 static func fullscreen_enabled() -> bool:

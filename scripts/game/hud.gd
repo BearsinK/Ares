@@ -329,6 +329,9 @@ func _draw_top_center(view: Vector2) -> void:
 		clock = "Geschafft!"
 	if main.sandbox:
 		_text(Vector2(0, 104), "SANDBOX", 14, Color(1.0, 0.85, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	elif SaveData.difficulty() != 1:
+		var hard := SaveData.difficulty() > 1
+		_text(Vector2(0, 104), String(Meta.difficulty_data().name).to_upper(), 14, Color(1.0, 0.5, 0.4) if hard else Color(0.6, 0.9, 0.7), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var panel := Rect2(Vector2(view.x * 0.5 - 130.0, 8.0), Vector2(260.0, 82.0))
 	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.72), 12.0)
 	Art.rrect_line(_canvas, panel, Color(1, 1, 1, 0.2), 12.0, 2.0)

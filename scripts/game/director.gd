@@ -58,11 +58,11 @@ func elite_chance() -> float:
 
 
 func hp_scale() -> float:
-	return (1.0 + difficulty() * 0.3) * float(modifier.get("hp", 1.0))
+	return (1.0 + difficulty() * 0.3) * float(modifier.get("hp", 1.0)) * float(Meta.difficulty_data().hp)
 
 
 func damage_scale() -> float:
-	return 1.0 + difficulty() * 0.12
+	return (1.0 + difficulty() * 0.12) * float(Meta.difficulty_data().damage)
 
 
 ## Neue Welle: die Punkte beginnen mit einem kleinen Startvorrat.
@@ -89,7 +89,7 @@ func _physics_process(delta: float) -> void:
 	if not enabled:
 		return
 	time += delta
-	_credits += (0.8 + 0.45 * difficulty()) * float(modifier.get("credits", 1.0)) * delta
+	_credits += (0.8 + 0.45 * difficulty()) * float(modifier.get("credits", 1.0)) * float(Meta.difficulty_data().credits) * delta
 	_spawn_timer -= delta
 	if _spawn_timer > 0.0 or enemies.size() >= current_cap():
 		return

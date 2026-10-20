@@ -4,7 +4,7 @@ extends Node2D
 
 enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING, SANDBOX }
 
-const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Steuerung", "Vollbild", "Musik", "Beenden"]
+const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Schwierigkeit", "Steuerung", "Vollbild", "Musik", "Beenden"]
 const COUNTDOWN := 1.1
 
 var state := State.MAIN
@@ -80,9 +80,15 @@ func _update_main() -> void:
 	if UiKit.pressed("down"):
 		cursor = (cursor + 1) % MENU_ITEMS.size()
 		Sfx.play("switch")
+	if MENU_ITEMS[cursor] == "Schwierigkeit":
+		# Links/Rechts stellt die Schwierigkeit direkt um.
+		if UiKit.pressed("left") or UiKit.pressed("right"):
+			_cycle_difficulty(1 if UiKit.pressed("right") else -1)
 	if UiKit.confirm():
 		Sfx.play("pickup")
 		match MENU_ITEMS[cursor]:
+			"Schwierigkeit":
+				_cycle_difficulty(1)
 			"Spielen":
 				state = State.SELECT
 				locked = [false, false]
@@ -102,6 +108,12 @@ func _update_main() -> void:
 				Music.set_enabled(not Music.enabled)
 			"Beenden":
 				get_tree().quit()
+
+
+func _cycle_difficulty(step: int) -> void:
+	var count := Meta.DIFFICULTIES.size()
+	SaveData.set_difficulty((SaveData.difficulty() + step + count) % count)
+	Sfx.play("switch")
 
 
 ## Alle Zeilen der Werkstatt: Upgrades, dann Klassen und Waffen zum Freischalten.
@@ -293,6 +305,8 @@ func _item_label(index: int) -> String:
 		return "Musik: %s" % ("An" if Music.enabled else "Aus")
 	if MENU_ITEMS[index] == "Vollbild":
 		return "Vollbild: %s" % ("An" if InputSetup.is_fullscreen() else "Aus")
+	if MENU_ITEMS[index] == "Schwierigkeit":
+		return "Stufe: %s" % String(Meta.difficulty_data().name)
 	return MENU_ITEMS[index]
 
 
@@ -303,9 +317,14 @@ func _draw_main(view: Vector2) -> void:
 	UiKit.text(_ui, Vector2(0, 240), "Der Aufstand der Apparate", 28, Color(0.8, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	Art.glow(_ui, Vector2(view.x * 0.5, 150), 160.0, Color(1.0, 0.6, 0.2))
 	for i in MENU_ITEMS.size():
-		var rect := Rect2(Vector2(view.x * 0.5 - 160, 290 + i * 70), Vector2(320, 56))
+		var rect := Rect2(Vector2(view.x * 0.5 - 160, 270 + i * 62), Vector2(320, 52))
 		UiKit.button(_ui, rect, _item_label(i), i == cursor and state == State.MAIN)
-	UiKit.text(_ui, Vector2(0, view.y - 40), "Hoch/Runter wählen, Kreuz oder Enter bestätigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	if MENU_ITEMS[cursor] == "Schwierigkeit" and state == State.MAIN:
+		UiKit.text(_ui, Vector2(0, view.y - 70), String(Meta.difficulty_data().text), 20, Color(1.0, 0.85, 0.5), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	var hint := "Hoch/Runter wählen, Kreuz oder Enter bestätigen"
+	if MENU_ITEMS[cursor] == "Schwierigkeit" and state == State.MAIN:
+		hint = "Links/Rechts oder Kreuz: Stufe wechseln"
+	UiKit.text(_ui, Vector2(0, view.y - 40), hint, 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
 func _draw_sandbox(view: Vector2) -> void:

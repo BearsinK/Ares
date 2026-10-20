@@ -30,6 +30,21 @@ const UPGRADES := {
 	},
 }
 
+## Schwierigkeitsgrade (Titelmenue): Faktoren auf Gegner-Leben, -Schaden und Spawnrate, dazu Chips-Faktor am Laufende.
+const DIFFICULTIES := [
+	{"id": "easy", "name": "Rookie", "hp": 0.75, "damage": 0.7, "credits": 0.85, "chips": 0.6,
+		"text": "Gegner haben weniger Leben und machen weniger Schaden. Chips x0,6"},
+	{"id": "normal", "name": "Normal", "hp": 1.0, "damage": 1.0, "credits": 1.0, "chips": 1.0,
+		"text": "So ist das Spiel gedacht."},
+	{"id": "hard", "name": "Hardcore", "hp": 1.35, "damage": 1.3, "credits": 1.15, "chips": 1.7,
+		"text": "Zähere, härtere Gegner und mehr davon. Chips x1,7"},
+]
+
+
+static func difficulty_data() -> Dictionary:
+	return DIFFICULTIES[clampi(SaveData.difficulty(), 0, DIFFICULTIES.size() - 1)]
+
+
 # Freischaltungen: Klassen und Waffen, die im Shop erscheinen duerfen.
 const CLASS_UNLOCKS := {"vending": 50, "printer": 80}
 const WEAPON_UNLOCKS := {"shotgun": 30, "rocket": 40, "beam": 40, "sniper": 60}
@@ -60,4 +75,4 @@ static func start_gold() -> int:
 ## Chips fuer einen Lauf: Fortschritt, Kills, Stufe und ein Bonus fuer den Boss.
 static func chips_for_run(waves_cleared: int, kills: int, level: int, boss_defeated: bool) -> int:
 	var total := waves_cleared * 6 + kills / 25 + level * 2 + (100 if boss_defeated else 0)
-	return maxi(5, total)
+	return maxi(5, int(round(float(total) * float(difficulty_data().chips))))
