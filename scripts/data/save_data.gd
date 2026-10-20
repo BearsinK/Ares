@@ -118,12 +118,12 @@ static func music_enabled() -> bool:
 ## 0 = Rookie, 1 = Normal, 2 = Hardcore (siehe Meta.DIFFICULTIES).
 static func difficulty() -> int:
 	_ensure()
-	return int(_data.get("difficulty", 1))
+	return clampi(int(_data.get("difficulty", 1)), 0, 2)
 
 
 static func set_difficulty(value: int) -> void:
 	_ensure()
-	_data.difficulty = value
+	_data.difficulty = clampi(value, 0, 2)
 	save()
 
 

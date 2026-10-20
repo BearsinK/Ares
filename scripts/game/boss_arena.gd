@@ -42,7 +42,7 @@ func spawn_obstacle(kind: String) -> void:
 	var obstacle := BeltObstacle.new()
 	obstacle.kind = kind
 	obstacle.speed = belt_speed
-	obstacle.damage = 20.0 * Boss.DAMAGE_SCALE
+	obstacle.damage = 20.0 * Boss.damage_scale()
 	obstacle.players = players
 	obstacle.position.x = HATCH_X
 	add_child(obstacle)
@@ -69,7 +69,7 @@ func _physics_process(delta: float) -> void:
 		# Der Ofen am linken Ende: wer hineinrutscht, verbrennt.
 		var body := Rect2(player.global_position - player.stats.size * 0.5, player.stats.size)
 		if body.intersects(burn_zone()):
-			player.take_hit(BURN_DAMAGE * Boss.DAMAGE_SCALE / 1.6, Vector2(0.0, FLOOR_Y))
+			player.take_hit(BURN_DAMAGE * Boss.damage_scale() / 1.6, Vector2(0.0, FLOOR_Y))
 	queue_redraw()
 
 

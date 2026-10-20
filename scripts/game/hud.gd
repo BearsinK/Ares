@@ -102,8 +102,8 @@ func _draw_wave_banner(view: Vector2) -> void:
 		var pop := _ease_out((elapsed - 0.5) / 0.35)
 		_text(Vector2(0, view.y * 0.26 + 56.0), String(info.name), int(36.0 + 14.0 * pop), Color(1.0, 0.65, 0.25, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 		_text(Vector2(0, view.y * 0.26 + 92.0), String(info.text), 22, Color(0.95, 0.95, 1.0, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-		if float(info.get("bonus", 0.0)) > 0.0:
-			_text(Vector2(0, view.y * 0.26 + 122.0), "Prämie: +%d%% Gold" % int(round(float(info.bonus) * 100.0)), 22, Color(1.0, 0.85, 0.3, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		if main.contract_bonus > 0.0:
+			_text(Vector2(0, view.y * 0.26 + 122.0), "Prämie: +%d%% Gold" % int(round(float(main.contract_bonus) * 100.0)), 22, Color(1.0, 0.85, 0.3, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	# Countdown: jede Zahl poppt gross auf und schrumpft.
 	if main.wave_intro <= 3.0:
 		var number := int(ceil(main.wave_intro))
@@ -277,19 +277,24 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 		var count: int = player.firmware[id]
 		fw_parts.append(Firmware.SHORT[id] + (" x%d" % count if count > 1 else ""))
 	if not fw_parts.is_empty():
-		_text(origin + Vector2(0, 110), "  ".join(fw_parts), 13, Color(0.55, 0.92, 0.7), HORIZONTAL_ALIGNMENT_RIGHT, PANEL_WIDTH)
+		_text(origin + Vector2(0, 122), "  ".join(fw_parts), 13, Color(0.55, 0.92, 0.7), HORIZONTAL_ALIGNMENT_RIGHT, PANEL_WIDTH)
 	if player.downed:
 		_text(origin + Vector2(0, 108), "AM BODEN: Partner hält Interagieren", 14, Color(1.0, 0.5, 0.4))
 	else:
 		# Persoenliche Items (Shop, Kisten) als Symbole mit Zaehler.
 		var item_x := 12.0
+		var shown := 0
 		for id in player.items:
-			var item_center := origin + Vector2(item_x, 104.0)
+			if shown >= 10:
+				_text(origin + Vector2(item_x - 8.0, 108.0), "+%d" % (player.items.size() - shown), 14, Color(0.85, 0.88, 0.97))
+				break
+			var item_center := origin + Vector2(item_x, 100.0)
 			PerkArt.draw(_canvas, id, item_center, 22.0)
 			var count: int = player.items[id]
 			if count > 1:
 				_text(item_center + Vector2(7.0, 12.0), "x%d" % count, 12, Color(1.0, 0.95, 0.6))
 			item_x += 30.0
+			shown += 1
 
 
 func _draw_boss_bar(view: Vector2, boss: Boss) -> void:
@@ -302,7 +307,7 @@ func _draw_boss_bar(view: Vector2, boss: Boss) -> void:
 	Art.rrect_line(_canvas, panel, Color(1.0, 0.45, 0.2, 0.6), 12.0, 2.0)
 	_text(Vector2(0, 28), boss.boss_name, 22, Color(1.0, 0.75, 0.35), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	Art.rrect(_canvas, bar, Color(0.1, 0.1, 0.14), 7.0)
-	var fraction := clampf(boss.hp / Boss.MAX_HP, 0.0, 1.0)
+	var fraction := clampf(boss.hp / boss.max_hp, 0.0, 1.0)
 	var top := Color(1.0, 0.75, 0.3) if boss.open else Color(0.75, 0.78, 0.9)
 	var bottom := Color(0.95, 0.35, 0.15) if boss.open else Color(0.45, 0.48, 0.6)
 	if fraction > 0.0:
@@ -327,10 +332,12 @@ func _draw_top_center(view: Vector2) -> void:
 	var clock := "%02d:%02d" % [remaining / 60, remaining % 60]
 	if main.phase == main.Phase.CLEARING:
 		clock = "Geschafft!"
+	elif main.overtime > 0.0:
+		clock = "Wächter!" if fmod(Time.get_ticks_msec() / 400.0, 2.0) < 1.0 else "00:00"
 	if main.sandbox:
 		_text(Vector2(0, 104), "SANDBOX", 14, Color(1.0, 0.85, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	elif SaveData.difficulty() != 1:
-		var hard := SaveData.difficulty() > 1
+	elif String(Meta.difficulty_data().id) != "normal":
+		var hard := String(Meta.difficulty_data().id) == "hard"
 		_text(Vector2(0, 104), String(Meta.difficulty_data().name).to_upper(), 14, Color(1.0, 0.5, 0.4) if hard else Color(0.6, 0.9, 0.7), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var panel := Rect2(Vector2(view.x * 0.5 - 130.0, 8.0), Vector2(260.0, 82.0))
 	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.72), 12.0)
@@ -420,7 +427,7 @@ func _draw_guardian(view: Vector2) -> void:
 		var pop := 1.0 + 0.2 * (1.0 - _ease_out((3.4 - t) / 0.3))
 		_text(Vector2(0, view.y * 0.34 + 3.0), "WÄCHTER ERSCHEINT", int(64.0 * pop), Color(0, 0, 0, 0.55 * alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 		_text(Vector2(0, view.y * 0.34), "WÄCHTER ERSCHEINT", int(64.0 * pop), Color(1.0, 0.4, 0.3, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-		_text(Vector2(0, view.y * 0.34 + 40.0), "Besiegt ihn für eine Goldkiste und volle Reparatur", 22, Color(1.0, 0.92, 0.85, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		_text(Vector2(0, view.y * 0.34 + 40.0), "Besiegt ihn für eine Goldkiste und Reparatur", 22, Color(1.0, 0.92, 0.85, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var guardian: Enemy = main.guardian
 	if guardian == null or not is_instance_valid(guardian):
 		return

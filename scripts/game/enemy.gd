@@ -32,6 +32,8 @@ var elite := false
 var champion := false
 ## Hat sich selbst gesprengt (Sprengi): keine Beute.
 var suicide := false
+var _wounded_cache: Array[Enemy] = []
+var _wounded_stamp := -1000
 ## Art der Elite (fire, shield, storm, frost), siehe EnemyTypes.ELITE_KINDS.
 var elite_kind := ""
 var shield := 0.0
@@ -483,21 +485,33 @@ func _update_charge(delta: float) -> void:
 ## Verwundete Verbuendete in Reichweite (ohne mich selbst), die meisten fehlenden Leben zuerst.
 func _wounded_allies() -> Array[Enemy]:
 	var result: Array[Enemy] = []
+	for other in _wounded_list():
+		if other.global_position.distance_to(global_position) <= float(data.range):
+			result.append(other)
+	return result.slice(0, int(data.heal_targets))
+
+
+## Verwundete Verbuendete im weiteren Umkreis, hoechstens alle 0,25 s neu gesucht (spart Zeit bei vielen Gegnern).
+func _wounded_list() -> Array[Enemy]:
+	var now := Time.get_ticks_msec()
+	if now - _wounded_stamp < 250:
+		return _wounded_cache.filter(func(e: Enemy) -> bool: return is_instance_valid(e) and not e._dead)
+	_wounded_stamp = now
+	var found: Array[Enemy] = []
 	for other in siblings:
 		if other == self or not is_instance_valid(other) or other._dead or other.hp >= other.max_hp * 0.8:
 			continue
-		if other.global_position.distance_to(global_position) <= float(data.range):
-			result.append(other)
-	result.sort_custom(func(a: Enemy, b: Enemy) -> bool: return a.max_hp - a.hp > b.max_hp - b.hp)
-	return result.slice(0, int(data.heal_targets))
+		if other.global_position.distance_to(global_position) <= 900.0:
+			found.append(other)
+	found.sort_custom(func(a: Enemy, b: Enemy) -> bool: return a.max_hp - a.hp > b.max_hp - b.hp)
+	_wounded_cache = found
+	return found
 
 
 func _nearest_wounded(max_distance: float) -> Enemy:
 	var best: Enemy = null
 	var best_distance := max_distance
-	for other in siblings:
-		if other == self or not is_instance_valid(other) or other._dead or other.hp >= other.max_hp * 0.8:
-			continue
+	for other in _wounded_list():
 		var distance := other.global_position.distance_to(global_position)
 		if distance < best_distance:
 			best_distance = distance
@@ -548,8 +562,8 @@ func _execute_attack() -> void:
 	if Fx.instance:
 		Fx.instance.ring(global_position + _aim * 20.0, reach(), Color(data.color, 0.9))
 	if bool(data.get("suicide", false)):
-		# Sprengi: Selbstsprengung, dabei fliegen die Teile.
-		suicide = true
+		# Sprengi: Selbstsprengung, dabei fliegen die Teile. Elites geben ihre Beute trotzdem her.
+		suicide = not elite
 		if Fx.instance:
 			Fx.instance.explosion(global_position, reach(), Color(1.0, 0.6, 0.2))
 		Sfx.play("explosion", 0.1)

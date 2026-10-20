@@ -88,6 +88,7 @@ func _run() -> void:
 	_check(main.wave_modifier == ids[2] and main.phase == main.Phase.WAVE, "Der gewaehlte Vertrag gilt (%s)" % main.wave_modifier)
 	_check(str(main.director.modifier.get("name")) == str(WaveModifiers.DATA[ids[2]].name), "Der Director bekommt den Vertrag (%s)" % str(main.director.modifier.get("name")))
 	_check(main.wave_intro > 0.0, "Danach laeuft der Wellen-Einstieg")
+	_check(is_equal_approx(main.contract_bonus, float(WaveModifiers.DATA[ids[2]].bonus)), "Die Praemie des gewaehlten Vertrags gilt (%.2f)" % main.contract_bonus)
 	await _frames(70)
 	_check(not main.gates.is_closed, "Die Tore oeffnen sich")
 
@@ -97,6 +98,7 @@ func _run() -> void:
 	main._on_shop_closed()
 	await _frames(3)
 	_check(not menu.is_open and main.wave_modifier == "elites", "Die letzte Welle ist fest: Elite Rush ohne Wahl")
+	_check(is_equal_approx(main.contract_bonus, 0.0), "Ohne gewaehlten Vertrag gibt es keine Praemie")
 
 	# Vor dem Endboss gibt es keine Wahl.
 	main.wave = main.max_waves

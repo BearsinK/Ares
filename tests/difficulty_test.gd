@@ -46,6 +46,17 @@ func _run() -> void:
 	var more := float(Meta.DIFFICULTIES[2].credits) > float(Meta.DIFFICULTIES[1].credits) and float(Meta.DIFFICULTIES[0].credits) < float(Meta.DIFFICULTIES[1].credits)
 	_check(more, "Hardcore spawnt schneller, Rookie langsamer")
 	director.free()
+	# Auch der Endboss folgt der Stufe.
+	var boss_hard := Boss.new()
+	var hard_damage := Boss.damage_scale()
+	SaveData.set_difficulty(0)
+	var boss_easy := Boss.new()
+	_check(boss_hard.max_hp > Boss.MAX_HP * 1.3 and boss_easy.max_hp < Boss.MAX_HP * 0.8, "Der Boss hat je nach Stufe mehr oder weniger Leben (%d / %d)" % [boss_easy.max_hp, boss_hard.max_hp])
+	_check(hard_damage > Boss.damage_scale() * 1.5, "und macht mehr oder weniger Schaden")
+	boss_hard.free()
+	boss_easy.free()
+	SaveData.set_difficulty(99)
+	_check(SaveData.difficulty() == 2, "Ungueltige Werte werden begrenzt")
 	SaveData.set_difficulty(1)
 
 	# Titelmenue: Links/Rechts und Bestaetigen schalten durch, gespeichert wird die Wahl.

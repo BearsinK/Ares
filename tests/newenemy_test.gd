@@ -80,6 +80,14 @@ func _run() -> void:
 	await _frames(3)
 	_check(main.kills == kills_before + 1, "Abgeschossen zaehlt er als Kill")
 
+	# Elite-Sprengi: behaelt die Beute, auch wenn er sich sprengt.
+	var elite_bomber: Enemy = main.director.spawn("bomber", Vector2(1800.0, 1225.0), true)
+	_check(elite_bomber.elite, "Ein Elite-Sprengi ist eine Elite")
+	elite_bomber._cooldown = 99.0
+	elite_bomber._execute_attack()
+	_check(not elite_bomber.suicide, "Er behaelt seine Beute (kein Selbstmord-Verlust)")
+	await _frames(3)
+
 	# Medic heilt verwundete Verbuendete in der Naehe.
 	p1.global_position = Vector2(300.0, 1210.0)
 	p2.global_position = Vector2(200.0, 1210.0)

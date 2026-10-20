@@ -168,6 +168,27 @@ func _run() -> void:
 			larges += 1
 	_check(larges == 1, "Auch die neue Karte hat eine Goldkiste")
 
+	# Kartenwechsel und Auffuellen im selben Frame (ohne Vertragswahl): alte Kisten zaehlen nicht mehr mit.
+	main.wave = 7
+	main._change_stage()
+	main._refresh_chests()
+	var fresh := 0
+	for chest in main.chests.get_children():
+		if chest is Chest and not chest.is_queued_for_deletion():
+			fresh += 1
+	_check(fresh >= 4, "Gleich nach dem Kartenwechsel liegen die neuen Kisten (%d)" % fresh)
+
+	# Nach dem Oeffnen der grossen Kiste fuellt sich nicht mehr als das Soll auf.
+	for chest in main.chests.get_children():
+		if chest is Chest and chest.large:
+			chest.force_open(p1)
+	main._refresh_chests()
+	var normal := 0
+	for chest in main.chests.get_children():
+		if chest is Chest and not chest.is_open and not chest.large and not chest.is_queued_for_deletion():
+			normal += 1
+	_check(normal <= mini(4, 2 + (main.wave - 1) / 2), "Normale Kisten bleiben beim Soll (%d)" % normal)
+
 	# Boss: keine Kisten.
 	main._start_boss()
 	await _frames(5)

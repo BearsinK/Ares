@@ -19,6 +19,9 @@ func _check(condition: bool, message: String) -> void:
 func _frames(count: int) -> void:
 	for i in count:
 		await get_tree().physics_frame
+		# Ein Level-Up durch die Beute wuerde das ganze Spiel anhalten.
+		if main != null and main.levelup_menu.is_open:
+			main.levelup_menu._finish(main.levelup_menu.perk_ids[0])
 
 
 func _tap(action: String) -> void:
@@ -41,8 +44,17 @@ func _bounty() -> Chest:
 	return null
 
 
+func _until(condition: Callable, max_frames := 200) -> void:
+	var waited := 0
+	while not condition.call() and waited < max_frames:
+		await _frames(1)
+		waited += 1
+
+
 func _start_guardian_wave(number: int) -> void:
+	Engine.time_scale = 1.0
 	main.phase = main.Phase.WAVE
+	main.overtime = 0.0
 	main.wave = number
 	main.director.start_wave(number)
 	main.director.enabled = false
@@ -108,6 +120,30 @@ func _run() -> void:
 	for id in p1.items:
 		rare = rare or Perks.RARE_IDS.has(id)
 	_check(chest.is_open and p1.gold == 0 and rare, "Die Kiste ist gratis und enthaelt ein Verhaltens-Item (%s)" % str(p1.items))
+
+	# Verlaengerung: Ist die Zeit um und der Waechter lebt, geht der Kampf weiter, ohne neue Gegner.
+	await _start_guardian_wave(3)
+	main.director.enabled = true
+	main.wave_time_left = 0.05
+	await _frames(20)
+	_check(main.phase == main.Phase.WAVE and main.overtime > 0.0, "Zeit um, Waechter lebt: Verlaengerung (%.1f s)" % main.overtime)
+	_check(not main.director.enabled and is_equal_approx(main.wave_time_left, 0.0), "In der Verlaengerung kommen keine neuen Gegner")
+	var late: Enemy = main.guardian
+	late.take_damage(1.0e9, p1, Vector2.ZERO)
+	await _until(func() -> bool: return _bounty() != null)
+	_check(_bounty() != null, "Wird er in der Verlaengerung besiegt, gibt es die Belohnung")
+	await _until(func() -> bool: return main.phase == main.Phase.CLEARING)
+	_check(main.phase == main.Phase.CLEARING, "Danach endet die Welle (Phase %d, Zeit %.2f, Waechter %s, Overtime %.1f)" % [main.phase, main.wave_time_left, str(main.guardian), main.overtime])
+	for leftover in main.chests.get_children():
+		if leftover is Chest and leftover.bounty and not leftover.is_open:
+			leftover.force_open(p1)
+
+	# Zu lange: der Waechter entkommt, die Welle endet.
+	await _start_guardian_wave(3)
+	main.overtime = main.OVERTIME_MAX
+	main.wave_time_left = 0.01
+	await _until(func() -> bool: return main.phase == main.Phase.CLEARING)
+	_check(main.phase == main.Phase.CLEARING and main.guardian == null, "Nach der Hoechstzeit endet die Welle trotzdem")
 
 	# Waechter ueberlebt das Wellenende: keine Belohnung.
 	await _start_guardian_wave(6)

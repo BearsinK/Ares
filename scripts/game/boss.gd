@@ -12,6 +12,11 @@ signal phase_changed(phase: int)
 
 const MAX_HP := 8000.0
 const DAMAGE_SCALE := 1.6
+
+
+## Schaden des Bosses inklusive Schwierigkeitsstufe.
+static func damage_scale() -> float:
+	return DAMAGE_SCALE * float(Meta.difficulty_data().damage)
 const ARMOR := 0.25
 const START_DELAY := 3.5
 const TRANSITION_TIME := 2.2
@@ -47,7 +52,9 @@ const PATTERNS := [
 
 var main: Node
 var arena: BossArena
-var hp := MAX_HP
+## Leben des Bosses inklusive Schwierigkeitsstufe.
+var max_hp := MAX_HP * float(Meta.difficulty_data().hp)
+var hp := max_hp
 var phase := 1
 var open := false
 var dying := false
@@ -118,7 +125,7 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 	if hp <= 0.0:
 		_die()
 		return
-	var wanted := 1 if hp > MAX_HP * 0.66 else (2 if hp > MAX_HP * 0.33 else 3)
+	var wanted := 1 if hp > max_hp * 0.66 else (2 if hp > max_hp * 0.33 else 3)
 	if wanted > phase:
 		_start_transition(wanted)
 
@@ -279,7 +286,7 @@ func _rain() -> void:
 		if k < alive.size():
 			x = alive[k].global_position.x + randf_range(-50.0, 50.0)
 			y = alive[k].global_position.y
-		main._on_strike_requested(null, Vector2(x, y), 100.0, 1.4 + k * 0.2, 28.0 * DAMAGE_SCALE)
+		main._on_strike_requested(null, Vector2(x, y), 100.0, 1.4 + k * 0.2, 28.0 * damage_scale())
 
 
 func _adds() -> void:
@@ -307,7 +314,7 @@ func _update_shots(delta: float) -> void:
 		if main != null:
 			var dir: Vector2 = shot.dir
 			var origin: Vector2 = global_position + MUZZLE + dir * 40.0
-			main._on_enemy_projectile_requested(null, origin, dir, 360.0 + 40.0 * phase, 14.0 * DAMAGE_SCALE)
+			main._on_enemy_projectile_requested(null, origin, dir, 360.0 + 40.0 * phase, 14.0 * damage_scale())
 			Sfx.play("enemy_shoot")
 
 
@@ -356,9 +363,9 @@ func _draw() -> void:
 	_draw_furnace_door(heat, wreck)
 	_draw_cannon()
 	# Schaeden: Risse und Qualm bei wenig Leben.
-	if hp < MAX_HP * 0.66:
+	if hp < max_hp * 0.66:
 		draw_polyline(PackedVector2Array([Vector2(120, -560), Vector2(95, -500), Vector2(125, -450), Vector2(100, -380)]), Color(1.0, 0.5, 0.15, 0.8), 3.0, true)
-	if hp < MAX_HP * 0.33:
+	if hp < max_hp * 0.33:
 		draw_polyline(PackedVector2Array([Vector2(-130, -150), Vector2(-100, -200), Vector2(-140, -250)]), Color(1.0, 0.5, 0.15, 0.8), 3.0, true)
 		draw_polyline(PackedVector2Array([Vector2(60, -150), Vector2(90, -230), Vector2(50, -300)]), Color(1.0, 0.5, 0.15, 0.8), 3.0, true)
 

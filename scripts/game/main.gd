@@ -70,6 +70,8 @@ var levelup_menu: LevelUpMenu
 var contract_menu: ContractMenu
 ## Vertragswahl vor jeder Welle ab Welle 2 (nur mit Wellen-Einstieg, damit alte Tests unveraendert laufen).
 var contracts_enabled := true
+## Gold-Praemie des gewaehlten Vertrags in dieser Welle (0 = kein riskanter Vertrag gewaehlt).
+var contract_bonus := 0.0
 var shop_menu: ShopMenu
 var boss: Boss
 var boss_arena: BossArena
@@ -110,6 +112,9 @@ var guardian: Enemy = null
 var guardian_enabled := true
 var guardian_banner_time := 0.0
 var _guardian_spawned := false
+## Verlaengerung: Ist die Wellenzeit um, aber der Waechter lebt noch, geht der Kampf weiter (ohne neue Gegner, hoechstens 90 s).
+var overtime := 0.0
+const OVERTIME_MAX := 90.0
 ## Kisten auf der Karte (Gold gegen Item): Behaelter, Schalter und Zaehler der geoeffneten Kisten auf dieser Karte.
 var chests: Node2D
 var chests_enabled := true
@@ -278,9 +283,16 @@ func _update_wave(delta: float) -> void:
 				return
 			_update_guardian()
 			wave_time_left -= delta
-			director.wave_progress = 1.0 - wave_time_left / wave_duration
+			director.wave_progress = 1.0 - maxf(wave_time_left, 0.0) / wave_duration
 			if wave_time_left <= 0.0:
-				_end_wave()
+				if guardian != null and is_instance_valid(guardian) and overtime < OVERTIME_MAX:
+					if overtime == 0.0:
+						director.enabled = false
+						Sfx.play("telegraph")
+					wave_time_left = 0.0
+					overtime += delta
+				else:
+					_end_wave()
 		Phase.CLEARING:
 			_clear_time -= delta
 			if _clear_time <= 0.0 and not game_over and not levelup_menu.is_open:
@@ -426,6 +438,7 @@ func _begin_new_wave(contract_id: String) -> void:
 	director.enabled = director_enabled
 	_guardian_spawned = false
 	guardian = null
+	overtime = 0.0
 	_begin_wave_intro()
 	_refresh_chests()
 
@@ -494,6 +507,8 @@ func _on_boss_died() -> void:
 
 func _apply_modifier(forced := "") -> void:
 	wave_modifier = forced if forced != "" else WaveModifiers.pick(wave, max_waves, wave_modifier)
+	# Die Praemie gibt es nur, wenn man den Vertrag selbst gewaehlt hat.
+	contract_bonus = float(WaveModifiers.DATA[wave_modifier].get("bonus", 0.0)) if forced != "" else 0.0
 	director.start_wave(wave, WaveModifiers.DATA[wave_modifier])
 	wave_banner_time = 3.5 if wave_modifier != "normal" else 0.0
 	if wave_modifier != "normal":
@@ -739,7 +754,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	var coins := int(float(info.gold_chance)) + (1 if randf() < fmod(float(info.gold_chance), 1.0) else 0)
 	if enemy.elite:
 		coins += 3
-	coins = int(round(float(coins) * WaveModifiers.gold_factor(wave_modifier)))
+	coins = int(round(float(coins) * float(WaveModifiers.DATA[wave_modifier].get("gold", 1.0)) * (1.0 + contract_bonus)))
 	for i in coins:
 		_spawn_pickup("gold", gold_value, enemy.global_position)
 	for player in players:
@@ -767,6 +782,8 @@ func _on_enemy_died(enemy: Enemy) -> void:
 
 func _clear_chests() -> void:
 	for chest in chests.get_children():
+		# Sofort aus dem Baum nehmen, damit ein gleichzeitiges _refresh_chests sie nicht mehr zaehlt.
+		chests.remove_child(chest)
 		chest.queue_free()
 	chests_opened = 0
 	_large_chest_placed = false
@@ -790,9 +807,12 @@ func _refresh_chests() -> void:
 		return
 	_update_chest_prices()
 	var live: Array[Vector2] = []
+	var normal := 0
 	for chest in chests.get_children():
 		if chest is Chest and not chest.is_open and not chest.bounty:
 			live.append(chest.position)
+			if not chest.large:
+				normal += 1
 	if not _large_chest_placed:
 		var spot := _chest_spot(live, true)
 		if spot != Vector2.INF:
@@ -801,13 +821,14 @@ func _refresh_chests() -> void:
 			_large_chest_placed = true
 	var target := mini(4, 2 + (wave - 1) / 2)
 	var tries := 0
-	while live.size() < target + (1 if _large_chest_placed else 0) and tries < 12:
+	while normal < target and tries < 12:
 		tries += 1
 		var spot := _chest_spot(live, false)
 		if spot == Vector2.INF:
 			continue
 		_add_chest(spot, false)
 		live.append(spot)
+		normal += 1
 
 
 ## Ort fuer eine Kiste auf einer begehbaren Flaeche: weit weg von den Spielern und anderen Kisten.
