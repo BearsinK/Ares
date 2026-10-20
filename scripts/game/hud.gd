@@ -140,7 +140,7 @@ func _draw_hints(view: Vector2) -> void:
 	if _age > visible_time or main.wave > 1 or main.phase != main.Phase.WAVE or main.levelup_menu.is_open or main.shop_menu.is_open:
 		return
 	var alpha := clampf(minf(_age / 0.6, (visible_time - _age) / 1.5), 0.0, 1.0)
-	var panel := Rect2(Vector2(view.x * 0.5 - 430.0, view.y - 250.0), Vector2(860.0, 112.0))
+	var panel := Rect2(Vector2(view.x * 0.5 - 430.0, view.y - 190.0), Vector2(860.0, 112.0))
 	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.8 * alpha), 14.0)
 	Art.rrect_line(_canvas, panel, Color(1, 1, 1, 0.25 * alpha), 14.0, 2.0)
 	_text(panel.position + Vector2(0, 28), "STEUERUNG", 16, Color(1.0, 0.85, 0.4, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
@@ -424,7 +424,7 @@ func _draw_stage_banner(view: Vector2) -> void:
 		return
 	var t: float = main.stage_banner_time
 	var alpha := clampf(minf(t / 0.6, (3.2 - t) / 0.4), 0.0, 1.0)
-	var y := view.y * 0.74
+	var y := view.y * 0.69
 	_canvas.draw_rect(Rect2(0, y - 52.0, view.x, 92.0), Color(0, 0, 0, 0.5 * alpha))
 	_text(Vector2(0, y), String(main.stage_layout.name).to_upper(), 44, Color(1.0, 0.9, 0.55, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	_text(Vector2(0, y + 28.0), String(main.stage_layout.get("text", "")), 20, Color(0.9, 0.92, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
