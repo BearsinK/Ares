@@ -42,7 +42,8 @@ func _run() -> void:
 
 	# Zeit vorspulen
 	director.wave = 4
-	await _frames(60 * 10)
+	director.enemy_spawned.connect(func(enemy: Enemy) -> void: kinds[enemy.kind] = true)
+	await _frames(60 * 20)
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		kinds[enemy.kind] = true
 	_check(kinds.size() >= 3, "Spaeter erscheinen mehrere Typen (%s)" % str(kinds.keys()))

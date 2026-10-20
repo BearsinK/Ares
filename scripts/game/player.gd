@@ -24,7 +24,6 @@ const DASH_IFRAMES := 0.22
 const AIM_MEMORY := 0.25
 const AIM_THRESHOLD := 0.3
 const MOUSE_AIM_TIMEOUT := 3.0
-const TRAIL_LIFETIME := 0.25
 const HIT_IFRAMES := 0.8
 const REVIVE_TIME := 3.0
 const REVIVE_RANGE := 90.0
@@ -88,7 +87,6 @@ var _switch_cooldown := 0.0
 var _aim_memory := 0.0
 var _mouse_timer := 0.0
 var _trail_timer := 0.0
-var _trail: Array[Dictionary] = []
 var _wall_lock := 0.0
 var _slamming := false
 var _hook_time := 0.0
@@ -420,9 +418,6 @@ func _update_timers(delta: float) -> void:
 	else:
 		_dash_recharge = 0.0
 
-	for entry in _trail:
-		entry.t -= delta
-	_trail = _trail.filter(func(entry: Dictionary) -> bool: return entry.t > 0.0)
 
 
 func _update_aim(delta: float) -> void:
@@ -480,6 +475,8 @@ func _process_movement(delta: float, move: float) -> void:
 	if velocity.y > 0.0:
 		if fw("wall_jump") > 0 and pushing_wall:
 			velocity.y = minf(velocity.y, WALL_SLIDE_SPEED)
+			if randf() < 0.25:
+				_puff(Vector2(-wall_normal.x * float(stats.size.x) * 0.5, float(stats.size.y) * 0.3), 1, 50.0)
 		elif fw("glide") > 0 and jump_held and not on_floor:
 			velocity.y = minf(velocity.y, GLIDE_SPEED)
 
@@ -504,17 +501,21 @@ func _process_movement(delta: float, move: float) -> void:
 		_jump_buffer = 0.0
 		_coyote = 0.0
 		Sfx.play("jump")
+		_puff(Vector2(0.0, float(stats.size.y) * 0.5), 4, 110.0)
 	elif on_wall and fw("wall_jump") > 0:
 		velocity = Vector2(wall_normal.x * WALL_JUMP_PUSH, -float(stats.jump_speed) * 0.95)
 		facing = signf(wall_normal.x)
 		_wall_lock = WALL_LOCK_TIME
 		_jump_buffer = 0.0
 		Sfx.play("jump")
+		_puff(Vector2(-wall_normal.x * float(stats.size.x) * 0.5, 0.0), 5, 130.0)
 	elif _air_jumps_left > 0:
 		velocity.y = -stats.jump_speed
 		_jump_buffer = 0.0
 		_air_jumps_left -= 1
 		Sfx.play("jump")
+		if Fx.instance:
+			Fx.instance.ring(global_position + Vector2(0.0, float(stats.size.y) * 0.5), 34.0, Color(0.8, 0.9, 1.0))
 
 
 ## Wandklettern (Hexapod): Gegen die Wand druecken haelt ihn fest, hoch/runter klettert.
@@ -660,6 +661,58 @@ func _try_dash() -> void:
 	dash_charges -= 1
 	iframes = maxf(iframes, DASH_IFRAMES)
 	Sfx.play("dash")
+	_puff(Vector2(-_dash_dir.x * 20.0, float(stats.size.y) * 0.5 if is_on_floor() else 0.0), 6, 170.0)
+
+
+func _spawn_ghost() -> void:
+	var ghost := DashGhost.new()
+	ghost.class_id = class_id
+	ghost.state = _art_state()
+	ghost.state.squash = Vector2.ONE
+	ghost.tint = RobotClasses.PLAYER_COLORS[player_index - 1]
+	get_parent().add_child(ghost)
+	ghost.global_position = global_position
+
+
+## Windlinien hinter dem Roboter, gegen die Dash-Richtung.
+func _draw_speed_lines() -> void:
+	var back := -_dash_dir
+	var side := back.orthogonal()
+	for i in 5:
+		var offset := side * (float(i) - 2.0) * 9.0 + back * float(i % 2) * 8.0
+		var start := offset + back * 26.0
+		draw_line(start, start + back * (34.0 + 10.0 * (i % 3)), Color(1, 1, 1, 0.35), 2.0, true)
+
+
+## Fallstreifen beim Bodenschlag.
+func _draw_slam_streaks(size: Vector2) -> void:
+	for i in 4:
+		var x := (float(i) - 1.5) * size.x * 0.3
+		draw_line(Vector2(x, -size.y * 0.5 - 10.0), Vector2(x, -size.y * 0.5 - 52.0 - 14.0 * (i % 2)), Color(0.9, 0.93, 1.0, 0.45), 2.5, true)
+
+
+## Haken: gespannte Leine mit leichtem Schwingen, Greifkralle am Ziel und Einschlagring.
+func _draw_hook() -> void:
+	var end := to_local(hook_anchor)
+	var length := end.length()
+	var dir := end / maxf(length, 1.0)
+	var side := dir.orthogonal()
+	var points := PackedVector2Array()
+	var segments := 14
+	for i in segments + 1:
+		var f := float(i) / segments
+		var wobble := sin(f * PI) * sin(_art_time * 40.0 + f * 9.0) * 3.0 * minf(1.0, length / 300.0)
+		points.append(dir * length * f + side * wobble)
+	draw_polyline(points, Color(0.1, 0.1, 0.14), 4.0, true)
+	draw_polyline(points, Color(0.9, 0.86, 0.55), 2.0, true)
+	# Kralle: drei Zinken, die in die Flaeche greifen.
+	for k in 3:
+		var angle := (float(k) - 1.0) * 0.8
+		var tine := end - dir.rotated(angle) * 12.0
+		draw_line(end, tine, Color(0.1, 0.1, 0.14), 4.0, true)
+		draw_line(end, tine, Color(0.85, 0.87, 0.95), 2.0, true)
+	draw_circle(end, 4.0, Color(0.95, 0.9, 0.5))
+	draw_arc(end, 9.0 + 3.0 * sin(_art_time * 14.0), 0.0, TAU, 14, Color(1, 1, 1, 0.5), 1.5, true)
 
 
 func _process_dash(delta: float) -> void:
@@ -667,8 +720,8 @@ func _process_dash(delta: float) -> void:
 	velocity = _dash_dir * DASH_SPEED
 	_trail_timer -= delta
 	if _trail_timer <= 0.0:
-		_trail_timer = 0.025
-		_trail.append({"pos": global_position, "t": TRAIL_LIFETIME})
+		_trail_timer = 0.03
+		_spawn_ghost()
 	if _dash_time_left <= 0.0:
 		# Momentum: nach dem Dash bleibt etwas Schwung erhalten.
 		velocity = _dash_dir * move_speed() * DASH_END_MOMENTUM
@@ -844,16 +897,12 @@ func _draw() -> void:
 	if slow_time > 0.0:
 		draw_arc(Vector2.ZERO, maxf(stats.size.x, stats.size.y) * 0.5 + 6.0, 0.0, TAU, 28, Color(0.75, 0.92, 1.0, 0.7), 2.5, true)
 
-	# Nachbilder vom Dash.
-	for entry in _trail:
-		var ghost := accent
-		ghost.a = 0.3 * (entry.t / TRAIL_LIFETIME)
-		draw_rect(Rect2(to_local(entry.pos) - size * 0.5, size), ghost)
-
+	if _dash_time_left > 0.0:
+		_draw_speed_lines()
+	if _slamming:
+		_draw_slam_streaks(size)
 	if hook_active:
-		draw_line(Vector2.ZERO, to_local(hook_anchor), Color(0.95, 0.9, 0.5), 2.5, true)
-		draw_circle(to_local(hook_anchor), 5.0, Color(0.95, 0.9, 0.5))
-		draw_arc(to_local(hook_anchor), 8.0, 0.0, TAU, 12, Color(1, 1, 1, 0.6), 1.5, true)
+		_draw_hook()
 
 	# Blinken waehrend der Unverwundbarkeit nach einem Treffer.
 	var blink := iframes > 0.0 and _dash_time_left <= 0.0 and not downed and fmod(iframes, 0.12) < 0.06

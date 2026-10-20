@@ -364,6 +364,11 @@ func _on_player_hurt(player: Player, amount: float) -> void:
 
 func _on_slam_landed(player: Player, pos: Vector2) -> void:
 	_explode(pos, 150.0, 35.0 * player.damage_mult(), player, Color(0.9, 0.9, 1.0))
+	camera.add_shake(14.0)
+	hitstop(0.05)
+	if Fx.instance:
+		Fx.instance.ring(pos, 190.0, Color(0.9, 0.93, 1.0))
+		Fx.instance.spark(pos, Color(0.8, 0.82, 0.88, 0.8), 14, 280.0)
 
 
 func _on_player_down(_player: Player) -> void:

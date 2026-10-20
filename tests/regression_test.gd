@@ -56,6 +56,11 @@ func _run() -> void:
 	get_tree().paused = false
 	await _frames(3)
 	main.phase = main.Phase.WAVE
+	await _frames(3)
+	if main.levelup_menu.is_open:
+		main.levelup_menu._finish(main.levelup_menu.perk_ids[0])
+	get_tree().paused = false
+	await _frames(3)
 
 	# Bei zu vielen Pickups wird Gold trotzdem gutgeschrieben.
 	for i in 151:
@@ -76,6 +81,16 @@ func _run() -> void:
 			if pos.x > 2570.0 and pos.x < 2910.0:
 				inside += 1
 	_check(inside == 0, "Kein Spawn im Schacht (%d)" % inside)
+
+	# Dash hinterlaesst Nachbilder der Figur, die wieder verschwinden.
+	var ghosts_before := get_tree().get_nodes_in_group("dash_ghosts").size()
+	p1.dash_charges = 2
+	p1._try_dash()
+	await _frames(12)
+	var ghosts_now := get_tree().get_nodes_in_group("dash_ghosts").size()
+	_check(ghosts_now > ghosts_before, "Dash erzeugt Nachbilder (%d)" % ghosts_now)
+	await _frames(60)
+	_check(get_tree().get_nodes_in_group("dash_ghosts").is_empty(), "Nachbilder verschwinden wieder")
 
 	# Dash waehrend des Hakens verbraucht keine Ladung.
 	p1.hook_active = true
