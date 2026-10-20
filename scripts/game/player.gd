@@ -104,6 +104,16 @@ var _fire_flash := 0.0
 var _hurt_timer := 0.0
 var _happy_timer := 0.0
 var _arm_deploy := 0.0
+# Animationszustand (siehe _update_juice): Landestauchung, Rueckstoss, Hitze, Aufstellen, Klettern.
+var _land_squash := 0.0
+var _was_grounded := true
+var _fall_speed := 0.0
+var _recoil := 0.0
+var _heat := 0.0
+var _deploy_amount := 0.0
+var _deployed_flag := false
+var _climb_phase := 0.0
+var _step_acc := 0.0
 
 var ability: Ability
 
@@ -185,6 +195,9 @@ func take_hit(amount: float, from: Vector2) -> bool:
 	var final_amount := amount * maxf(0.1, 1.0 - float(mods.dmg_taken))
 	if ability != null and ability.is_active("roll"):
 		final_amount *= 0.5
+	# Stellung: Ein aufgestellter Hexapod steckt Treffer besser weg.
+	if bool(stats.stationary_fire) and _deploy_amount > 0.8:
+		final_amount *= 0.8
 	hp -= final_amount
 	iframes = HIT_IFRAMES
 	_hurt_timer = 0.45
@@ -255,6 +268,7 @@ func _physics_process(delta: float) -> void:
 	_update_timers(delta)
 	if downed:
 		_process_downed(delta)
+		_update_juice(delta)
 		queue_redraw()
 		return
 	_update_aim(delta)
@@ -290,8 +304,56 @@ func _physics_process(delta: float) -> void:
 		_stand_time += delta
 	else:
 		_stand_time = 0.0
+	_update_juice(delta)
 	_handle_fire(delta)
 	queue_redraw()
+
+
+## Aufgestellt: der Hexapod steht im Geschuetzmodus (Stand oder Overwatch).
+func is_deployed() -> bool:
+	return bool(stats.stationary_fire) and (_stand_time >= DEPLOY_TIME or ability.is_active("overwatch")) and not downed
+
+
+## Staub am Boden unter dem Spieler.
+func _puff(offset: Vector2, count: int, speed := 110.0) -> void:
+	if Fx.instance:
+		Fx.instance.spark(global_position + offset, Color(0.75, 0.77, 0.82, 0.75), count, speed)
+
+
+## Rein optische Zustaende: Landen, Aufstellen, Rueckstoss, Hitze, Klettern, Schritte.
+func _update_juice(delta: float) -> void:
+	var grounded := is_on_floor()
+	if not grounded:
+		_fall_speed = maxf(_fall_speed, velocity.y)
+	elif not _was_grounded and _fall_speed > 260.0 and not _clinging:
+		_land_squash = clampf(_fall_speed / 900.0, 0.25, 1.0)
+		_puff(Vector2(0.0, float(stats.size.y) * 0.5), 4 + int(4.0 * _land_squash), 140.0)
+		Sfx.play("land", 0.15)
+	if grounded:
+		_fall_speed = 0.0
+	_was_grounded = grounded
+	_land_squash = move_toward(_land_squash, 0.0, delta * 5.0)
+	_recoil = maxf(0.0, _recoil - delta * 9.0)
+	_heat = maxf(0.0, _heat - delta * 0.45)
+
+	var planted := is_deployed()
+	_deploy_amount = move_toward(_deploy_amount, 1.0 if planted else 0.0, delta * (8.0 if planted else 5.0))
+	if planted and not _deployed_flag:
+		_deployed_flag = true
+		Sfx.play("deploy", 0.05)
+		_puff(Vector2(-18.0, float(stats.size.y) * 0.5), 3, 90.0)
+		_puff(Vector2(18.0, float(stats.size.y) * 0.5), 3, 90.0)
+	elif not planted and _deployed_flag:
+		_deployed_flag = false
+
+	if _clinging:
+		_climb_phase += velocity.y * delta * 0.045
+	if grounded and not _clinging and absf(velocity.x) > 70.0 and stats.get("step", "") != "":
+		_step_acc += absf(velocity.x) * delta
+		if _step_acc >= 52.0:
+			_step_acc = 0.0
+			Sfx.play(String(stats.step), 0.2)
+			_puff(Vector2(-facing * 10.0, float(stats.size.y) * 0.5), 1, 60.0)
 
 
 func _update_timers(delta: float) -> void:
@@ -621,6 +683,12 @@ func _handle_fire(_delta: float) -> void:
 	if not (stats.stationary_fire and weapon_id == stats.weapons[0]):
 		velocity -= aim_dir * kick
 	_fire_flash = 1.0
+	_recoil = 1.0
+	_heat = minf(1.0, _heat + 0.2)
+	if class_id == "hexapod":
+		# Huelse fliegt seitlich aus dem Gehaeuse.
+		if Fx.instance:
+			Fx.instance.spark(global_position + Vector2(-5.0 * facing, -14.0), Color(1.0, 0.82, 0.4), 1, 150.0)
 	fired.emit(self, weapon_id, origin, aim_dir, 0.0)
 
 
@@ -635,7 +703,7 @@ func _art_state() -> Dictionary:
 		mood = "dead"
 	elif _hurt_timer > 0.0:
 		mood = "hurt"
-	elif _fire_flash > 0.3 or shake_charge > 0.0:
+	elif _fire_flash > 0.3 or shake_charge > 0.0 or _deploy_amount > 0.85:
 		mood = "focus"
 	elif _happy_timer > 0.0:
 		mood = "happy"
@@ -646,7 +714,17 @@ func _art_state() -> Dictionary:
 		var since_use := ability.cooldown_total - ability.cooldown
 		if ability.cooldown > 0.0 and since_use < 0.7:
 			launch = since_use / 0.7
+	var squash := Vector2.ONE
+	if _land_squash > 0.0:
+		squash = Vector2(1.0 + 0.2 * _land_squash, 1.0 - 0.24 * _land_squash)
+	elif not is_on_floor() and not _clinging:
+		var stretch := clampf(absf(velocity.y) / 1600.0, 0.0, 0.14)
+		squash = Vector2(1.0 - stretch * 0.6, 1.0 + stretch)
+	elif _dash_time_left > 0.0:
+		squash = Vector2(1.12, 0.9)
 	return {
+		"squash": squash, "deploy": _deploy_amount, "recoil": _recoil, "heat": _heat, "climb": _climb_phase,
+		"hurt": _hurt_timer / 0.45, "downed": downed, "overdrive": 1.0 if ability.is_active("overwatch") else 0.0,
 		"print": print_progress, "launch": launch,
 		"facing": facing, "aim": aim_dir, "t": _art_time, "vx": 0.0 if downed else velocity.x,
 		"walk": _walk_phase, "grounded": is_on_floor(), "clinging": _clinging, "cling_dir": _cling_dir,
@@ -689,8 +767,22 @@ func _draw() -> void:
 		_draw_downed(size)
 		return
 	_draw_marker(size, accent)
+	if _deploy_amount > 0.9 and weapon_has_sight():
+		_draw_sight()
 	if shake_charge > 0.0:
 		_draw_lob_preview(size)
+
+
+func weapon_has_sight() -> bool:
+	return bool(stats.stationary_fire) and Weapons.get_weapon(current_weapon_id()).kind == "hitscan"
+
+
+## Duenner Zielstrahl des aufgestellten Geschuetzes.
+func _draw_sight() -> void:
+	var from := _muzzle_offset() + aim_dir * 26.0
+	var pulse := 0.5 + 0.5 * sin(_art_time * 6.0)
+	draw_line(from, from + aim_dir * 520.0, Color(1.0, 0.3, 0.25, 0.1 + 0.06 * pulse), 1.5, true)
+	draw_circle(from + aim_dir * 520.0, 3.0, Color(1.0, 0.3, 0.25, 0.25))
 
 
 func _draw_marker(size: Vector2, accent: Color) -> void:

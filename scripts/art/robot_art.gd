@@ -10,7 +10,11 @@ extends RefCounted
 static func draw_player(c: CanvasItem, class_id: String, s: Dictionary, offset := Vector2.ZERO, zoom := 1.0) -> void:
 	var facing: float = s.facing
 	var lean := clampf(float(s.vx) / 1100.0, -0.07, 0.07)
-	c.draw_set_transform(offset, lean, Vector2(facing * zoom, zoom))
+	# Quetschen und Strecken um die Fusspunkte (Landung, Sprung, Dash).
+	var squash: Vector2 = s.get("squash", Vector2.ONE)
+	var foot_y: float = RobotClasses.get_stats(class_id).size.y * 0.5
+	var pivot_offset := Vector2(0.0, foot_y * zoom * (1.0 - squash.y))
+	c.draw_set_transform(offset + pivot_offset, lean, Vector2(facing * zoom * squash.x, zoom * squash.y))
 	match class_id:
 		"roomba":
 			_roomba(c, s)
@@ -121,7 +125,8 @@ static func _roomba(c: CanvasItem, s: Dictionary) -> void:
 
 ## Ein Spinnenbein: Oberschenkel steigt vom Rumpf zum hohen Knie auf, der lange, spitz
 ## zulaufende Unterschenkel faellt zum Boden. Orange Servos sitzen am Knie.
-static func _spider_leg(c: CanvasItem, hip: Vector2, knee: Vector2, foot: Vector2, color: Color) -> void:
+## stab: 0 bis 1, ausgefahrene Stabilisator-Spitze am Fuss (aufgestellt).
+static func _spider_leg(c: CanvasItem, hip: Vector2, knee: Vector2, foot: Vector2, color: Color, stab := 0.0) -> void:
 	Art.bar(c, hip, knee, 4.2, color)
 	var dir := (foot - knee).normalized()
 	var side := dir.orthogonal()
@@ -134,17 +139,37 @@ static func _spider_leg(c: CanvasItem, hip: Vector2, knee: Vector2, foot: Vector
 	var along := (knee - hip).normalized()
 	Art.bar(c, mid - along * 2.8, mid + along * 2.8, 3.4, Color(0.95, 0.5, 0.15), false)
 	Art.disc(c, knee, 2.8, Color(0.62, 0.65, 0.74))
+	if stab > 0.05:
+		# Kleine Stuetzplatte mit Dorn, drueckt sich in den Boden.
+		var plate := Color(0.5, 0.53, 0.62)
+		c.draw_rect(Rect2(foot + Vector2(-3.0, 0.2), Vector2(6.0, 1.6 * stab)), plate)
+		c.draw_line(foot + Vector2(-3.0, 0.2), foot + Vector2(3.0, 0.2), Color(0.8, 0.82, 0.9), 1.0)
 
 
 static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 	var t: float = s.t
 	var accent: Color = s.accent
-	var planted: bool = s.planted
 	var clinging: bool = s.clinging
-	Art.shadow(c, Vector2(0, 23), 28.0, 3.5)
+	var deploy := float(s.get("deploy", 1.0 if bool(s.planted) else 0.0))
+	var recoil := float(s.get("recoil", 0.0))
+	var heat := float(s.get("heat", 0.0))
+	var hurt := float(s.get("hurt", 0.0))
+	var downed := bool(s.get("downed", false))
+	var overdrive := float(s.get("overdrive", 0.0))
+	var climb := float(s.get("climb", 0.0))
+	var firing := float(s.firing)
+	Art.shadow(c, Vector2(0, 23), 28.0 + 3.0 * deploy, 3.5)
 
-	var speed_factor := clampf(absf(float(s.vx)) / 300.0, 0.0, 1.0)
+	var speed_factor := clampf(absf(float(s.vx)) / 300.0, 0.0, 1.0) if bool(s.grounded) else 0.0
 	var cling_side := float(s.cling_dir) * float(s.facing)
+	var walk := float(s.walk)
+	# Koerperhaltung: atmet im Stand, wippt im Gang, senkt sich beim Aufstellen,
+	# federt beim Schuss zurueck, zittert bei Treffern und sackt ein, wenn er ausgeschaltet ist.
+	var body_y := sin(t * 2.2) * 0.5 * (1.0 - deploy) - absf(sin(walk * 0.35)) * 1.6 * speed_factor + 2.2 * deploy + recoil * 1.1
+	if downed:
+		body_y = 9.0
+	var body_off := Vector2(0.0, body_y) + Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 2.0 * hurt
+
 	# Sechs Beine, erst die fernen (dunkler), dann die nahen. Vorn greifen sie nach vorn,
 	# hinten nach hinten, die mittleren stehen seitlich und wirken kuerzer.
 	var knee_reach := [-19.0, 16.0, 19.0]
@@ -153,57 +178,104 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 	for layer in 2:
 		var far := layer == 0
 		for i in 3:
-			var hip := Vector2(-13.0 + i * 13.0 + (3.0 if far else 0.0), 1.0)
+			var hip := Vector2(-13.0 + i * 13.0 + (3.0 if far else 0.0), 1.0) + body_off
 			var side := -1.0 if i == 0 else (1.0 if i == 2 else (-1.0 if far else 1.0))
 			var kx := absf(float(knee_reach[i])) * side
 			var fx := absf(float(foot_reach[i])) * side
-			var knee := hip + Vector2(kx, -float(knee_rise[i]))
+			var knee := hip + Vector2(kx, -float(knee_rise[i]) - body_off.y * 0.0)
 			var foot := Vector2(knee.x + fx, 23.0)
 			var color := Color(0.14, 0.15, 0.2) if far else Color(0.24, 0.25, 0.32)
+			if downed:
+				knee = hip + Vector2(kx * 0.75, -5.0)
+				foot = Vector2(knee.x + fx * 1.6, 23.0)
+				_spider_leg(c, hip, knee, foot, color)
+				continue
 			if clinging:
-				var wall_foot := Vector2(cling_side * 31.0, -10.0 + i * 14.0 + (4.0 if far else 0.0))
-				var wall_knee := hip + (wall_foot - hip) * 0.5 + Vector2(-cling_side * 7.0, -9.0)
+				# Kletterbewegung: die Beine greifen abwechselnd nach, drei Beine bewegen sich gemeinsam.
+				var phase := climb + i * 2.1 + (PI if far else 0.0)
+				var wall_foot := Vector2(cling_side * 32.0, -14.0 + i * 16.0 + (9.0 if far else 0.0))
+				wall_foot.y += sin(phase) * 5.0
+				wall_foot.x -= cling_side * maxf(0.0, cos(phase)) * 5.0
+				var wall_knee := hip + (wall_foot - hip) * 0.42 + Vector2(-cling_side * 2.0, -13.0 - float(i) * 2.0)
 				_spider_leg(c, hip, wall_knee, wall_foot, color)
 				continue
 			if not bool(s.grounded):
 				knee = hip + Vector2(kx * 0.8, -float(knee_rise[i]) - 2.0)
-				foot = Vector2(knee.x + fx * 0.5, 17.0)
-			elif planted:
-				knee.x += side * 4.0
-				foot.x += side * 7.0
+				foot = Vector2(knee.x + fx * 0.5, 17.0 + sin(t * 4.0 + i) * 0.8)
 			else:
-				# Dreibeingang: nahe und ferne Beine wechseln sich ab, kleine ruhige Schritte.
-				var phase := float(s.walk) * 0.35 + (PI if (i % 2 == 0) != far else 0.0)
-				var swing := sin(phase) * 7.0 * speed_factor
-				var lift := maxf(0.0, cos(phase)) * 7.0 * speed_factor
+				# Aufstellen: Beine spreizen sich weit, Stabilisatoren fahren aus.
+				knee.x += side * 4.0 * deploy
+				foot.x += side * 7.0 * deploy
+				# Dreibeingang: nahe und ferne Beine wechseln sich ab, sanfte Schritte.
+				var gait := walk * 0.35 + (PI if (i % 2 == 0) != far else 0.0)
+				var swing := sin(gait) * 7.0 * speed_factor * (1.0 - deploy)
+				var lift := maxf(0.0, cos(gait))
+				lift = lift * lift * 7.0 * speed_factor * (1.0 - deploy)
 				foot += Vector2(swing, -lift)
 				knee += Vector2(swing * 0.5, -lift * 0.9)
-			_spider_leg(c, hip, knee, foot, color)
+			_spider_leg(c, hip, knee, foot, color, deploy if bool(s.grounded) else 0.0)
 
 	# Rumpf: flache, dunkle Panzerschale mit Sensorkopf.
 	var shell := PackedVector2Array([Vector2(-23, -1), Vector2(-17, -11), Vector2(13, -13), Vector2(23, -4), Vector2(19, 6), Vector2(-19, 6)])
+	for k in shell.size():
+		shell[k] += body_off
 	c.draw_colored_polygon(shell, Color(0.17, 0.18, 0.23))
 	c.draw_polyline(shell + PackedVector2Array([shell[0]]), Art.OUTLINE, 2.0, true)
-	c.draw_line(Vector2(-15, -10), Vector2(11, -12), Color(1, 1, 1, 0.3), 1.8, true)
-	c.draw_line(Vector2(-18, 3), Vector2(17, 3), accent, 2.0, true)
-	Art.rivet(c, Vector2(-17, -2))
-	Art.rivet(c, Vector2(18, 0))
-	# Antenne.
-	c.draw_line(Vector2(-16, -10), Vector2(-19, -27), Color(0.6, 0.62, 0.7), 1.2, true)
-	Art.led(c, Vector2(-19, -27), 1.5, Color(1.0, 0.3, 0.25), fmod(t, 1.2) < 0.6)
+	c.draw_line(Vector2(-15, -10) + body_off, Vector2(11, -12) + body_off, Color(1, 1, 1, 0.3), 1.8, true)
+	c.draw_line(Vector2(-18, 3) + body_off, Vector2(17, 3) + body_off, accent, 2.0, true)
+	Art.rivet(c, Vector2(-17, -2) + body_off)
+	Art.rivet(c, Vector2(18, 0) + body_off)
+	# Antenne: federt mit der Bewegung und haengt schlaff, wenn er ausgeschaltet ist.
+	var antenna_base := Vector2(-16, -10) + body_off
+	var sway := sin(t * 3.1) * 1.2 - float(s.vx) / 300.0 * 4.0
+	var antenna_tip := antenna_base + Vector2(-3.0 + sway, -17.0)
+	var antenna_mid := antenna_base + Vector2(-1.5 + sway * 0.4, -9.0)
+	if downed:
+		antenna_tip = antenna_base + Vector2(-13.0, -6.0)
+		antenna_mid = antenna_base + Vector2(-8.0, -9.0)
+	c.draw_polyline(PackedVector2Array([antenna_base, antenna_mid, antenna_tip]), Color(0.6, 0.62, 0.7), 1.3, true)
+	Art.led(c, antenna_tip, 1.5, Color(1.0, 0.3, 0.25), fmod(t, 1.2) < 0.6 and not downed)
 	var la := _local_aim(s)
-	Art.face(c, Vector2(8, -5), Vector2(17, 9), s.eye_color, la, s.mood, t)
+	# Im Leerlauf schwenkt das Geschuetz langsam hin und her, als wuerde es die Umgebung abtasten.
+	if firing <= 0.0 and speed_factor < 0.1 and deploy < 0.3 and not downed and not clinging:
+		la = la.rotated(sin(t * 0.9) * 0.1)
+	Art.face(c, Vector2(8, -5) + body_off, Vector2(17, 9), s.eye_color, la, s.mood, t)
+	# Stellung: schwacher Schutzschild-Bogen, wenn aufgestellt (weniger Schaden).
+	if deploy > 0.8:
+		c.draw_arc(Vector2(0, -2) + body_off, 31.0, PI + 0.5, TAU - 0.5, 20, Color(0.5, 0.8, 1.0, 0.16 * (0.6 + 0.4 * sin(t * 4.0))), 2.0, true)
 
-	# Geschuetzkopf oben auf dem Rumpf, Rohr zeigt in Zielrichtung.
-	var pivot := Vector2(2, -17)
-	Art.panel(c, Rect2(-8, -23, 18, 10), Color(0.2, 0.21, 0.27), 3.0)
-	Art.led(c, Vector2(-3, -19), 1.5, Color(1.0, 0.3, 0.25), planted)
-	var tip := pivot + la * 22.0
-	Art.bar(c, pivot, tip, 5.0, Color(0.45, 0.48, 0.58))
+	# Geschuetzkopf: duckt sich beim Schuss, Rohr federt zurueck und glueht bei Hitze.
+	var pivot := Vector2(2, -17) + body_off + Vector2(0, recoil * 0.8)
+	Art.panel(c, Rect2(Vector2(-8, -23) + body_off, Vector2(18, 10)), Color(0.2, 0.21, 0.27), 3.0)
+	var led_on := deploy > 0.5 or (overdrive > 0.0 and fmod(t, 0.2) < 0.1)
+	Art.led(c, Vector2(-3, -19) + body_off, 1.5, Color(1.0, 0.3, 0.25), led_on)
+	var barrel_length := 22.0 - 5.0 * recoil
+	var tip := pivot + la * barrel_length
+	var barrel_color := Color(0.45, 0.48, 0.58).lerp(Color(1.0, 0.5, 0.2), clampf(heat * 0.9, 0.0, 0.9))
+	Art.bar(c, pivot, tip, 5.0, barrel_color)
 	var side_vec := la.orthogonal()
 	c.draw_line(tip - la * 5.0 + side_vec * 3.5, tip - la * 5.0 - side_vec * 3.5, Color(0.85, 0.87, 0.95), 2.5, true)
-	if float(s.firing) > 0.0:
-		Art.glow(c, tip, 10.0 + 8.0 * float(s.firing), s.weapon_color)
+	if heat > 0.55:
+		for k in 3:
+			var life := fposmod(t * 1.3 + k * 0.33, 1.0)
+			c.draw_circle(tip + Vector2(la.x * 3.0 + sin(t * 5.0 + k) * 2.0, -4.0 - life * 12.0), 1.5 + life * 2.2, Color(0.8, 0.82, 0.88, 0.35 * (1.0 - life) * heat))
+	# Overwatch: Radar dreht sich auf dem Kopf, das Rohr steht unter Strom.
+	if overdrive > 0.0:
+		var radar := pivot + Vector2(-2, -10)
+		var spin_angle := t * 9.0
+		c.draw_arc(radar, 5.0, spin_angle, spin_angle + 2.2, 8, Color(1.0, 0.35, 0.3), 2.0, true)
+		Art.glow(c, pivot, 14.0, Color(1.0, 0.3, 0.25))
+	# Muendungsfeuer als Stern.
+	if firing > 0.35:
+		var flash_color: Color = s.weapon_color
+		var star := PackedVector2Array()
+		var rotation_offset := randf() * TAU
+		for k in 10:
+			var ang := rotation_offset + k * TAU / 10.0
+			star.append(tip + Vector2(cos(ang), sin(ang)) * (7.5 if k % 2 == 0 else 3.0) * firing)
+		c.draw_colored_polygon(star, Color(flash_color, 0.9))
+	if firing > 0.0:
+		Art.glow(c, tip, 10.0 + 8.0 * firing, s.weapon_color)
 
 
 # ---------------------------------------------------------------- Automat

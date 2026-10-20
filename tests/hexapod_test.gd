@@ -51,6 +51,7 @@ func _run() -> void:
 	Input.action_press("p1_up")
 	await _frames(80)
 	_check(hexapod.is_clinging() and hexapod.global_position.y < 900.0, "Hexapod klettert die Wand hoch (y=%.0f)" % hexapod.global_position.y)
+	_check(absf(hexapod._climb_phase) > 0.5 and absf(hexapod._climb_phase) < 40.0, "Beim Klettern laeuft die Kletteranimation (%.1f)" % hexapod._climb_phase)
 	_check(roomba.global_position.y > 1150.0, "Roomba kann nicht klettern (y=%.0f)" % roomba.global_position.y)
 	Input.action_release("p1_left")
 	Input.action_release("p1_up")
@@ -149,5 +150,51 @@ func _run() -> void:
 	await _frames(30)
 	_check(hexapod.global_position.y < 690.0 and hexapod.is_on_floor(), "Hexapod klettert den Schacht hoch und steht oben (y=%.0f)" % hexapod.global_position.y)
 
+	await _polish()
 	print("Fertig, Fehler: ", failures)
 	get_tree().quit(failures)
+
+
+func _polish() -> void:
+	# Aufstellen: sanft einblendend, im Stand weniger Schaden, in Bewegung nicht.
+	hexapod.weapon_index = 0
+	_place(hexapod, Vector2(850.0, 1210.0))
+	await _frames(40)
+	_check(hexapod.is_deployed() and hexapod._deploy_amount > 0.95, "Im Stand ist er aufgestellt (%.2f)" % hexapod._deploy_amount)
+	hexapod.iframes = 0.0
+	var hp := hexapod.hp
+	hexapod.take_hit(20.0, hexapod.global_position + Vector2(30.0, 0.0))
+	_check(is_equal_approx(hp - hexapod.hp, 16.0), "Aufgestellt steckt er 20 Prozent weniger ein (%.1f)" % (hp - hexapod.hp))
+	hexapod.iframes = 0.0
+	Input.action_press("p2_right")
+	await _frames(25)
+	_check(not hexapod.is_deployed() and hexapod._deploy_amount < 0.6, "In Bewegung klappt er die Beine wieder ein (%.2f)" % hexapod._deploy_amount)
+	hp = hexapod.hp
+	hexapod.take_hit(20.0, hexapod.global_position + Vector2(-30.0, 0.0))
+	_check(is_equal_approx(hp - hexapod.hp, 20.0), "In Bewegung voller Schaden")
+	Input.action_release("p2_right")
+	hexapod.iframes = 0.0
+	hexapod.velocity = Vector2.ZERO
+	await _frames(40)
+
+	# Schuss: Rueckstoss-Animation und Hitze.
+	var saw_recoil := false
+	var peak_heat := 0.0
+	Input.action_press("p2_fire")
+	for i in 60:
+		await get_tree().physics_frame
+		saw_recoil = saw_recoil or hexapod._recoil > 0.8
+		peak_heat = maxf(peak_heat, hexapod._heat)
+	Input.action_release("p2_fire")
+	_check(saw_recoil and peak_heat > 0.2, "Schuss loest Rueckstoss und Hitze aus (Hitze %.2f)" % peak_heat)
+	var state := hexapod._art_state()
+	for key in ["squash", "deploy", "recoil", "heat", "climb", "hurt", "downed", "overdrive"]:
+		_check(state.has(key), "Animationszustand enthaelt %s" % key)
+
+	# Landung: Stauchung nach hartem Fall.
+	_place(hexapod, Vector2(850.0, 700.0))
+	var saw_squash := false
+	for i in 120:
+		await get_tree().physics_frame
+		saw_squash = saw_squash or hexapod._land_squash > 0.3
+	_check(saw_squash, "Nach einem Fall staucht sich der Hexapod beim Landen")

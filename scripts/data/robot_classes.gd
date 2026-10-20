@@ -42,6 +42,7 @@ const DATA := {
 		# Geschuetz: die Klassenwaffe (erste Waffe) schiesst nur im Stand (am Boden oder
 		# an der Wand), nach kurzer Aufbauzeit. Dafuer klettert er Waende hoch.
 		"stationary_fire": true,
+		"step": "step",
 		"wall_climb": true,
 		"weapons": ["turret"],
 		"damage_mult": 1.0,
