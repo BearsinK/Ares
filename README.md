@@ -1,4 +1,4 @@
-# Ares
+# Robo-Rabatz
 
 2D-Coop-Roguelike für zwei Spieler an einem PC, gebaut mit Godot 4.7.
 Design-Zusammenfassung: [docs/DESIGN.md](docs/DESIGN.md)

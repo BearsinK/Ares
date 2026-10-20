@@ -141,7 +141,7 @@ func _draw_menu() -> void:
 	var font := ThemeDB.fallback_font
 	_canvas.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.78))
 	UiKit.text(_canvas, Vector2(0, 110), ("LETZTER SHOP  vor dem Endboss" if before_boss else "SHOP  nach Welle %d" % wave), 48, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	UiKit.text(_canvas, Vector2(0, 144), "Links/Rechts: waehlen, Kreuz: kaufen. Wenn beide FERTIG sind, geht es weiter.", 17, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_canvas, Vector2(0, 144), "Links/Rechts: wählen, Kreuz: kaufen. Wenn beide FERTIG sind, geht es weiter.", 17, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	for i in 2:
 		_draw_player_column(i, Vector2(40.0 + i * (view.x * 0.5), 190.0), view.x * 0.5 - 80.0, font)
 

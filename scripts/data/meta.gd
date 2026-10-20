@@ -5,11 +5,11 @@ extends RefCounted
 
 const UPGRADES := {
 	"vitality": {
-		"name": "Verstaerkter Rahmen", "text": "+8 Leben pro Stufe", "max": 5,
+		"name": "Verstärkter Rahmen", "text": "+8 Leben pro Stufe", "max": 5,
 		"costs": [20, 30, 45, 65, 90],
 	},
 	"firepower": {
-		"name": "Uebertaktete Ladung", "text": "+4% Schaden pro Stufe", "max": 5,
+		"name": "Übertaktete Ladung", "text": "+4% Schaden pro Stufe", "max": 5,
 		"costs": [25, 35, 50, 70, 95],
 	},
 	"capital": {
@@ -25,7 +25,7 @@ const UPGRADES := {
 		"costs": [25, 45, 70],
 	},
 	"dealer": {
-		"name": "Haendlerkontakt", "text": "Erster Reroll im Shop ist gratis", "max": 1,
+		"name": "Händlerkontakt", "text": "Erster Reroll im Shop ist gratis", "max": 1,
 		"costs": [60],
 	},
 }

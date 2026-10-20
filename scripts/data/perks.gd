@@ -17,7 +17,7 @@ const DATA := {
 		},
 	},
 	"oilchange": {
-		"name": "Oelwechsel",
+		"name": "Ölwechsel",
 		"mods": {
 			"default": {"max_hp": 25.0},
 			"hexapod": {"max_hp": 15.0, "speed": 0.1},
@@ -33,7 +33,7 @@ const DATA := {
 		},
 	},
 	"coolant": {
-		"name": "Kuehlmittel",
+		"name": "Kühlmittel",
 		"mods": {
 			"default": {"dash_cd": 0.2},
 			"hexapod": {"dash_cd": 0.3},
@@ -61,14 +61,14 @@ const DATA := {
 		},
 	},
 	"chillloop": {
-		"name": "Kuehlkreislauf",
+		"name": "Kühlkreislauf",
 		"mods": {
 			"default": {"ability_cd": 0.2},
 			"hexapod": {"ability_cd": 0.25},
 		},
 	},
 	"luckychip": {
-		"name": "Glueckschip",
+		"name": "Glückschip",
 		"mods": {
 			"default": {"crit": 0.12},
 			"hexapod": {"crit": 0.2},
@@ -95,6 +95,12 @@ const DATA := {
 			"printer": {"death_blast": 14.0},
 		},
 	},
+	"cablelink": {
+		"name": "Kabelbaum",
+		"mods": {
+			"default": {"link": 1.0},
+		},
+	},
 	"sharpchip": {
 		"name": "Scharfer Chip",
 		"mods": {
@@ -108,8 +114,8 @@ const LABELS := {
 	"damage": "Schaden", "fire_rate": "Feuerrate", "speed": "Tempo",
 	"dash_cd": "Dash-Ladezeit", "pickup": "Sammelradius", "gold": "Gold",
 	"dmg_taken": "weniger Schaden", "max_hp": "Leben",
-	"ability_cd": "Faehigkeits-Ladezeit", "crit": "Crit-Chance", "kill_heal": "Leben pro Kill",
-	"pierce": "Durchschlag", "death_blast": "Explosionsschaden",
+	"ability_cd": "Fähigkeits-Ladezeit", "crit": "Crit-Chance", "kill_heal": "Leben pro Kill",
+	"pierce": "Durchschlag", "death_blast": "Explosionsschaden", "link": "Kabelbaum",
 }
 
 
@@ -129,8 +135,10 @@ static func describe(perk_id: String, class_id: String) -> String:
 			parts.append("-%d%% %s" % [int(value * 100.0), LABELS[key]])
 		elif key == "kill_heal":
 			parts.append("+%s %s" % [("%.1f" % value).trim_suffix(".0"), LABELS[key]])
+		elif key == "link":
+			parts.append("Nah beim Partner (unter 450 px): +15% Schaden, 1 Leben pro Sekunde")
 		elif key == "pierce":
-			parts.append("Schuesse durchschlagen +%d Gegner" % int(value))
+			parts.append("Schüsse durchschlagen +%d Gegner" % int(value))
 		elif key == "death_blast":
 			parts.append("Besiegte Gegner explodieren (%d Schaden)" % int(value))
 		elif key == "dmg_taken":

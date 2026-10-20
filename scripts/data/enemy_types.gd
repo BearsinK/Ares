@@ -5,14 +5,14 @@ extends RefCounted
 
 const DATA := {
 	"walker": {
-		"name": "Laeufer", "color": Color(0.85, 0.3, 0.35), "radius": 14.0,
+		"name": "Läufer", "color": Color(0.85, 0.3, 0.35), "radius": 14.0,
 		"hp": 30.0, "speed": 150.0, "movement": "ground", "jump": 720.0,
 		"attack": "melee", "melee_shape": "cone", "reach": 46.0,
 		"windup": 0.5, "cooldown": 1.3, "damage": 10.0, "knockback": 1.0,
 		"xp": 1, "gold_chance": 0.4, "cost": 1.0, "from_time": 0.0,
 	},
 	"shooter": {
-		"name": "Schuetze", "color": Color(0.7, 0.35, 0.85), "radius": 13.0,
+		"name": "Schütze", "color": Color(0.7, 0.35, 0.85), "radius": 13.0,
 		"hp": 25.0, "speed": 80.0, "movement": "ground", "jump": 720.0,
 		"attack": "ranged", "keep_distance": 450.0, "range": 700.0,
 		"windup": 0.8, "lock_time": 0.25, "cooldown": 2.2, "damage": 8.0,
@@ -36,7 +36,7 @@ const DATA := {
 		"xp": 3, "gold_chance": 0.7, "cost": 3.0, "from_time": 110.0,
 	},
 	"mortar": {
-		"name": "Moerser", "color": Color(0.3, 0.7, 0.6), "radius": 16.0,
+		"name": "Mörser", "color": Color(0.3, 0.7, 0.6), "radius": 16.0,
 		"hp": 45.0, "speed": 60.0, "movement": "ground", "jump": 500.0,
 		"attack": "strike", "keep_distance": 650.0, "range": 1000.0,
 		"windup": 0.6, "lock_time": 0.0, "cooldown": 3.8, "damage": 20.0,
@@ -56,9 +56,9 @@ const DATA := {
 ## Elite-Arten: jede hat eine eigene Farbe, einen Namen und eine Mechanik (siehe Enemy._update_elite).
 const ELITE_KINDS := {
 	"fire": {"name": "BRANDHERD", "color": Color(1.0, 0.5, 0.15), "text": "legt Brandherde"},
-	"shield": {"name": "SCHILDTRAEGER", "color": Color(0.45, 0.8, 1.0), "text": "traegt einen Schild"},
-	"storm": {"name": "STURMBOT", "color": Color(0.95, 0.85, 0.3), "text": "feuert Blitzfaecher"},
-	"frost": {"name": "FROSTWACHE", "color": Color(0.75, 0.92, 1.0), "text": "bremst in der Naehe"},
+	"shield": {"name": "SCHILDTRÄGER", "color": Color(0.45, 0.8, 1.0), "text": "trägt einen Schild"},
+	"storm": {"name": "STURMBOT", "color": Color(0.95, 0.85, 0.3), "text": "feuert Blitzfächer"},
+	"frost": {"name": "FROSTWACHE", "color": Color(0.75, 0.92, 1.0), "text": "bremst in der Nähe"},
 }
 
 

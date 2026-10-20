@@ -139,7 +139,8 @@ func _spawn_drones() -> void:
 		drone.slot = i
 		drone.life = float(data.duration)
 		main.add_child(drone)
-		drone.global_position = player.global_position + Vector2(0.0, -60.0)
+		# Die Drohnen starten aus der Druckkammer und fliegen von dort zu ihrer Bahn.
+		drone.global_position = player.global_position + Vector2(-6.0 * player.facing, -20.0)
 
 
 # ---------------------------------------------------------------- Zeichnen

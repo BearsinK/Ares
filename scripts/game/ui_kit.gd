@@ -7,25 +7,25 @@ const CLASS_ORDER: Array[String] = ["roomba", "hexapod", "vending", "printer"]
 const CLASS_INFO := {
 	"roomba": {
 		"tags": ["Sauger", "Support", "Wendig"],
-		"blurb": "Flache Scheibe mit Roboterarm. Schwacher Dauerbeschuss, grosser Sammelradius, saugt Beute und Gegner heran.",
+		"blurb": "Flache Scheibe mit Roboterarm. Schwacher Dauerbeschuss, großer Sammelradius, saugt Beute und Gegner heran.",
 		"ability": "Sog: zieht Gegner und Beute heran",
 		"damage": 3, "difficulty": 2,
 	},
 	"hexapod": {
 		"tags": ["Sniper", "Mobil", "Stellung"],
-		"blurb": "Klettert Waende und schiesst schnell, aber nur im Stand. Positionierung ist alles.",
+		"blurb": "Klettert Wände und schießt schnell, aber nur im Stand. Positionierung ist alles.",
 		"ability": "Overwatch: kurz doppelte Feuerrate ohne Aufbauzeit",
 		"damage": 4, "difficulty": 4,
 	},
 	"vending": {
-		"tags": ["Tank", "Flaeche", "Langsam"],
-		"blurb": "Gross und robust. Wirft geschuettelte Dosen, die beim Aufprall explodieren.",
+		"tags": ["Tank", "Fläche", "Langsam"],
+		"blurb": "Groß und robust. Wirft geschüttelte Dosen, die beim Aufprall explodieren.",
 		"ability": "Walze: rollt durch Gegner, macht Schaden und nimmt weniger",
 		"damage": 4, "difficulty": 2,
 	},
 	"printer": {
 		"tags": ["Schwarm", "Utility", "Vielseitig"],
-		"blurb": "Laeuft auf gedruckten Beinen, druckt Drohnen als zusaetzliche Waffen.",
+		"blurb": "Läuft auf gedruckten Beinen, druckt Drohnen als zusätzliche Waffen.",
 		"ability": "Druck: zwei explosive Drohnen jagen Gegner",
 		"damage": 2, "difficulty": 3,
 	},
@@ -35,13 +35,13 @@ const CONTROLS_LINES: Array[String] = [
 	"Linker Stick / WASD / Pfeile: Bewegen und Klettern",
 	"Rechter Stick / Maus: Zielen",
 	"L1 / Leertaste / Pfeil hoch: Sprung (nach unten + Sprung: durch Plattform fallen)",
-	"R1 / Shift / Schraegstrich: Dash mit Unverwundbarkeit",
-	"R2 / Linke Maustaste, F / Punkt: Schiessen",
-	"L2 / E / Komma: Klassenfaehigkeit",
+	"R1 / Shift / Schrägstrich: Dash mit Unverwundbarkeit",
+	"R2 / Linke Maustaste, F / Punkt: Schießen",
+	"L2 / E / Komma: Klassenfähigkeit",
 	"Dreieck / Q / M: Waffe wechseln",
 	"Quadrat / R / N: Greifhaken (Firmware)",
-	"Kreis / G / L: Partner wiederbeleben (halten), im Menue zurueck",
-	"Kreuz / Enter: Bestaetigen im Menue",
+	"Kreis / G / L: Partner wiederbeleben (halten), im Menü zurück",
+	"Kreuz / Enter: Bestätigen im Menü",
 	"Options / Escape: Pause",
 ]
 
@@ -93,7 +93,7 @@ static func controls_panel(c: CanvasItem, view: Vector2) -> void:
 	text(c, Vector2(0, 190), "STEUERUNG", 44, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	for i in CONTROLS_LINES.size():
 		text(c, Vector2(panel.position.x + 40, 260 + i * 38), CONTROLS_LINES[i], 20, Color(0.88, 0.9, 0.98))
-	text(c, Vector2(0, panel.end.y - 24), "Zurueck: Kreis oder Escape", 18, Color(0.7, 0.72, 0.85), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	text(c, Vector2(0, panel.end.y - 24), "Zurück: Kreis oder Escape", 18, Color(0.7, 0.72, 0.85), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
 ## Ruhezustand fuer die Darstellung von Robotern in Menues.

@@ -119,80 +119,103 @@ static func _roomba(c: CanvasItem, s: Dictionary) -> void:
 
 # ---------------------------------------------------------------- Hexapod
 
+## Ein Spinnenbein: Oberschenkel steigt vom Rumpf zum hohen Knie auf, der lange, spitz
+## zulaufende Unterschenkel faellt zum Boden. Orange Servos sitzen am Knie.
+static func _spider_leg(c: CanvasItem, hip: Vector2, knee: Vector2, foot: Vector2, color: Color) -> void:
+	Art.bar(c, hip, knee, 4.2, color)
+	var dir := (foot - knee).normalized()
+	var side := dir.orthogonal()
+	var claw := PackedVector2Array([knee + side * 3.2, knee - side * 3.2, foot - side * 0.7, foot + dir * 3.0, foot + side * 0.7])
+	c.draw_colored_polygon(claw, color.darkened(0.08))
+	c.draw_polyline(PackedVector2Array([claw[0], claw[4], claw[3], claw[2], claw[1]]), Art.OUTLINE, 1.6, true)
+	c.draw_line(knee + side * 1.4, foot + side * 0.2, color.lightened(0.28), 1.0, true)
+	# Servo am Knie.
+	var mid := hip.lerp(knee, 0.55)
+	var along := (knee - hip).normalized()
+	Art.bar(c, mid - along * 2.8, mid + along * 2.8, 3.4, Color(0.95, 0.5, 0.15), false)
+	Art.disc(c, knee, 2.8, Color(0.62, 0.65, 0.74))
+
+
 static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 	var t: float = s.t
 	var accent: Color = s.accent
 	var planted: bool = s.planted
 	var clinging: bool = s.clinging
-	Art.shadow(c, Vector2(0, 23), 26.0, 3.5)
+	Art.shadow(c, Vector2(0, 23), 28.0, 3.5)
 
 	var speed_factor := clampf(absf(float(s.vx)) / 300.0, 0.0, 1.0)
 	var cling_side := float(s.cling_dir) * float(s.facing)
-	# Spinnenbeine: duenn, mit hohem Knie ueber dem Koerper. Vorne greifen sie nach vorn,
-	# hinten nach hinten, die mittleren stehen breit. Erst die fernen, dann die nahen.
-	var reach_near := [-26.0, 23.0, 27.0]
-	var reach_far := [-27.0, -21.0, 25.0]
+	# Sechs Beine, erst die fernen (dunkler), dann die nahen. Vorn greifen sie nach vorn,
+	# hinten nach hinten, die mittleren stehen seitlich und wirken kuerzer.
+	var knee_reach := [-19.0, 16.0, 19.0]
+	var knee_rise := [14.0, 17.0, 14.0]
+	var foot_reach := [-12.0, 7.0, 12.0]
 	for layer in 2:
 		var far := layer == 0
 		for i in 3:
-			var hip := Vector2(-13.0 + i * 13.0 + (4.0 if far else 0.0), 8.0)
-			var rest := hip.x + float(reach_far[i] if far else reach_near[i])
-			# Dreibeingang: abwechselnd heben sich nahe und ferne Beine, kleine ruhige Schritte.
-			var phase := float(s.walk) * 0.35 + (PI if (i % 2 == 0) != far else 0.0)
-			var foot := Vector2.ZERO
+			var hip := Vector2(-13.0 + i * 13.0 + (3.0 if far else 0.0), 1.0)
+			var side := -1.0 if i == 0 else (1.0 if i == 2 else (-1.0 if far else 1.0))
+			var kx := absf(float(knee_reach[i])) * side
+			var fx := absf(float(foot_reach[i])) * side
+			var knee := hip + Vector2(kx, -float(knee_rise[i]))
+			var foot := Vector2(knee.x + fx, 23.0)
+			var color := Color(0.14, 0.15, 0.2) if far else Color(0.24, 0.25, 0.32)
 			if clinging:
-				foot = Vector2(cling_side * 31.0, -10.0 + i * 14.0 + (4.0 if far else 0.0))
-			elif not bool(s.grounded):
-				foot = Vector2(hip.x + (rest - hip.x) * 0.55, 17.0)
+				var wall_foot := Vector2(cling_side * 31.0, -10.0 + i * 14.0 + (4.0 if far else 0.0))
+				var wall_knee := hip + (wall_foot - hip) * 0.5 + Vector2(-cling_side * 7.0, -9.0)
+				_spider_leg(c, hip, wall_knee, wall_foot, color)
+				continue
+			if not bool(s.grounded):
+				knee = hip + Vector2(kx * 0.8, -float(knee_rise[i]) - 2.0)
+				foot = Vector2(knee.x + fx * 0.5, 17.0)
 			elif planted:
-				foot = Vector2(hip.x + (rest - hip.x) * 1.15, 23.0)
+				knee.x += side * 4.0
+				foot.x += side * 7.0
 			else:
-				var swing := sin(phase) * 6.0 * speed_factor
-				var lift := maxf(0.0, cos(phase)) * 6.0 * speed_factor
-				foot = Vector2(rest + swing, 23.0 - lift)
-			var color := Color(0.17, 0.19, 0.25) if far else Color(0.3, 0.32, 0.4)
-			var knee_up := -1.0 if foot.x < hip.x else 1.0
-			if clinging:
-				knee_up = -cling_side
-			var end := Art.limb(c, hip, foot, 18.0, 26.0, 2.8, color, knee_up, Color(0.7, 0.72, 0.8))
-			# Spitzer Fuss.
-			var tip_dir := (end - hip).normalized()
-			c.draw_line(end, end + tip_dir * 3.5, Color(0.85, 0.86, 0.92), 1.6, true)
-			if planted and not far:
-				c.draw_colored_polygon(PackedVector2Array([end + Vector2(-3, 0), end + Vector2(3, 0), end + Vector2(0, 5)]), Color(0.8, 0.8, 0.9))
+				# Dreibeingang: nahe und ferne Beine wechseln sich ab, kleine ruhige Schritte.
+				var phase := float(s.walk) * 0.35 + (PI if (i % 2 == 0) != far else 0.0)
+				var swing := sin(phase) * 7.0 * speed_factor
+				var lift := maxf(0.0, cos(phase)) * 7.0 * speed_factor
+				foot += Vector2(swing, -lift)
+				knee += Vector2(swing * 0.5, -lift * 0.9)
+			_spider_leg(c, hip, knee, foot, color)
 
-	# Koerper: gepanzerter Unterbau und Kuppel.
-	Art.panel(c, Rect2(-22, -3, 44, 15), Color(0.28, 0.3, 0.38), 6.0)
-	Art.rrect(c, Rect2(-20, 3, 40, 3), accent, 1.5)
-	var dome_points := PackedVector2Array()
-	var dome_colors := PackedColorArray()
-	for i in 17:
-		var angle := PI + PI * float(i) / 16.0
-		var p := Vector2(cos(angle) * 25.0, -3.0 + sin(angle) * 17.0)
-		dome_points.append(p)
-		dome_colors.append(Color(0.97, 0.98, 1.0).lerp(Color(0.72, 0.75, 0.85), clampf((p.y + 20.0) / 17.0, 0.0, 1.0)))
-	c.draw_polygon(dome_points, dome_colors)
-	dome_points.append(dome_points[0])
-	c.draw_polyline(dome_points, Art.OUTLINE, 2.0, true)
-	c.draw_line(Vector2(-14, -14), Vector2(4, -17), Color(1, 1, 1, 0.55), 2.0, true)
+	# Rumpf: flache, dunkle Panzerschale mit Sensorkopf.
+	var shell := PackedVector2Array([Vector2(-23, -1), Vector2(-17, -11), Vector2(13, -13), Vector2(23, -4), Vector2(19, 6), Vector2(-19, 6)])
+	c.draw_colored_polygon(shell, Color(0.17, 0.18, 0.23))
+	c.draw_polyline(shell + PackedVector2Array([shell[0]]), Art.OUTLINE, 2.0, true)
+	c.draw_line(Vector2(-15, -10), Vector2(11, -12), Color(1, 1, 1, 0.3), 1.8, true)
+	c.draw_line(Vector2(-18, 3), Vector2(17, 3), accent, 2.0, true)
+	Art.rivet(c, Vector2(-17, -2))
+	Art.rivet(c, Vector2(18, 0))
+	# Antenne.
+	c.draw_line(Vector2(-16, -10), Vector2(-19, -27), Color(0.6, 0.62, 0.7), 1.2, true)
+	Art.led(c, Vector2(-19, -27), 1.5, Color(1.0, 0.3, 0.25), fmod(t, 1.2) < 0.6)
 	var la := _local_aim(s)
-	Art.face(c, Vector2(9, -8), Vector2(19, 10), s.eye_color, la, s.mood, t)
-	Art.rivet(c, Vector2(-15, 8))
-	Art.rivet(c, Vector2(15, 8))
+	Art.face(c, Vector2(8, -5), Vector2(17, 9), s.eye_color, la, s.mood, t)
 
-	# Geschuetzkopf oben auf der Kuppel, Rohr zeigt in Zielrichtung.
-	var pivot := Vector2(2, -18)
-	Art.panel(c, Rect2(-6, -25, 16, 9), Color(0.35, 0.38, 0.48), 3.0)
-	Art.led(c, Vector2(-1, -21), 1.5, Color(1.0, 0.3, 0.25), planted)
+	# Geschuetzkopf oben auf dem Rumpf, Rohr zeigt in Zielrichtung.
+	var pivot := Vector2(2, -17)
+	Art.panel(c, Rect2(-8, -23, 18, 10), Color(0.2, 0.21, 0.27), 3.0)
+	Art.led(c, Vector2(-3, -19), 1.5, Color(1.0, 0.3, 0.25), planted)
 	var tip := pivot + la * 22.0
-	Art.bar(c, pivot, tip, 5.0, Color(0.5, 0.53, 0.62))
-	var side := la.orthogonal()
-	c.draw_line(tip - la * 5.0 + side * 3.5, tip - la * 5.0 - side * 3.5, Color(0.85, 0.87, 0.95), 2.5, true)
+	Art.bar(c, pivot, tip, 5.0, Color(0.45, 0.48, 0.58))
+	var side_vec := la.orthogonal()
+	c.draw_line(tip - la * 5.0 + side_vec * 3.5, tip - la * 5.0 - side_vec * 3.5, Color(0.85, 0.87, 0.95), 2.5, true)
 	if float(s.firing) > 0.0:
 		Art.glow(c, tip, 10.0 + 8.0 * float(s.firing), s.weapon_color)
 
 
 # ---------------------------------------------------------------- Automat
+
+static func hull_clockwise(points: PackedVector2Array) -> bool:
+	var area := 0.0
+	for k in points.size():
+		var p := points[k]
+		var q := points[(k + 1) % points.size()]
+		area += p.x * q.y - q.x * p.y
+	return area > 0.0
+
 
 static func _vending(c: CanvasItem, s: Dictionary) -> void:
 	var t: float = s.t
@@ -200,22 +223,6 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 	var charge: float = s.charge
 	var firing: float = s.firing
 	Art.shadow(c, Vector2(0, 54), 38.0, 4.0)
-
-	# Raupenketten.
-	var spin := float(s.walk) * 0.5
-	Art.panel(c, Rect2(-35, 36, 70, 19), Color(0.16, 0.17, 0.2), 9.0)
-	for i in 14:
-		var x := -33.0 + fposmod(float(i) * 5.2 - spin * 5.0, 68.0)
-		c.draw_line(Vector2(x, 38), Vector2(x, 41), Color(0.32, 0.33, 0.38), 1.5)
-		c.draw_line(Vector2(x, 51), Vector2(x, 54), Color(0.32, 0.33, 0.38), 1.5)
-	for i in 4:
-		var center := Vector2(-23.0 + i * 15.3, 45.5)
-		Art.disc(c, center, 6.0, Color(0.55, 0.58, 0.66))
-		for k in 3:
-			var a := spin + k * TAU / 3.0
-			c.draw_line(center, center + Vector2(cos(a), sin(a)) * 5.0, Color(0.2, 0.22, 0.28), 1.5, true)
-		Art.disc(c, center, 1.6, Color(0.2, 0.22, 0.28))
-
 	# Schrank.
 	var green := Color(0.24, 0.36, 0.36)
 	Art.panel(c, Rect2(-31, -54, 62, 92), green, 7.0)
@@ -252,6 +259,53 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 	Art.rivet(c, Vector2(-28, 33))
 	Art.rivet(c, Vector2(28, 33))
 
+	# Dreieckiges Raupenlaufwerk wie bei Schneefahrzeugen: abgerundetes Dreieck mit flacher
+	# Auflage, Rollen an den Ecken und umlaufenden Stollen.
+	var spin := float(s.walk) * 0.5
+	var corners := [Vector2(-27, 47.5), Vector2(27, 47.5), Vector2(14, 36.0)]
+	var radii := [7.0, 7.0, 5.0]
+	var hull_source := PackedVector2Array()
+	for k in 3:
+		for step in 16:
+			var angle := TAU * float(step) / 16.0
+			hull_source.append(Vector2(corners[k]) + Vector2(cos(angle), sin(angle)) * float(radii[k]))
+	var hull := Geometry2D.convex_hull(hull_source)
+	c.draw_colored_polygon(hull, Color(0.12, 0.13, 0.16))
+	var closed := PackedVector2Array(hull)
+	closed.append(hull[0])
+	c.draw_polyline(closed, Color(0.3, 0.32, 0.38), 3.5, true)
+	c.draw_polyline(closed, Art.OUTLINE, 1.2, true)
+	# Stollen laufen am Umfang entlang.
+	var perimeter := 0.0
+	for k in hull.size():
+		perimeter += hull[k].distance_to(hull[(k + 1) % hull.size()])
+	var spacing := 6.0
+	var distance := fposmod(-spin * 5.0, spacing)
+	var walked := 0.0
+	for k in hull.size():
+		var from := hull[k]
+		var to := hull[(k + 1) % hull.size()]
+		var edge := to - from
+		var length := edge.length()
+		if length < 0.01:
+			continue
+		var along := edge / length
+		var outward := -along.orthogonal() if hull_clockwise(hull) else along.orthogonal()
+		while distance < walked + length:
+			var point := from + along * (distance - walked)
+			c.draw_line(point, point + outward * 2.6, Color(0.5, 0.52, 0.6), 1.4)
+			distance += spacing
+		walked += length
+	# Rollen an den Ecken und eine Mittelachse mit Federbein.
+	for k in 3:
+		var center: Vector2 = corners[k]
+		Art.disc(c, center, float(radii[k]) - 2.0, Color(0.55, 0.58, 0.66))
+		for m in 3:
+			var a := spin + m * TAU / 3.0
+			c.draw_line(center, center + Vector2(cos(a), sin(a)) * (float(radii[k]) - 3.0), Color(0.2, 0.22, 0.28), 1.4, true)
+		Art.disc(c, center, 1.4, Color(0.2, 0.22, 0.28))
+	Art.bar(c, Vector2(-8, 45.0), Vector2(14, 41.5), 3.0, Color(0.4, 0.42, 0.5), false)
+
 	# Ausgabefach unten: hier kommen die Dosen heraus. Die Klappe schwingt beim Wurf auf.
 	var slot := Rect2(-25, 24, 34, 11)
 	Art.rrect(c, slot, Color(0.03, 0.05, 0.07), 3.0)
@@ -276,6 +330,45 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------- Drucker
+
+## Breite der Drohne pro Schicht von unten nach oben (Kufen, Rumpf, Mast, Rotorarme).
+const DRONE_LAYERS := [10.0, 10.0, 16.0, 19.0, 20.0, 20.0, 19.0, 16.0, 7.0, 7.0, 26.0, 26.0, 5.0]
+
+
+## Zeichnet die gedruckte Drohne bis zur aktuellen Schicht. Beim Start (launch 0..1)
+## hebt sie ab und steigt aus der geoeffneten Tuer.
+static func _print_drone(c: CanvasItem, base: Vector2, progress: float, t: float, launch: float) -> void:
+	var layer_height := 1.9
+	var total := DRONE_LAYERS.size()
+	var done := progress * total
+	var lift := 0.0
+	if launch >= 0.0:
+		lift = launch * launch * 34.0
+	for k in total:
+		if float(k) >= done:
+			break
+		var width: float = DRONE_LAYERS[k]
+		var y := base.y - (k + 1) * layer_height - lift
+		var shade := 0.0 if k % 2 == 0 else 0.1
+		var color := Color(0.95, 0.56 + shade, 0.2)
+		c.draw_rect(Rect2(base.x - width * 0.5, y, width, layer_height), color)
+		c.draw_line(Vector2(base.x - width * 0.5, y), Vector2(base.x + width * 0.5, y), Color(1.0, 0.85, 0.6, 0.7), 0.8)
+	if launch >= 0.0:
+		# Rotoren drehen beim Abheben.
+		var rotor_y := base.y - 11.5 * layer_height - lift
+		Art.ellipse(c, Vector2(base.x - 10.0, rotor_y - 1.0), 6.0, 1.5, Color(0.9, 0.93, 1.0, 0.6))
+		Art.ellipse(c, Vector2(base.x + 10.0, rotor_y - 1.0), 6.0, 1.5, Color(0.9, 0.93, 1.0, 0.6))
+		return
+	if progress >= 1.0:
+		return
+	# Portal und Druckkopf an der aktuellen Schicht.
+	var top_y := base.y - done * layer_height
+	var head_x := base.x + sin(t * 6.0) * 9.0
+	c.draw_line(Vector2(base.x - 17.0, top_y - 4.0), Vector2(base.x + 17.0, top_y - 4.0), Color(0.55, 0.58, 0.68), 1.6)
+	Art.rrect(c, Rect2(head_x - 3.0, top_y - 8.0, 6.0, 5.0), Color(0.85, 0.87, 0.95), 1.0)
+	c.draw_line(Vector2(head_x, top_y - 3.0), Vector2(head_x, top_y), Color(1.0, 0.55, 0.15), 1.4)
+	Art.glow(c, Vector2(head_x, top_y), 3.5, Color(1.0, 0.55, 0.15))
+
 
 static func _printer(c: CanvasItem, s: Dictionary) -> void:
 	var t: float = s.t
@@ -315,34 +408,31 @@ static func _printer(c: CanvasItem, s: Dictionary) -> void:
 	Art.disc(c, Vector2(-30, -8 + shift.y), 9.0, Color(0.95, 0.5, 0.12))
 	Art.disc(c, Vector2(-30, -8 + shift.y), 3.5, Color(0.15, 0.15, 0.2))
 	c.draw_arc(Vector2(-30, -8 + shift.y), 6.5, 0.0, TAU, 16, Color(1, 1, 1, 0.3), 1.0, true)
-	# Sichtfenster: Druckbett, Portal mit Duese und das entstehende Objekt.
+	# Druckkammer: Eine Drohne wird Schicht fuer Schicht gedruckt. Ist sie fertig und wird
+	# die Faehigkeit benutzt, geht die Tuer auf und die Drohne fliegt hinaus.
 	var window := Rect2(-24, -17 + shift.y, 36, 33)
 	Art.rrect(c, window, Color(0.04, 0.07, 0.1), 3.0)
-	Art.rrect(c, Rect2(-21, 12 + shift.y, 30, 3), Color(0.6, 0.63, 0.72), 1.0)
-	var progress := sin(t * 0.7) * 0.5 + 0.5
-	var height := 5.0 + 20.0 * progress
-	var base_y := 12.0 + shift.y
-	var top_y := base_y - height
-	var layer := PackedVector2Array([Vector2(-14, base_y), Vector2(-9, top_y + 4.0), Vector2(-7, top_y), Vector2(1, top_y), Vector2(3, top_y + 4.0), Vector2(8, base_y)])
-	c.draw_colored_polygon(layer, Color(0.92, 0.95, 1.0, 0.92))
-	for i in int(height / 3.0):
-		c.draw_line(Vector2(-12, base_y - 1.0 - i * 3.0), Vector2(6, base_y - 1.0 - i * 3.0), Color(0.6, 0.65, 0.8, 0.45), 1.0)
-	var head_x := -3.0 + sin(t * 3.0) * 9.0
-	c.draw_line(Vector2(-22, top_y - 5.0), Vector2(10, top_y - 5.0), Color(0.55, 0.58, 0.68), 2.0)
-	Art.rrect(c, Rect2(head_x - 4, top_y - 9.0, 8, 7), Color(0.85, 0.87, 0.95), 1.5)
-	c.draw_line(Vector2(head_x, top_y - 2.0), Vector2(head_x, top_y - 0.5), Color(1.0, 0.55, 0.15), 1.5)
-	Art.glow(c, Vector2(head_x, top_y), 4.0, Color(1.0, 0.55, 0.15))
-	c.draw_colored_polygon(PackedVector2Array([Vector2(-24, -17 + shift.y), Vector2(-8, -17 + shift.y), Vector2(-24, 0 + shift.y)]), Color(1, 1, 1, 0.1))
+	var bed_y := 11.0 + shift.y
+	Art.rrect(c, Rect2(-21, bed_y, 30, 3), Color(0.6, 0.63, 0.72), 1.0)
+	var progress := clampf(float(s.get("print", 0.6)), 0.0, 1.0)
+	var launch := float(s.get("launch", -1.0))
+	var door := 0.0
+	if launch >= 0.0:
+		progress = 1.0
+		door = clampf(sin(launch * PI) * 1.6, 0.0, 1.0)
+	_print_drone(c, Vector2(-6, bed_y), progress, t, launch)
+	# Glas oder offene Tuer: geschlossen spiegelt das Glas, offen klappt das Blech nach oben weg.
+	if door < 0.98:
+		var glass_height := window.size.y * (1.0 - door)
+		var glass := Rect2(window.position, Vector2(window.size.x, glass_height))
+		c.draw_colored_polygon(PackedVector2Array([glass.position, glass.position + Vector2(16, 0), glass.position + Vector2(0, minf(glass_height, 17.0))]), Color(1, 1, 1, 0.1))
+		if door > 0.02:
+			Art.rrect(c, Rect2(window.position, Vector2(window.size.x, maxf(glass_height, 3.0))), Color(0.66, 0.7, 0.8, 0.9), 2.0)
 	Art.rrect_line(c, window, Color(0.6, 0.65, 0.75), 3.0, 2.0)
+	if progress >= 1.0 and launch < 0.0:
+		Art.led(c, Vector2(-6, -21 + shift.y), 1.8, Color(0.4, 1.0, 0.5), fmod(t, 0.8) < 0.5)
 	var la := _local_aim(s)
 	Art.face(c, Vector2(21, -13 + shift.y), Vector2(11, 11), s.eye_color, la, s.mood, t)
-	# Zwei Drohnen schweben ueber dem Gehaeuse (Platzhalter fuer die spaetere Drohnenmechanik).
-	for i in 2:
-		var base := Vector2(-13.0 + i * 27.0, -38.0 + shift.y + sin(t * 3.0 + i * 2.0) * 2.0)
-		Art.ellipse(c, base, 7.0, 3.5, Color(0.3, 0.32, 0.4))
-		Art.ellipse(c, base + Vector2(0, -1), 4.5, 2.0, Color(0.55, 0.57, 0.66))
-		c.draw_line(base + Vector2(-9, -4), base + Vector2(9, -4), Color(1, 1, 1, 0.55), 1.5)
-		Art.led(c, base + Vector2(0, 2), 1.3, Color(1.0, 0.55, 0.2))
 	var pivot := Vector2(0, -40)
 	var wrist := pivot + la * 10.0
 	Art.bar(c, pivot, wrist, 5.0, Color(0.5, 0.53, 0.62))

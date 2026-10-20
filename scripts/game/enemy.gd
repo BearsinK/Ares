@@ -29,6 +29,8 @@ var elite_kind := ""
 var shield := 0.0
 ## Vom Director gesetzt: false, wenn der Gegner ausserhalb des Bildes ist (spart Zeichenzeit).
 var on_screen := true
+## Tempo-Faktor aus dem Wellen-Modifikator.
+var speed_mult := 1.0
 var max_shield := 0.0
 var body_scale := 1.0
 var players: Array[Player] = []
@@ -230,7 +232,7 @@ func _ground_movement(delta: float) -> void:
 			var player_above := offset.y < -70.0 and distance < 280.0
 			if is_on_wall() or player_above:
 				velocity.y = -float(data.jump)
-	velocity.x = move_toward(velocity.x, desired * float(data.speed) * statuses.speed_factor(), 1400.0 * delta)
+	velocity.x = move_toward(velocity.x, desired * float(data.speed) * speed_mult * statuses.speed_factor(), 1400.0 * delta)
 
 
 func _fly_movement(delta: float) -> void:
@@ -239,7 +241,7 @@ func _fly_movement(delta: float) -> void:
 		var keep: float = data.keep_distance
 		var orbit := Vector2(sin(_time * 0.8 + _phase) * keep, -170.0 + cos(_time * 1.3 + _phase) * 50.0)
 		var goal := _target.global_position + orbit
-		desired = (goal - global_position).limit_length(float(data.speed) * statuses.speed_factor())
+		desired = (goal - global_position).limit_length(float(data.speed) * speed_mult * statuses.speed_factor())
 	velocity = velocity.lerp(desired, 1.0 - exp(-4.0 * delta))
 
 

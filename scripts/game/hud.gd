@@ -47,6 +47,7 @@ func _draw_hud() -> void:
 	var view := _canvas.get_viewport_rect().size
 	_draw_flash(view)
 	_draw_hints(view)
+	_draw_wave_banner(view)
 	_draw_player_panel(main.players[0], Vector2(24.0, 16.0))
 	_draw_player_panel(main.players[1], Vector2(view.x - PANEL_WIDTH - 24.0, 16.0))
 	if main.boss != null and is_instance_valid(main.boss):
@@ -59,6 +60,15 @@ func _draw_hud() -> void:
 
 
 ## Steuerungshinweis in den ersten Sekunden eines Laufs.
+func _draw_wave_banner(view: Vector2) -> void:
+	if main.wave_banner_time <= 0.0 or main.wave_modifier == "normal" or main.phase != main.Phase.WAVE:
+		return
+	var info: Dictionary = WaveModifiers.DATA[main.wave_modifier]
+	var alpha := clampf(minf(main.wave_banner_time / 0.5, (3.5 - main.wave_banner_time) / 0.3), 0.0, 1.0)
+	_text(Vector2(0, view.y * 0.27), "WELLE %d: %s" % [main.wave, info.name], 52, Color(1.0, 0.7, 0.3, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(0, view.y * 0.27 + 36.0), info.text, 22, Color(0.95, 0.95, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+
+
 func _draw_hints(view: Vector2) -> void:
 	var visible_time := 16.0
 	if _age > visible_time or main.wave > 1 or main.phase != main.Phase.WAVE:
@@ -68,9 +78,9 @@ func _draw_hints(view: Vector2) -> void:
 	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.8 * alpha), 14.0)
 	Art.rrect_line(_canvas, panel, Color(1, 1, 1, 0.25 * alpha), 14.0, 2.0)
 	_text(panel.position + Vector2(0, 28), "STEUERUNG", 16, Color(1.0, 0.85, 0.4, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
-	_text(panel.position + Vector2(0, 56), "Controller: R2 schiessen   R1 Dash   L1 Sprung   L2 Faehigkeit   Dreieck Waffe   Kreis Partner beleben", 15, Color(0.9, 0.92, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+	_text(panel.position + Vector2(0, 56), "Controller: R2 schießen   R1 Dash   L1 Sprung   L2 Fähigkeit   Dreieck Waffe   Kreis Partner beleben", 15, Color(0.9, 0.92, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 	_text(panel.position + Vector2(0, 80), "Tastatur P1: WASD, Maus, Leertaste, Shift, E     P2: Pfeile, Punkt, Strich, Komma     F11 Vollbild", 15, Color(0.7, 0.74, 0.9, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
-	_text(panel.position + Vector2(0, 102), "Je weiter ihr kommt, desto mehr Chips gibt es fuer die Werkstatt.", 13, Color(0.6, 0.95, 1.0, alpha * 0.9), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+	_text(panel.position + Vector2(0, 102), "Je weiter ihr kommt, desto mehr Chips gibt es für die Werkstatt.", 13, Color(0.6, 0.95, 1.0, alpha * 0.9), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 
 
 func _draw_flash(view: Vector2) -> void:
@@ -176,7 +186,7 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 	if not fw_parts.is_empty():
 		_text(origin + Vector2(0, 108), "  ".join(fw_parts), 13, Color(0.55, 0.92, 0.7))
 	if player.downed:
-		_text(origin + Vector2(0, 108), "AM BODEN: Partner haelt Interagieren", 14, Color(1.0, 0.5, 0.4))
+		_text(origin + Vector2(0, 108), "AM BODEN: Partner hält Interagieren", 14, Color(1.0, 0.5, 0.4))
 
 
 func _draw_boss_bar(view: Vector2, boss: Boss) -> void:
@@ -206,6 +216,8 @@ func _draw_boss_bar(view: Vector2, boss: Boss) -> void:
 
 func _draw_top_center(view: Vector2) -> void:
 	var title := "Welle %d / %d" % [main.wave, main.max_waves]
+	if main.wave_modifier != "normal":
+		title += "  " + String(WaveModifiers.DATA[main.wave_modifier].name)
 	var remaining := int(ceil(maxf(main.wave_time_left, 0.0)))
 	var clock := "%02d:%02d" % [remaining / 60, remaining % 60]
 	if main.phase == main.Phase.CLEARING:

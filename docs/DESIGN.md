@@ -1,4 +1,4 @@
-# Ares: Design-Zusammenfassung
+# Robo-Rabatz: Design-Zusammenfassung
 
 Stand: Prototyp läuft (siehe Abschnitt Umsetzungsstand am Ende). Alles hier ist ein Entwurf und kann sich ändern.
 Markiert mit (Vorschlag) ist, was noch nicht bestätigt wurde.

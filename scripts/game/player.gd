@@ -73,7 +73,7 @@ var purchases := 0
 # Dauerhafte Boni aus Perks und Items (Anteile, ausser max_hp als fester Wert).
 var mods := {"damage": 0.0, "fire_rate": 0.0, "speed": 0.0, "max_hp": 0.0, "dmg_taken": 0.0,
 	"dash_cd": 0.0, "pickup": 0.0, "gold": 0.0, "ability_cd": 0.0, "crit": 0.0, "kill_heal": 0.0,
-	"pierce": 0.0, "death_blast": 0.0}
+	"pierce": 0.0, "death_blast": 0.0, "link": 0.0}
 
 var _prefix := "p1_"
 var _coyote := 0.0
@@ -160,8 +160,15 @@ func fire_rate_mult() -> float:
 	return (1.0 + float(mods.fire_rate)) * boost
 
 
+## Kabelbaum: aktiv, solange der Partner steht und nah genug ist.
+func link_active() -> bool:
+	return float(mods.link) > 0.0 and not downed and partner != null and not partner.downed \
+		and partner.global_position.distance_to(global_position) <= 450.0
+
+
 func damage_mult() -> float:
-	return float(stats.damage_mult) * (1.0 + float(mods.damage))
+	var link := 0.15 * float(mods.link) if link_active() else 0.0
+	return float(stats.damage_mult) * (1.0 + float(mods.damage) + link)
 
 
 func add_mods(new_mods: Dictionary) -> void:
@@ -290,6 +297,8 @@ func _physics_process(delta: float) -> void:
 func _update_timers(delta: float) -> void:
 	iframes = maxf(0.0, iframes - delta)
 	slow_time = maxf(0.0, slow_time - delta)
+	if link_active() and hp < max_health():
+		hp = minf(max_health(), hp + float(mods.link) * delta)
 	_jump_buffer = maxf(0.0, _jump_buffer - delta)
 	_mouse_timer = maxf(0.0, _mouse_timer - delta)
 	_fire_cooldown = maxf(0.0, _fire_cooldown - delta)
@@ -630,7 +639,15 @@ func _art_state() -> Dictionary:
 		mood = "focus"
 	elif _happy_timer > 0.0:
 		mood = "happy"
+	var print_progress := 0.6
+	var launch := -1.0
+	if ability != null and ability.id() == "print":
+		print_progress = ability.readiness()
+		var since_use := ability.cooldown_total - ability.cooldown
+		if ability.cooldown > 0.0 and since_use < 0.7:
+			launch = since_use / 0.7
 	return {
+		"print": print_progress, "launch": launch,
 		"facing": facing, "aim": aim_dir, "t": _art_time, "vx": 0.0 if downed else velocity.x,
 		"walk": _walk_phase, "grounded": is_on_floor(), "clinging": _clinging, "cling_dir": _cling_dir,
 		"planted": bool(stats.stationary_fire) and (_stand_time >= DEPLOY_TIME or ability.is_active("overwatch")),

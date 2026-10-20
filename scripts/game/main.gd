@@ -79,6 +79,9 @@ var _arena_root: Node2D
 ## Chips, die der Lauf eingebracht hat (nach dem Ende gesetzt), und ob er schon verbucht ist.
 var run_chips := 0
 var run_recorded := false
+## Modifikator der aktuellen Welle (Id) und Einblendung beim Wellenstart.
+var wave_modifier := "normal"
+var wave_banner_time := 0.0
 
 
 func _ready() -> void:
@@ -116,6 +119,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	wave_banner_time = maxf(0.0, wave_banner_time - delta)
 	Music.set_layer_level(1.0 if phase == Phase.BOSS else clampf(0.2 + 0.08 * float(wave), 0.2, 0.9))
 	_check_level_up()
 	_update_wave(delta)
@@ -226,7 +230,7 @@ func _on_shop_closed() -> void:
 		return
 	wave += 1
 	wave_time_left = wave_duration
-	director.start_wave(wave)
+	_apply_modifier()
 	phase = Phase.WAVE
 	director.enabled = director_enabled
 
@@ -285,6 +289,14 @@ func _on_boss_died() -> void:
 	for player in players:
 		if player.downed:
 			player.revive(0.5)
+
+
+func _apply_modifier() -> void:
+	wave_modifier = WaveModifiers.pick(wave, max_waves, wave_modifier)
+	director.start_wave(wave, WaveModifiers.DATA[wave_modifier])
+	wave_banner_time = 3.5 if wave_modifier != "normal" else 0.0
+	if wave_modifier != "normal":
+		Sfx.play("telegraph")
 
 
 func _cycle_weapon(index: int) -> void:
@@ -388,6 +400,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	var coins := int(float(info.gold_chance)) + (1 if randf() < fmod(float(info.gold_chance), 1.0) else 0)
 	if enemy.elite:
 		coins += 3
+	coins = int(round(float(coins) * float(WaveModifiers.DATA[wave_modifier].get("gold", 1.0))))
 	for i in coins:
 		_spawn_pickup("gold", gold_value, enemy.global_position)
 	for player in players:

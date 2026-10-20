@@ -27,6 +27,7 @@ func _run() -> void:
 	_save_logic()
 	await _in_game()
 	await _elites()
+	await _modifiers_and_link()
 	print("Fertig, Fehler: ", failures)
 	get_tree().quit(1 if failures > 0 else 0)
 
@@ -175,3 +176,57 @@ func _elites() -> void:
 	_check(shield.shield == 0.0 and shield.hp < hp, "Gebrochener Schild laesst Schaden durch")
 	for kind in EnemyTypes.ELITE_KINDS:
 		_check(EnemyTypes.ELITE_KINDS[kind].has("name"), "Elite-Art %s ist beschrieben" % kind)
+
+
+func _modifiers_and_link() -> void:
+	_check(WaveModifiers.pick(1, 10, "") == "normal", "Welle 1 hat keinen Modifikator")
+	_check(WaveModifiers.pick(10, 10, "swarm") == "elites", "Die letzte Welle ist die Elite-Welle")
+	var different := true
+	for i in 40:
+		if WaveModifiers.pick(4, 10, "swarm") == "swarm":
+			different = false
+	_check(different, "Modifikatoren wiederholen sich nicht direkt")
+	var director: Director = main.director
+	var base_cap := director.current_cap()
+	director.modifier = WaveModifiers.DATA["swarm"]
+	_check(director.current_cap() > base_cap and director.hp_scale() < 1.0 + director.difficulty() * 0.3, "Schwarm: mehr Gegner, weniger Leben")
+	director.modifier = WaveModifiers.DATA["elites"]
+	director.wave = 5
+	_check(director.elite_chance() > 0.1, "Elite-Welle erhoeht den Elite-Anteil (%.2f)" % director.elite_chance())
+	director.modifier = WaveModifiers.DATA["air"]
+	director.enabled = true
+	director.wave = 6
+	director._credits = 100.0
+	director._spawn_timer = 0.0
+	var allowed := true
+	for i in 20:
+		var kind := director._choose_kind()
+		if not (WaveModifiers.DATA["air"].kinds as Array).has(kind):
+			allowed = false
+	_check(allowed, "Luftalarm erzeugt nur Flieger, Schuetzen und Moerser")
+	director.modifier = {}
+	director.enabled = false
+	var fast: Enemy = director.spawn("walker", Vector2(1500.0, 1225.0))
+	_check(fast.speed_mult == 1.0, "Ohne Modifikator normales Tempo")
+	fast.queue_free()
+	director.modifier = WaveModifiers.DATA["rush"]
+	var rush: Enemy = director.spawn("walker", Vector2(1500.0, 1225.0))
+	_check(rush.speed_mult > 1.3, "Sturm macht Gegner schneller")
+	rush.queue_free()
+	director.modifier = {}
+
+	# Kabelbaum: nur nah beim Partner.
+	var p1: Player = main.players[0]
+	var p2: Player = main.players[1]
+	p1.add_mods(Perks.mods_for("cablelink", p1.class_id))
+	p1.global_position = Vector2(1000.0, 1225.0)
+	p2.global_position = Vector2(3000.0, 1225.0)
+	var far_damage := p1.damage_mult()
+	_check(not p1.link_active(), "Kabelbaum ist weit weg vom Partner inaktiv")
+	p2.global_position = Vector2(1200.0, 1225.0)
+	_check(p1.link_active() and p1.damage_mult() > far_damage * 1.1, "Kabelbaum gibt Schaden, wenn man nah beieinander ist")
+	p1.hp = 20.0
+	await _frames(60)
+	_check(p1.hp > 20.5, "Kabelbaum heilt langsam (%.1f)" % p1.hp)
+	p2.take_hit(9999.0, p2.global_position + Vector2(10.0, 0.0))
+	_check(not p1.link_active(), "Mit gefallenem Partner ist er inaktiv")

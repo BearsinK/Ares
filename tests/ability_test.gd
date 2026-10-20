@@ -144,6 +144,8 @@ func _vending_and_printer() -> void:
 	var target := _enemy("brute", p2.global_position + Vector2(380.0, 20.0))
 	var target_hp := target.hp
 	await _tap("p2_ability")
+	var state := p2._art_state()
+	_check(float(state.launch) >= 0.0 and float(state.print) < 0.2, "Nach dem Druck geht die Tür auf und der Druck beginnt neu")
 	var drones := get_tree().get_nodes_in_group("drones")
 	_check(p2.ability.is_active("print") and drones.size() == 2, "L2 druckt zwei Drohnen (%d)" % drones.size())
 	await _frames(120)

@@ -85,7 +85,7 @@ func _draw_menu() -> void:
 	var view := _canvas.get_viewport_rect().size
 	_canvas.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.74))
 	UiKit.text(_canvas, Vector2(0, 150), _title, 56, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	UiKit.text(_canvas, Vector2(0, 192), "Beide waehlen dieselbe Karte. Links/Rechts: waehlen, Kreuz: bestaetigen, Kreis: zurueck", 18, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_canvas, Vector2(0, 192), "Beide wählen dieselbe Karte. Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück", 18, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 	var total := perk_ids.size() * CARD_SIZE.x + (perk_ids.size() - 1) * CARD_GAP
 	var start := Vector2((view.x - total) * 0.5, 240.0)

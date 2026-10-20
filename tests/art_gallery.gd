@@ -48,7 +48,7 @@ func _state(mood: String) -> Dictionary:
 	return {
 		"facing": 1.0, "aim": Vector2(1, 0), "t": t, "vx": 0.0, "walk": t * 3.0, "grounded": true,
 		"clinging": false, "cling_dir": 0.0, "planted": false, "mood": mood, "firing": 0.0, "charge": 0.0, "arm": 1.0,
-		"weapon_color": Color(0.8, 0.92, 1.0), "accent": Color(0.3, 0.7, 1.0), "eye_color": Color(0.4, 1.0, 0.5),
+		"weapon_color": Color(0.8, 0.92, 1.0), "accent": Color(0.3, 0.7, 1.0), "eye_color": Color(0.4, 1.0, 0.5), "print": 0.55, "launch": -1.0,
 	}
 
 

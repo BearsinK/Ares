@@ -6,8 +6,8 @@ extends CanvasLayer
 enum Mode { CLOSED, PAUSE, RESULT }
 enum Page { MAIN, CONTROLS, CONFIRM }
 
-const PAUSE_ITEMS: Array[String] = ["Weiter", "Steuerung", "Musik", "Neustart", "Hauptmenue"]
-const RESULT_ITEMS: Array[String] = ["Neustart", "Hauptmenue"]
+const PAUSE_ITEMS: Array[String] = ["Weiter", "Steuerung", "Musik", "Neustart", "Hauptmenü"]
+const RESULT_ITEMS: Array[String] = ["Neustart", "Hauptmenü"]
 const INPUT_GRACE := 0.5
 
 var main: Node = null
@@ -105,7 +105,7 @@ func _update_main() -> void:
 			Music.set_enabled(not Music.enabled)
 		"Neustart":
 			_ask("restart")
-		"Hauptmenue":
+		"Hauptmenü":
 			_ask("title")
 
 
@@ -151,7 +151,7 @@ func _draw_menu() -> void:
 		UiKit.text(_canvas, Vector2(0, 220), "PAUSE", 80, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var top := 330.0 if mode == Mode.PAUSE else view.y - 250.0
 	if page == Page.CONFIRM:
-		var question := "Lauf neu starten?" if _pending == "restart" else "Zurueck zum Hauptmenue? Die Chips bleiben."
+		var question := "Lauf neu starten?" if _pending == "restart" else "Zurück zum Hauptmenü? Die Chips bleiben."
 		UiKit.text(_canvas, Vector2(0, top - 20.0), question, 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, view.x)
 		for i in 2:
 			var rect := Rect2(Vector2(view.x * 0.5 - 170.0 + i * 180.0, top + 10.0), Vector2(160, 56))
@@ -164,7 +164,7 @@ func _draw_menu() -> void:
 		if label == "Musik":
 			label = "Musik: %s" % ("An" if Music.enabled else "Aus")
 		UiKit.button(_canvas, rect, label, i == cursor)
-	UiKit.text(_canvas, Vector2(0, view.y - 40.0), "Hoch/Runter waehlen, Kreuz oder Enter bestaetigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_canvas, Vector2(0, view.y - 40.0), "Hoch/Runter wählen, Kreuz oder Enter bestätigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
 func _draw_result(view: Vector2) -> void:

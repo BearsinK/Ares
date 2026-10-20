@@ -1,7 +1,7 @@
-# Ares: Hinweise fuer Claude
+# Robo-Rabatz (Repo: Ares): Hinweise fuer Claude
 
-Godot 4.7 (GDScript, GL Compatibility), 2D-Coop-Roguelike fuer zwei Spieler. Sprache mit dem Nutzer: Deutsch,
-kurz und direkt, keine Emojis, keine Gedankenstriche. Design: docs/DESIGN.md (Entscheidungen), README.md (Steuerung, Stand).
+Godot 4.7 (GDScript, GL Compatibility), 2D-Coop-Roguelike fuer zwei Spieler. Sprache mit dem Nutzer: Deutsch. Sichtbare Spieltexte (Strings in scripts/) mit echten Umlauten und ß, Kommentare und Tests duerfen ASCII bleiben.
+Kurz und direkt, keine Emojis, keine Gedankenstriche. Design: docs/DESIGN.md (Entscheidungen), README.md (Steuerung, Stand).
 
 ## Arbeitsweise
 - Aenderungen immer mit den Tests pruefen (siehe unten) und per Screenshot ansehen, dann committen und pushen.

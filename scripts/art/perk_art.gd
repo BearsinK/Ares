@@ -17,6 +17,7 @@ const COLORS := {
 	"scavenger": Color(0.5, 1.0, 0.55),
 	"piercer": Color(1.0, 0.6, 0.35),
 	"boomchip": Color(1.0, 0.5, 0.25),
+	"cablelink": Color(0.55, 0.85, 1.0),
 }
 
 
@@ -89,6 +90,13 @@ static func draw(c: CanvasItem, perk_id: String, center: Vector2, size: float) -
 			c.draw_circle(center + Vector2(-0.1, 0.2) * k, k * 0.7, color)
 			c.draw_line(center + Vector2(0.3, -0.3) * k, center + Vector2(0.65, -0.75) * k, Color(0.8, 0.8, 0.85), 3.0)
 			Art.led(c, center + Vector2(0.75, -0.85) * k, k * 0.2, Color(1.0, 0.9, 0.4))
+		"cablelink":
+			# Zwei Stecker, durch ein Kabel verbunden.
+			c.draw_arc(center + Vector2(0, 0.2 * k), k * 0.65, 0.2, PI - 0.2, 16, color, 3.0, true)
+			for side in [-1.0, 1.0]:
+				c.draw_rect(Rect2(center + Vector2(side * 0.65 * k - 0.22 * k, -0.7 * k), Vector2(0.44, 0.6) * k), color)
+				c.draw_line(center + Vector2(side * 0.65 * k - 0.12 * k, -0.95 * k), center + Vector2(side * 0.65 * k - 0.12 * k, -0.7 * k), Color(1, 1, 1, 0.8), 2.0)
+				c.draw_line(center + Vector2(side * 0.65 * k + 0.12 * k, -0.95 * k), center + Vector2(side * 0.65 * k + 0.12 * k, -0.7 * k), Color(1, 1, 1, 0.8), 2.0)
 		_:
 			c.draw_circle(center, k * 0.5, color)
 

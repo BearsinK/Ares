@@ -22,6 +22,8 @@ var parent_node: Node = null
 var time := 0.0
 var wave := 1
 var wave_progress := 0.0
+## Modifikator der laufenden Welle (siehe WaveModifiers), leer = normal.
+var modifier: Dictionary = {}
 
 var _credits := 4.0
 var _spawn_timer := 1.0
@@ -40,16 +42,16 @@ func unlock_time() -> float:
 
 
 func current_cap() -> int:
-	return mini(20 + int(difficulty() * 4.5), 200)
+	return mini(int((20.0 + difficulty() * 4.5) * float(modifier.get("cap", 1.0))), 200)
 
 
 ## Anteil der Spawns, die als Elite erscheinen (ab ELITE_FROM, wachsend bis 15 Prozent).
 func elite_chance() -> float:
-	return clampf(0.04 + (unlock_time() - ELITE_FROM) / 1500.0, 0.0, 0.15)
+	return clampf((0.04 + (unlock_time() - ELITE_FROM) / 1500.0) * float(modifier.get("elite", 1.0)), 0.0, 0.5)
 
 
 func hp_scale() -> float:
-	return 1.0 + difficulty() * 0.3
+	return (1.0 + difficulty() * 0.3) * float(modifier.get("hp", 1.0))
 
 
 func damage_scale() -> float:
@@ -57,8 +59,9 @@ func damage_scale() -> float:
 
 
 ## Neue Welle: die Punkte beginnen mit einem kleinen Startvorrat.
-func start_wave(new_wave: int) -> void:
+func start_wave(new_wave: int, new_modifier := {}) -> void:
 	wave = new_wave
+	modifier = new_modifier
 	wave_progress = 0.0
 	_credits = 4.0
 	_spawn_timer = 1.0
@@ -78,7 +81,7 @@ func _physics_process(delta: float) -> void:
 	if not enabled:
 		return
 	time += delta
-	_credits += (0.8 + 0.45 * difficulty()) * delta
+	_credits += (0.8 + 0.45 * difficulty()) * float(modifier.get("credits", 1.0)) * delta
 	_spawn_timer -= delta
 	if _spawn_timer > 0.0 or enemies.size() >= current_cap():
 		return
@@ -113,7 +116,7 @@ func _choose_kind() -> String:
 	var weights: Array[float] = []
 	for kind in EnemyTypes.DATA:
 		var info: Dictionary = EnemyTypes.DATA[kind]
-		if unlock_time() >= float(info.from_time):
+		if unlock_time() >= float(info.from_time) and (not modifier.has("kinds") or (modifier.kinds as Array).has(kind)):
 			options.append(kind)
 			# Billige Gegner sind haeufiger.
 			weights.append(1.0 / float(info.cost))
@@ -132,6 +135,7 @@ func spawn(kind: String, at: Variant = null, elite := false, elite_kind := "") -
 	var enemy := Enemy.new()
 	enemy.setup(kind, hp_scale(), damage_scale(), players, elite, elite_kind)
 	enemy.siblings = enemies
+	enemy.speed_mult = float(modifier.get("speed", 1.0))
 	enemy.position = at if at != null else _spawn_position(kind)
 	enemy.fire_projectile.connect(projectile_requested.emit)
 	enemy.strike_requested.connect(strike_requested.emit)

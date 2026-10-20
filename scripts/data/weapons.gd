@@ -51,7 +51,7 @@ const DATA := {
 		"recoil": 60.0, "shake": 2.0, "sound": "can_throw", "barrel": 16.0,
 	},
 	"turret": {
-		"name": "Geschuetz", "kind": "hitscan", "color": Color(0.75, 0.9, 1.0),
+		"name": "Geschütz", "kind": "hitscan", "color": Color(0.75, 0.9, 1.0),
 		"fire_rate": 2.8, "damage": 34.0, "range": 1500.0, "pierce": 3,
 		"width": 3.0, "tracer_life": 0.12,
 		"recoil": 0.0, "shake": 3.0, "sound": "turret", "barrel": 26.0,
@@ -73,7 +73,7 @@ static func summary(weapon_id: String) -> String:
 	if weapon.kind == "hitscan":
 		kind = "Strahl, trifft sofort"
 	elif weapon.kind == "lob":
-		kind = "Wurf, schuetteln = Explosion"
+		kind = "Wurf, schütteln = Explosion"
 		damage = float(weapon.explosion_damage)
 	elif weapon.has("explosion_radius"):
 		kind = "Explosiv"
