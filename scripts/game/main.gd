@@ -148,7 +148,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		pause_menu.open_pause()
 		get_viewport().set_input_as_handled()
 		return
-	if event is InputEventKey and event.pressed and not event.echo:
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F1:
 			_cycle_weapon(0)
 		elif event.keycode == KEY_F2:
@@ -188,7 +188,7 @@ func _update_wave(delta: float) -> void:
 				_end_wave()
 		Phase.CLEARING:
 			_clear_time -= delta
-			if _clear_time <= 0.0 and not game_over:
+			if _clear_time <= 0.0 and not game_over and not levelup_menu.is_open:
 				_open_shop()
 
 
@@ -367,6 +367,9 @@ func _on_slam_landed(player: Player, pos: Vector2) -> void:
 
 
 func _on_player_down(_player: Player) -> void:
+	# Waehrend der Sterbeanimation des Bosses ist der Kampf gewonnen.
+	if boss != null and is_instance_valid(boss) and boss.dying:
+		return
 	for player in players:
 		if not player.downed:
 			return
@@ -439,7 +442,10 @@ func _spawn_pickup(kind: String, value: int, pos: Vector2) -> void:
 	if pickups.get_child_count() > 150 and kind != "hp":
 		# Zu viele Objekte: Wert direkt gutschreiben statt ein weiteres zu erzeugen.
 		if kind == "xp":
-			xp += value
+			xp += maxi(1, int(round(value * Meta.xp_multiplier())))
+		elif kind == "gold":
+			var receiver: Player = players[kills % players.size()]
+			receiver.gold += maxi(1, int(round(value * (1.0 + float(receiver.mods.gold)))))
 		return
 	var pickup := Pickup.new()
 	pickup.kind = kind
@@ -470,6 +476,9 @@ func _on_pickup_collected(pickup: Pickup, player: Player) -> void:
 
 func _check_level_up() -> void:
 	if game_over or levelup_menu.is_open or xp < xp_needed:
+		return
+	# Nie ueber dem Shop oder dem Ergebnisbildschirm: zwei offene Menues wuerden sich gegenseitig entpausieren.
+	if shop_menu.is_open or phase == Phase.SHOP or phase == Phase.VICTORY:
 		return
 	xp -= xp_needed
 	level += 1

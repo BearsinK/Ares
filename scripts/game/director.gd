@@ -12,6 +12,9 @@ const SPAWN_INTERVAL := 0.35
 const MIN_SPAWN_DISTANCE := 500.0
 const ELITE_FROM := 60.0
 const ELITE_COST_MULT := 3.0
+## Der geschlossene Schacht rechts (x-Bereich inklusive Waende).
+const SHAFT_LEFT := 2570.0
+const SHAFT_RIGHT := 2910.0
 
 var enabled := true
 var arena_size := Vector2(3200.0, 1350.0)
@@ -156,6 +159,9 @@ func _spawn_position(kind: String) -> Vector2:
 		if absf(player.global_position.x - x) < MIN_SPAWN_DISTANCE:
 			x = clampf(anchor.x - side * randf_range(700.0, 1000.0), 90.0, arena_size.x - 90.0)
 			break
+	# Der Schacht rechts ist ringsum zu: dort darf niemand erscheinen.
+	if x > SHAFT_LEFT and x < SHAFT_RIGHT:
+		x = SHAFT_LEFT - 40.0 if anchor.x < (SHAFT_LEFT + SHAFT_RIGHT) * 0.5 else SHAFT_RIGHT + 40.0
 	if info.movement == "fly":
 		return Vector2(x, randf_range(250.0, 800.0))
 	return Vector2(x, floor_y - float(info.radius) - 4.0)

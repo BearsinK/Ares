@@ -69,6 +69,13 @@ func _key(action: String, keycode: Key) -> void:
 	InputMap.action_add_event(action, event)
 
 
+func _key_right(action: String, keycode: Key) -> void:
+	var event := InputEventKey.new()
+	event.physical_keycode = keycode
+	event.location = KEY_LOCATION_RIGHT
+	InputMap.action_add_event(action, event)
+
+
 func _mouse(action: String, button: MouseButton) -> void:
 	var event := InputEventMouseButton.new()
 	event.button_index = button
@@ -132,4 +139,7 @@ func _bind_keyboard_p2() -> void:
 	_key("p2_hook", KEY_N)
 	_key("p2_weapon", KEY_M)
 	_key("p2_interact", KEY_L)
+	# Bestaetigen auch ohne Nummernblock (Laptop): Rechts-Shift oder Rechts-Alt.
 	_key("p2_confirm", KEY_KP_ENTER)
+	_key_right("p2_confirm", KEY_SHIFT)
+	_key_right("p2_confirm", KEY_ALT)

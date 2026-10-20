@@ -194,7 +194,7 @@ func damage_mult() -> float:
 func add_mods(new_mods: Dictionary) -> void:
 	for key in new_mods:
 		mods[key] = float(mods[key]) + float(new_mods[key])
-	if new_mods.has("max_hp"):
+	if new_mods.has("max_hp") and not downed:
 		hp += float(new_mods.max_hp)
 
 
@@ -220,6 +220,11 @@ func take_hit(amount: float, from: Vector2) -> bool:
 		hp = 0.0
 		downed = true
 		_ceiling = false
+		_clinging = false
+		_dash_time_left = 0.0
+		_slamming = false
+		if hook_active:
+			_release_hook()
 		revive_progress = 0.0
 		shake_charge = 0.0
 		_lob_charging = false
@@ -641,7 +646,7 @@ func _release_hook() -> void:
 
 
 func _try_dash() -> void:
-	if dash_charges <= 0 or _dash_time_left > 0.0:
+	if dash_charges <= 0 or _dash_time_left > 0.0 or hook_active or downed:
 		return
 	var stick := Input.get_vector(
 		_prefix + "left", _prefix + "right", _prefix + "up", _prefix + "down")
@@ -725,7 +730,7 @@ func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 	elif _lob_charging and not held:
 		_lob_charging = false
 		_fire_cooldown = 1.0 / (float(weapon.fire_rate) * fire_rate_mult())
-		var origin: Vector2 = global_position + _muzzle_offset() + aim_dir * float(weapon.barrel)
+		var origin := _fire_origin(float(weapon.barrel))
 		if escorts.is_empty():
 			velocity -= aim_dir * float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
 		var thrown_charge := shake_charge
@@ -760,7 +765,7 @@ func _handle_fire(_delta: float) -> void:
 	if weapon.kind == "lob":
 		return
 	_fire_cooldown = 1.0 / (float(weapon.fire_rate) * fire_rate_mult())
-	var origin: Vector2 = global_position + _muzzle_offset() + aim_dir * float(weapon.barrel)
+	var origin := _fire_origin(float(weapon.barrel))
 	# Rueckstoss: am Boden schwaecher, in der Luft staerker. Drohnenschuesse stossen den Koerper nicht.
 	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
 	if not (stats.stationary_fire and weapon_id == stats.weapons[0]) and escorts.is_empty():
@@ -946,6 +951,16 @@ func _escort_gun() -> Drone:
 		if is_instance_valid(drone):
 			return drone
 	return null
+
+
+## Mündung des nächsten Schusses. Steckt die Begleitdrohne hinter einer Wand, kommt der Schuss aus dem Körper.
+func _fire_origin(barrel: float) -> Vector2:
+	var offset := _muzzle_offset()
+	if not escorts.is_empty():
+		var query := PhysicsRayQueryParameters2D.create(global_position, global_position + offset + aim_dir * barrel, 1)
+		if not get_world_2d().direct_space_state.intersect_ray(query).is_empty():
+			offset = Vector2(0.0, -10.0)
+	return global_position + offset + aim_dir * barrel
 
 
 func _after_shot() -> void:

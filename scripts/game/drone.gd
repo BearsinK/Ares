@@ -61,9 +61,18 @@ func _goal() -> Vector2:
 			return base + Vector2((-1.0 if slot == 0 else 1.0) * 42.0, 12.0)
 		var side := -1.0 if slot == 0 else 1.0
 		var sway := Vector2(0.0, sin(_age * 2.4 + slot * 2.0) * 4.0)
-		return base + Vector2(side * 50.0, -56.0) + sway
+		return _clamp_to_world(base, base + Vector2(side * 50.0, -56.0) + sway)
 	var angle := _age * 1.8 + slot * PI
 	return base + Vector2(cos(angle) * ORBIT_RADIUS, -50.0 + sin(angle * 1.5) * 24.0)
+
+
+## Haelt die Begleitdrohne vor Waenden und Decken: sie bleibt vor dem ersten Treffer des Strahls.
+func _clamp_to_world(from: Vector2, goal: Vector2) -> Vector2:
+	var query := PhysicsRayQueryParameters2D.create(from + Vector2(0.0, -20.0), goal, 1)
+	var hit := get_world_2d().direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return goal
+	return hit.position + hit.normal * 14.0
 
 
 ## Begleitdrohne feuert: Rückstoß für die Optik.

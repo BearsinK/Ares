@@ -267,3 +267,16 @@ func _ceiling() -> void:
 	await _frames(20)
 	Input.action_release("p1_up")
 	_check(not roomba._ceiling, "Nur der Hexapod klettert an Decken")
+
+	# Wird er an der Decke ausgeschaltet, faellt er ab und haengt nicht mehr fest.
+	_place(hexapod, Vector2(800.0, 40.0))
+	Input.action_press("p2_up")
+	await _frames(15)
+	Input.action_release("p2_up")
+	hexapod.iframes = 0.0
+	hexapod.take_hit(9999.0, hexapod.global_position + Vector2(5.0, 0.0))
+	await _frames(40)
+	_check(hexapod.downed and not hexapod._ceiling and not hexapod._clinging and hexapod.global_position.y > 100.0, "Ausgeschaltet faellt er von der Decke (y=%.0f)" % hexapod.global_position.y)
+	hexapod.revive(1.0)
+	await _frames(30)
+

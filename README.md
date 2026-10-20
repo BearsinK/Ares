@@ -23,7 +23,7 @@ Beide Spieler können Controller und Tastatur gleichzeitig nutzen. Spieler 1 bek
 | Klassenfähigkeit | L2 | E | Komma |
 | Waffe wechseln | Dreieck | Q | M |
 | Haken (Firmware) | Quadrat | R | N |
-| Menüs | Links/Rechts, Kreuz bestätigen, Kreis zurück | A/D, Enter | Pfeile, Rechts-Alt oder \ |
+| Menüs | Links/Rechts, Kreuz bestätigen, Kreis zurück | A/D, Enter | Pfeile, Num-Enter, Rechts-Shift oder Rechts-Alt |
 
 Interagieren (Kreis / G / L) belebt den Partner (halten). Die Klassenfähigkeit auf L2 (Taste E bzw. Komma) hat eine Abklingzeit, die Leiste im HUD zeigt sie. Escape oder Options öffnet die Pause.
 

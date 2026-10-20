@@ -79,6 +79,8 @@ func _draw_can() -> void:
 
 
 func _on_body_entered(body: Node2D) -> void:
+	if is_queued_for_deletion():
+		return
 	# Plattformen sind von unten durchlaessig, ein aufsteigender Wurf fliegt hindurch.
 	if body is CollisionObject2D and (body.collision_layer & (1 << 5)) != 0 and _velocity.y <= 0.0:
 		return
@@ -87,6 +89,8 @@ func _on_body_entered(body: Node2D) -> void:
 
 
 func _on_area_entered(area: Area2D) -> void:
+	if is_queued_for_deletion():
+		return
 	if not area.has_method("take_damage") or area in _hit_targets:
 		return
 	_hit_targets.append(area)
