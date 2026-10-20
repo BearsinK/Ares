@@ -154,3 +154,18 @@ func _vending_and_printer() -> void:
 		d.life = 0.05
 	await _frames(10)
 	_check(get_tree().get_nodes_in_group("drones").is_empty(), "Drohnen verschwinden nach Ablauf")
+
+	# Druckbot: Kills verkuerzen die Abklingzeit, Drohnen erben das Modul.
+	var cd_before: float = p2.ability.cooldown
+	var victim := _enemy("brute", p2.global_position + Vector2(60.0, 0.0))
+	victim.take_damage(9999.0, p2, Vector2.RIGHT, "")
+	await _frames(2)
+	_check(p2.ability.cooldown < cd_before - 0.25, "Kill verkuerzt Druckbot-Abklingzeit (%.2f -> %.2f)" % [cd_before, p2.ability.cooldown])
+	p2.set_module("fire")
+	p2.ability.cooldown = 0.0
+	await _tap("p2_ability")
+	var fire_drone: Drone = get_tree().get_nodes_in_group("drones")[0]
+	_check(fire_drone._tint() == Elements.COLORS["fire"], "Drohne zeigt Modulfarbe")
+	for d in get_tree().get_nodes_in_group("drones"):
+		d.life = 0.05
+	await _frames(10)

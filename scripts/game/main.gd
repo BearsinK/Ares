@@ -407,6 +407,8 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	for player in players:
 		if not player.downed and float(player.mods.kill_heal) > 0.0:
 			player.hp = minf(player.max_health(), player.hp + float(player.mods.kill_heal))
+	for player in players:
+		player.ability.reduce_cooldown(float(player.stats.get("kill_cooldown", 0.0)))
 	var blast := 0.0
 	for player in players:
 		blast = maxf(blast, float(player.mods.death_blast))
@@ -720,6 +722,10 @@ func spawn_drone_shot(player: Player, origin: Vector2, direction: Vector2) -> vo
 	bullet.lifetime = 1.0
 	bullet.size = 4.0
 	bullet.color = Color(1.0, 0.65, 0.25)
+	var element := player.current_module()
+	if element != "":
+		bullet.element = element
+		bullet.color = Elements.COLORS[element]
 	bullet.shooter = player
 	bullet.explosion_radius = 55.0
 	bullet.explosion_damage = 9.0 * player.damage_mult()

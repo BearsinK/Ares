@@ -32,9 +32,27 @@ func _vending_poses() -> Array:
 	]
 
 
+func _printer_poses() -> Array:
+	return [
+		["Idle", {"print": 0.35}],
+		["Druckt", {"print": 0.7}],
+		["Fertig", {"print": 1.0}],
+		["Lauf 1", {"vx": 300.0, "walk": 0.0, "print": 0.5}],
+		["Lauf 2", {"vx": 300.0, "walk": 3.0, "print": 0.5}],
+		["Schuss", {"firing": 1.0, "recoil": 1.0, "heat": 0.8, "print": 0.5, "mood": "focus", "aim": Vector2(1, -0.3)}],
+		["Tür auf", {"launch": 0.3}],
+		["Drohne startet", {"launch": 0.6}],
+		["Sprung", {"grounded": false, "squash": Vector2(0.94, 1.08), "print": 0.5}],
+		["Landung", {"squash": Vector2(1.18, 0.8), "print": 0.5}],
+		["Treffer", {"mood": "hurt", "hurt": 1.0, "print": 0.5}],
+		["Wenig Leben", {"low": 1.0, "print": 0.5}],
+		["Am Boden", {"mood": "dead", "downed": true, "down": 1.0, "tilt": 0.32, "print": 0.5}],
+	]
+
+
 func _draw() -> void:
 	var cls := OS.get_environment("POSE_CLASS") if OS.get_environment("POSE_CLASS") != "" else "hexapod"
-	var poses: Array = _hexapod_poses() if cls == "hexapod" else _vending_poses()
+	var poses: Array = _hexapod_poses() if cls == "hexapod" else (_printer_poses() if cls == "printer" else _vending_poses())
 	_draw_poses(cls, poses)
 
 
@@ -69,5 +87,5 @@ func _draw_poses(cls: String, poses: Array) -> void:
 		var row := i / 5
 		var center := Vector2(160.0 + col * 310.0, 150.0 + row * 290.0)
 		draw_line(center + Vector2(-120, 23 * 3.2 if cls == "hexapod" else 54 * 2.2), center + Vector2(120, 23 * 3.2 if cls == "hexapod" else 54 * 2.2), Color(1, 1, 1, 0.12))
-		RobotArt.draw_player(self, cls, s, center, 3.2 if cls == "hexapod" else 2.2)
+		RobotArt.draw_player(self, cls, s, center, 3.2 if cls == "hexapod" else 2.4)
 		draw_string(font, center + Vector2(-100, 100), poses[i][0], HORIZONTAL_ALIGNMENT_CENTER, 200.0, 20, Color.WHITE)

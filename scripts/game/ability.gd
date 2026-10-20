@@ -44,6 +44,12 @@ func readiness() -> float:
 	return 1.0 - clampf(cooldown / cooldown_total, 0.0, 1.0)
 
 
+## Verkuerzt die laufende Abklingzeit (z.B. pro Kill beim Druckbot).
+func reduce_cooldown(seconds: float) -> void:
+	if seconds > 0.0 and cooldown > 0.0:
+		cooldown = maxf(0.0, cooldown - seconds)
+
+
 func try_use() -> bool:
 	if player.downed or cooldown > 0.0:
 		return false
