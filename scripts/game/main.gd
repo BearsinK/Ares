@@ -17,13 +17,13 @@ const ALL_CLASSES: Array = ["roomba", "hexapod", "vending", "printer"]
 # Debug: F1 / F2 tauschen die aktuelle Waffe von Spieler 1 / 2 gegen die naechste.
 const TEST_LOADOUTS := [
 	["dust", "shotgun", "rocket"],
-	["sniper", "beam", "rapid"],
+	["turret", "sniper", "beam"],
 ]
 # Elementmodule der Testwaffen (gleiche Reihenfolge). Spaeter kauft man sie im Shop.
 # Beispiel Coop: P1 macht mit Staubkugeln nass, P2 schockt mit dem Sniper.
 const TEST_MODULES := [
 	["water", "ice", "fire"],
-	["lightning", "fire", "water"],
+	["lightning", "lightning", "fire"],
 ]
 
 const DUMMY_RESPAWN_TIME := 4.0

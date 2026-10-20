@@ -5,7 +5,7 @@ extends RefCounted
 ## kind "hitscan": sofortiger Treffer entlang einer Linie (Strahl, Sniper)
 ## kind "lob": Bogenwurf mit Schuettel-Aufladung (Feuer halten = schuetteln, loslassen = werfen)
 
-const ALL_IDS: Array[String] = ["dust", "rapid", "shotgun", "rocket", "beam", "sniper", "can"]
+const ALL_IDS: Array[String] = ["dust", "rapid", "shotgun", "rocket", "beam", "sniper", "can", "turret"]
 
 const DATA := {
 	"dust": {
@@ -49,6 +49,12 @@ const DATA := {
 		"explosion_radius": 70.0, "explosion_radius_max": 190.0,
 		"explosion_damage": 30.0, "explosion_damage_max": 100.0,
 		"recoil": 60.0, "shake": 2.0, "sound": "can_throw", "barrel": 16.0,
+	},
+	"turret": {
+		"name": "Geschuetz", "kind": "hitscan", "color": Color(0.75, 0.9, 1.0),
+		"fire_rate": 2.8, "damage": 34.0, "range": 1500.0, "pierce": 3,
+		"width": 3.0, "tracer_life": 0.12,
+		"recoil": 0.0, "shake": 3.0, "sound": "turret", "barrel": 26.0,
 	},
 	"sniper": {
 		"name": "Sniper", "kind": "hitscan", "color": Color(1.0, 1.0, 1.0),

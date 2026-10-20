@@ -166,7 +166,7 @@ func _run() -> void:
 	p1.facing = 1.0
 	p2.global_position = Vector2(900.0, 1210.0)
 	p2.velocity = Vector2.ZERO
-	p2.weapon_index = 0
+	p2.weapon_index = 1
 	await _frames(20)
 	Input.action_press("p1_fire")
 	await _frames(30)

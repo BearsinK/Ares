@@ -33,9 +33,11 @@ const DATA := {
 		"max_hp": 80.0,
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
-		# Sniper: die Klassenwaffe (erste Waffe) schiesst nur im Stand.
+		# Geschuetz: die Klassenwaffe (erste Waffe) schiesst nur im Stand (am Boden oder
+		# an der Wand), nach kurzer Aufbauzeit. Dafuer klettert er Waende hoch.
 		"stationary_fire": true,
-		"weapons": ["sniper"],
+		"wall_climb": true,
+		"weapons": ["turret"],
 		"damage_mult": 1.0,
 	},
 	"vending": {

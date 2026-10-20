@@ -138,8 +138,8 @@ Alle starten mit demselben Grundkit, unterscheiden sich in Hauptangriff, Klassen
 
 ### Hexapod
 - Archetyp: Sniper oder Turret-Modus, Mobilität, Positionierung ist entscheidend
-- Geschütz oben drauf, schießt nur im Stand
-- Dafür schneller laufen und Wände hochklettern
+- Geschütz oben drauf, schießt nur im Stand (umgesetzt: am Boden oder hängend an der Wand, 0,2 s Aufbauzeit, 2,8 Schuss pro Sekunde, durchschlägt bis 3 Gegner)
+- Dafür schneller laufen und Wände hochklettern (umgesetzt)
 - Muss gegen Massen Durchschlag und Fläche bekommen
 
 ### Getränkeautomat auf Panzerketten

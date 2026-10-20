@@ -38,6 +38,7 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Sechs Waffen: Staubkugeln, Schnellfeuer, Schrot, Rakete (Explosion), Strahl und Sniper (Treffer entlang einer Linie, durchschlägt Gegner). Jeder Spieler hat drei zum Ausprobieren, Wechsel per Dreieck
 - Rückmeldung: Mündungsfeuer, Funken, Rückstoß, Kamerawackeln, Explosionen, eigener Sound pro Waffe
 - Automat: Dosenwurf im Bogen. Feuer halten schüttelt die Dose (Ladering, gepunktete Flugbahn), loslassen wirft. Je länger geschüttelt, desto weiter, schneller und größer die Explosion. Ab 20 Prozent Schütteln explodiert die Dose beim Aufprall, kurzes Antippen wirft nur eine ungeschüttelte Dose ohne Explosion. Mit Elementmodul gibt die Dose das Element weiter
+- Hexapod: klettert Wände hoch (gegen die Wand drücken, hoch/runter klettern, an der Oberkante hopst er auf den Rand, von der Wand abspringen geht auch). Sein Geschütz schießt schnell (2,8 Schuss pro Sekunde, durchschlägt bis zu 3 Gegner), aber nur im Stand: am Boden oder hängend an der Wand, nach 0,2 Sekunden Aufbauzeit (Beine spreizen sich). Im Gehen, Klettern oder in der Luft schießt er nicht. Waffen aus dem Shop darf er überall nutzen
 - Vier Gegnertypen (Läufer, Schütze, Flieger, Brute) ohne Kontaktschaden: Jeder Angriff wird vorher angekündigt (Kegel, Kreis, Schusslinie)
 - Director: Gegner erscheinen nach und nach, die Menge und Stärke steigen mit der Zeit
 - XP und Gold fallen aus Gegnern, werden angezogen und eingesammelt. XP gehört beiden, Gold dem Einsammler
@@ -70,6 +71,7 @@ godot --headless --path . res://tests/element_test.tscn
 godot --headless --path . res://tests/wave_test.tscn
 godot --headless --path . res://tests/movement_test.tscn
 godot --headless --path . res://tests/vending_test.tscn
+godot --headless --path . res://tests/hexapod_test.tscn
 ```
 
 Die Tests simulieren Eingaben und prüfen Bewegung, Waffen, Gegnerangriffe, Wiederbeleben, Game Over und den Director.

@@ -37,6 +37,8 @@ const HOOK_SPEED := 1400.0
 const HOOK_COOLDOWN := 0.8
 const HOOK_MAX_TIME := 0.7
 const DROP_TIME := 0.25
+const CLIMB_SPEED := 300.0
+const DEPLOY_TIME := 0.2
 const WORLD_MASK := (1 << 0) | (1 << 5)
 
 var player_index := 1
@@ -84,6 +86,9 @@ var _hook_time := 0.0
 var _hook_cooldown := 0.0
 var _drop_time := 0.0
 var _lob_charging := false
+var _clinging := false
+var _cling_dir := 0.0
+var _stand_time := 0.0
 var _shake_tick := 0.0
 
 
@@ -97,6 +102,10 @@ func setup(index: int, new_class_id: String) -> void:
 	for weapon_id in stats.weapons:
 		weapons.append(weapon_id)
 		modules.append("")
+
+
+func is_clinging() -> bool:
+	return _clinging
 
 
 func fw(firmware_id: String) -> int:
@@ -226,6 +235,11 @@ func _physics_process(delta: float) -> void:
 		_process_movement(delta, move)
 
 	move_and_slide()
+	var still := (is_on_floor() and absf(velocity.x) < 30.0) or (_clinging and absf(velocity.y) < 30.0)
+	if still and _dash_time_left <= 0.0 and not hook_active:
+		_stand_time += delta
+	else:
+		_stand_time = 0.0
 	_handle_fire(delta)
 	queue_redraw()
 
@@ -279,6 +293,8 @@ func _process_movement(delta: float, move: float) -> void:
 	var down := Input.get_axis(_prefix + "up", _prefix + "down")
 	var accel: float = stats.accel if on_floor else stats.air_accel
 
+	if stats.get("wall_climb", false) and _process_climb(move, down):
+		return
 	if _slamming:
 		velocity.x = move_toward(velocity.x, 0.0, 2000.0 * delta)
 		velocity.y = SLAM_SPEED
@@ -340,6 +356,50 @@ func _process_movement(delta: float, move: float) -> void:
 		_jump_buffer = 0.0
 		_air_jumps_left -= 1
 		Sfx.play("jump")
+
+
+## Wandklettern (Hexapod): Gegen die Wand druecken haelt ihn fest, hoch/runter klettert.
+## Gibt true zurueck, wenn die Bewegung dieses Frames damit erledigt ist.
+func _process_climb(move: float, vertical: float) -> bool:
+	if _wall_lock > 0.0 or _slamming:
+		_clinging = false
+		return false
+	var touching := is_on_wall()
+	var wall_dir := -signf(get_wall_normal().x) if touching else 0.0
+	var pushing := touching and move != 0.0 and signf(move) == wall_dir
+	var on_floor := is_on_floor()
+
+	if _clinging and not touching:
+		# Oberkante erreicht: kleiner Hopser auf den Rand.
+		_clinging = false
+		if vertical < -0.3 and signf(move) == _cling_dir:
+			velocity = Vector2(_cling_dir * 240.0, -430.0)
+			Sfx.play("jump")
+			return true
+		return false
+	if _clinging and on_floor and vertical >= 0.0:
+		_clinging = false
+		return false
+
+	var start := pushing and (not on_floor or vertical < -0.4)
+	if not (start or (_clinging and pushing)):
+		_clinging = false
+		return false
+
+	_clinging = true
+	_cling_dir = wall_dir
+	velocity.x = wall_dir * 80.0
+	velocity.y = vertical * CLIMB_SPEED
+	_air_jumps_left = fw("double_jump")
+	if _jump_buffer > 0.0:
+		# Von der Wand abspringen.
+		velocity = Vector2(-wall_dir * WALL_JUMP_PUSH, -float(stats.jump_speed) * 0.95)
+		facing = -wall_dir
+		_wall_lock = WALL_LOCK_TIME
+		_jump_buffer = 0.0
+		_clinging = false
+		Sfx.play("jump")
+	return true
 
 
 ## True, wenn der Spieler auf einer durchlaessigen Plattform steht.
@@ -438,7 +498,7 @@ func current_module() -> String:
 func _can_fire(weapon_id: String) -> bool:
 	# Klassenregel Hexapod: Die Klassenwaffe (erste Waffe) schiesst nur im Stand.
 	if stats.stationary_fire and weapon_id == stats.weapons[0]:
-		return is_on_floor() and absf(velocity.x) < 30.0 and _dash_time_left <= 0.0
+		return _stand_time >= DEPLOY_TIME
 	return true
 
 
@@ -556,11 +616,17 @@ func _draw_body(r: float, color: Color, outline: Color) -> void:
 			draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, outline, 3.0)
 			draw_line(Vector2(-facing * 4.0, -r * 0.6), Vector2(-facing * 16.0, -r * 1.5), outline, 4.0)
 		"hexapod":
-			# Sechseck mit Beinen.
+			# Sechseck mit Beinen. Aufgebaut (stehend) stehen die Beine weiter auseinander,
+			# an der Wand greifen sie in Wandrichtung.
+			var planted := _stand_time >= DEPLOY_TIME
 			for i in 6:
 				var angle := i * TAU / 6.0 + PI / 6.0
-				var leg_end := Vector2(cos(angle), sin(angle) * 0.5 + 0.7) * (r * 1.5)
+				var leg_end := Vector2(cos(angle), sin(angle) * 0.5 + 0.7) * (r * (1.8 if planted else 1.5))
+				if _clinging:
+					leg_end = Vector2(_cling_dir * r * 1.7, (i - 2.5) * 9.0)
 				draw_line(Vector2.ZERO, leg_end, outline, 3.0)
+				if planted and not _clinging:
+					draw_circle(leg_end, 3.0, outline)
 			var points := PackedVector2Array()
 			for i in 6:
 				var angle := i * TAU / 6.0
