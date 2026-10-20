@@ -20,6 +20,7 @@ func _ready() -> void:
 	Engine.set_meta("classes", classes.split(",") if classes != "" else ["roomba", "hexapod"])
 	scale = float(OS.get_environment("SIM_SCALE")) if OS.get_environment("SIM_SCALE") != "" else 6.0
 	main = load("res://scenes/main.tscn").instantiate()
+	main.stage_id = OS.get_environment("SIM_STAGE") if OS.get_environment("SIM_STAGE") != "" else "classic"
 	if OS.get_environment("SIM_WAVES") != "":
 		main.max_waves = int(OS.get_environment("SIM_WAVES"))
 	if OS.get_environment("SIM_BOSS") != "":

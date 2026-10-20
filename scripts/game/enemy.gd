@@ -6,6 +6,7 @@ extends CharacterBody2D
 
 signal died(enemy: Enemy)
 signal fire_projectile(enemy: Enemy, origin: Vector2, direction: Vector2, speed: float, damage: float)
+signal stuck(enemy: Enemy)
 signal strike_requested(enemy: Enemy, position: Vector2, radius: float, delay: float, damage: float)
 
 enum State { CHASE, WINDUP, COOLDOWN, CHARGE }
@@ -58,6 +59,7 @@ var _hurt_time := 0.0
 var _fire_flash := 0.0
 var _squash := 0.0
 var _jump_cooldown := 0.0
+var _stuck_time := 0.0
 ## Betaeubt (z.B. im Roomba-Wirbel): keine Angriffe, keine eigene Bewegung.
 var stunned_time := 0.0
 var _fall_speed := 0.0
@@ -83,6 +85,8 @@ func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_playe
 
 
 func _ready() -> void:
+	floor_snap_length = 12.0
+	floor_max_angle = deg_to_rad(52.0)
 	collision_layer = 0
 	collision_mask = (1 << 0) | (1 << 5) if data.movement == "ground" else (1 << 0)
 	add_to_group("enemies")
@@ -291,8 +295,16 @@ func _ground_movement(delta: float) -> void:
 			var player_above := offset.y < -120.0 and distance < 220.0
 			if is_on_wall() or player_above:
 				velocity.y = -float(data.jump)
-				_jump_cooldown = randf_range(1.6, 2.6)
+				_jump_cooldown = randf_range(1.0, 1.8)
 				_squash = 0.0
+		# Steckt unter einem Spieler auf einer hoeheren Ebene fest: nach einigen Sekunden woanders neu starten.
+		if offset.y < -170.0 and absf(offset.x) < 320.0 and is_on_floor():
+			_stuck_time += delta
+			if _stuck_time > 5.0:
+				_stuck_time = 0.0
+				stuck.emit(self)
+		else:
+			_stuck_time = maxf(0.0, _stuck_time - delta)
 	velocity.x = move_toward(velocity.x, desired * float(data.speed) * speed_mult * statuses.speed_factor(), 1400.0 * delta)
 
 

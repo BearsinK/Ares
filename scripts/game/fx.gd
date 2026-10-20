@@ -61,6 +61,21 @@ func gib(pos: Vector2, color: Color, shape: String, size: float, speed: float) -
 	})
 
 
+## Glanz auf frisch gesaubertem Boden: kleiner Stern, der kurz funkelt.
+func glint(pos: Vector2, size := 7.0) -> void:
+	if _items.size() >= MAX_ITEMS - 60:
+		return
+	var life := randf_range(0.7, 1.3)
+	_items.append({"type": "glint", "pos": pos, "t": life, "max": life, "color": Color(0.85, 1.0, 1.0), "size": size, "phase": randf() * TAU})
+
+
+## Blanker Streifen auf dem Boden zwischen zwei Punkten (die sauber gesaugte Spur).
+func shine(from: Vector2, to: Vector2) -> void:
+	if _items.size() >= MAX_ITEMS - 60:
+		return
+	_items.append({"type": "shine", "from": from, "to": to, "t": 1.7, "max": 1.7, "color": Color(0.8, 1.0, 1.0)})
+
+
 func muzzle(pos: Vector2, dir: Vector2, color: Color) -> void:
 	_items.append({"type": "muzzle", "pos": pos, "dir": dir, "t": 0.06, "max": 0.06, "color": color})
 
@@ -88,9 +103,17 @@ func _process(delta: float) -> void:
 			item.pos.y -= 70.0 * delta
 		elif item.type == "gib":
 			item.vel.y += 1800.0 * delta
+			var before: Vector2 = item.pos
 			item.pos += item.vel * delta
 			item.rot += item.spin * delta
 			var rest: float = floor_y - float(item.size) * 0.5
+			if item.vel.y > 0.0 and item.pos.y < rest - 4.0:
+				var ground := GroundProbe.ground_y(self, before, item.pos + Vector2(0.0, float(item.size) * 0.5))
+				if ground < INF:
+					item.pos.y = ground - float(item.size) * 0.5
+					item.vel.y *= -0.35
+					item.vel.x *= 0.65
+					item.spin *= 0.5
 			if item.pos.y > rest:
 				item.pos.y = rest
 				item.vel.y *= -0.35
@@ -129,6 +152,20 @@ func _draw() -> void:
 						draw_colored_polygon(points, color)
 						points.append(points[0])
 						draw_polyline(points, Color(Art.OUTLINE, alpha), 1.5, true)
+			"glint":
+				# Funkeln: Stern pulsiert und schrumpft am Ende.
+				var twinkle := 0.6 + 0.4 * sin(float(item.phase) + fade * 14.0)
+				var arm: float = float(item.size) * fade * twinkle
+				color.a = clampf(fade * 1.6, 0.0, 1.0)
+				draw_line(item.pos + Vector2(-arm, 0.0), item.pos + Vector2(arm, 0.0), color, 1.6, true)
+				draw_line(item.pos + Vector2(0.0, -arm), item.pos + Vector2(0.0, arm), color, 1.6, true)
+				draw_line(item.pos + Vector2(-arm, -arm) * 0.45, item.pos + Vector2(arm, arm) * 0.45, Color(color, color.a * 0.6), 1.2, true)
+				draw_line(item.pos + Vector2(-arm, arm) * 0.45, item.pos + Vector2(arm, -arm) * 0.45, Color(color, color.a * 0.6), 1.2, true)
+				draw_circle(item.pos, arm * 0.25, Color(1, 1, 1, color.a))
+			"shine":
+				color.a = 0.5 * fade
+				draw_line(item.from + Vector2(0, -2), item.to + Vector2(0, -2), color, 8.0)
+				draw_line(item.from + Vector2(0, -3), item.to + Vector2(0, -3), Color(1, 1, 1, 0.7 * fade), 2.0)
 			"muzzle":
 				color.a = fade
 				draw_circle(item.pos, 9.0, color)

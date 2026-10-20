@@ -29,6 +29,7 @@ func _run() -> void:
 	main.wave_duration = 1.0
 	main.max_waves = 1
 	main.intro_enabled = false
+	main.stage_id = "classic"
 	add_child(main)
 	await _frames(20)
 	var p1: Player = main.players[0]

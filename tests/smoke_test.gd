@@ -13,6 +13,7 @@ func _ready() -> void:
 	main.use_dummies = true
 	main.director_enabled = false
 	main.intro_enabled = false
+	main.stage_id = "classic"
 	add_child(main)
 	_run.call_deferred()
 

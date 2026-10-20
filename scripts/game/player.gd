@@ -63,6 +63,12 @@ var firmware: Dictionary = {}
 var hook_active := false
 ## Sandbox: keine Treffer.
 var invulnerable := false
+## Seil: Spieler haengt gerade an einem Kletterseil der Karte.
+var on_rope := false
+var _rope_x := 0.0
+var _rope_rect := Rect2()
+var _rope_lock := 0.0
+const ROPE_SPEED := 270.0
 var hook_anchor := Vector2.ZERO
 ## Schuettel-Aufladung der Dose (0 bis 1), solange Schiessen gehalten wird.
 var shake_charge := 0.0
@@ -89,6 +95,8 @@ var _switch_cooldown := 0.0
 var _aim_memory := 0.0
 var _mouse_timer := 0.0
 var _trail_timer := 0.0
+var _shine_timer := 0.0
+var _shine_last := Vector2.ZERO
 var _wall_lock := 0.0
 var _slamming := false
 var _hook_time := 0.0
@@ -221,6 +229,7 @@ func take_hit(amount: float, from: Vector2) -> bool:
 		downed = true
 		_ceiling = false
 		_clinging = false
+		on_rope = false
 		_dash_time_left = 0.0
 		_slamming = false
 		if hook_active:
@@ -318,7 +327,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if belt_push != 0.0 and is_on_floor():
 		move_and_collide(Vector2(belt_push * delta, 0.0))
-	var still := ((is_on_floor() or _ceiling) and absf(velocity.x) < 30.0) or (_clinging and absf(velocity.y) < 30.0)
+	var still := ((is_on_floor() or _ceiling) and absf(velocity.x) < 30.0) or (_clinging and absf(velocity.y) < 30.0) or (on_rope and absf(velocity.y) < 30.0)
 	if still and _dash_time_left <= 0.0 and not hook_active:
 		_stand_time += delta
 	else:
@@ -388,6 +397,19 @@ func _update_juice(delta: float) -> void:
 	_down_amount = move_toward(_down_amount, 1.0 if downed else 0.0, delta * (3.0 if downed else 2.2))
 	if _clinging:
 		_climb_phase += velocity.y * delta * 0.045
+	# Roomba: hinter ihm bleibt ein blanker, funkelnder Streifen, weil er sauber macht.
+	if bool(stats.get("vacuum", false)) and grounded and not downed and absf(velocity.x) > 50.0:
+		_shine_timer -= delta
+		var feet := global_position + Vector2(-float(facing) * 30.0, float(stats.size.y) * 0.5)
+		if _shine_timer <= 0.0 and Fx.instance:
+			_shine_timer = 0.07
+			if _shine_last != Vector2.ZERO and _shine_last.distance_to(feet) < 120.0:
+				Fx.instance.shine(_shine_last, feet)
+			_shine_last = feet
+			if randf() < 0.8:
+				Fx.instance.glint(feet + Vector2(randf_range(-30.0, 30.0), randf_range(-14.0, -2.0)), randf_range(9.0, 16.0))
+	else:
+		_shine_last = Vector2.ZERO
 	if grounded and not _clinging and absf(velocity.x) > 70.0 and stats.get("step", "") != "":
 		_step_acc += absf(velocity.x) * delta
 		if _step_acc >= 52.0:
@@ -452,6 +474,8 @@ func _process_movement(delta: float, move: float) -> void:
 	var down := Input.get_axis(_prefix + "up", _prefix + "down")
 	var accel: float = stats.accel if on_floor else stats.air_accel
 
+	if _process_rope(delta, move, down):
+		return
 	if stats.get("wall_climb", false) and _process_ceiling(delta, move, down):
 		return
 	if stats.get("wall_climb", false) and _process_climb(move, down):
@@ -568,6 +592,89 @@ func _process_ceiling(delta: float, move: float, vertical: float) -> bool:
 	if _wall_lock <= 0.0:
 		velocity.x = move_toward(velocity.x, move * move_speed() * 0.85, float(stats.accel) * delta)
 	return true
+
+
+## Seile der Karte (Gruppe "ropes"): Hoch oder Runter in der Naehe greift zu, dann klettert man mit hoch und runter.
+## Sprung loest sich mit Schwung zur Seite, oben angekommen hopst man auf den Rand.
+func _process_rope(delta: float, move: float, vertical: float) -> bool:
+	_rope_lock = maxf(0.0, _rope_lock - delta)
+	var half := float(stats.size.y) * 0.5
+	if on_rope:
+		var inside := global_position.y - half < _rope_rect.end.y + 4.0 and global_position.y + half > _rope_rect.position.y - 30.0
+		if downed or not inside or _dash_time_left > 0.0 or hook_active:
+			_release_rope(0.3)
+			return false
+		if _jump_buffer > 0.0:
+			_jump_buffer = 0.0
+			velocity = Vector2(move * 340.0, -float(stats.jump_speed) * 0.7)
+			_wall_lock = 0.18 if move != 0.0 else 0.0
+			if move != 0.0:
+				facing = signf(move)
+			Sfx.play("jump")
+			_release_rope(0.35)
+			return true
+		var feet := global_position.y + half
+		if vertical < -0.3 and feet <= _rope_rect.position.y + 26.0:
+			# Oben angekommen: auf den Rand hopsen, ohne Eingabe zur Seite, wo oben ein Rand liegt.
+			var side := signf(move) if move != 0.0 else _rope_ledge_side()
+			velocity = Vector2(side * 230.0, -520.0)
+			_wall_lock = 0.3
+			facing = side
+			Sfx.play("jump")
+			_release_rope(0.35)
+			return true
+		if vertical > 0.3 and feet >= _rope_rect.end.y + 2.0:
+			_release_rope(0.2)
+			return false
+		velocity = Vector2(0.0, vertical * ROPE_SPEED)
+		global_position.x = move_toward(global_position.x, _rope_x, 700.0 * delta)
+		return true
+	if _rope_lock > 0.0 or _slamming or hook_active or downed or absf(vertical) < 0.5 or _dash_time_left > 0.0:
+		return false
+	for rope in get_tree().get_nodes_in_group("ropes"):
+		var rect: Rect2 = rope.get_meta("rect")
+		var center_x := rect.get_center().x
+		if absf(global_position.x - center_x) > 36.0:
+			continue
+		var feet := global_position.y + half
+		# Nach oben greift man auf Hoehe des Seils, nach unten schon etwas ueber dem Seilanfang.
+		var top_limit := rect.position.y + 20.0 if vertical < 0.0 else rect.position.y - 110.0
+		if feet < top_limit or global_position.y - half > rect.end.y:
+			continue
+		if vertical > 0.5 and feet >= rect.end.y - 4.0:
+			continue
+		on_rope = true
+		_rope_x = center_x
+		_rope_rect = rect
+		_clinging = false
+		_ceiling = false
+		velocity = Vector2.ZERO
+		_air_jumps_left = fw("double_jump")
+		Sfx.play("deploy", 0.05)
+		return true
+	return false
+
+
+## Seite (-1 oder 1), auf der neben dem Seilende ein Rand zum Draufhopsen liegt; sonst die Blickrichtung.
+func _rope_ledge_side() -> float:
+	var space := get_world_2d().direct_space_state
+	var top := _rope_rect.position.y
+	var best := float(facing)
+	var best_distance := INF
+	for side in [-1.0, 1.0]:
+		for reach in [70.0, 130.0]:
+			var from := Vector2(_rope_x + side * reach, top - 60.0)
+			var query := PhysicsRayQueryParameters2D.create(from, from + Vector2(0.0, 120.0), (1 << 0) | (1 << 5))
+			var hit := space.intersect_ray(query)
+			if not hit.is_empty() and absf(float(hit.position.y) - top) < 50.0 and reach < best_distance:
+				best = side
+				best_distance = reach
+	return best
+
+
+func _release_rope(lock: float) -> void:
+	on_rope = false
+	_rope_lock = lock
 
 
 func _process_climb(move: float, vertical: float) -> bool:
@@ -881,6 +988,8 @@ func _art_state() -> Dictionary:
 	if bool(stats.get("tips_over", false)):
 		tilt = (0.1 if ability.is_active("roll") else 0.0) * facing
 	# Kletternder Spinnenroboter dreht sich mit dem Bauch zur Wand.
+	if on_rope:
+		tilt += sin(_art_time * 3.0) * 0.05
 	var cling_rotation := -_cling_dir * PI / 2.0 * _cling_amount if bool(stats.get("wall_climb", false)) else 0.0
 	return {
 		"ceiling": _ceiling_amount, "cling": _cling_amount, "rot": cling_rotation, "down": _down_amount, "vy": velocity.y,

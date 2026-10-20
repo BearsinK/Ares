@@ -51,7 +51,16 @@ func _physics_process(delta: float) -> void:
 	else:
 		_sucked = false
 		velocity.y += GRAVITY * delta
+	var from := position
 	position += velocity * delta
+	if not _sucked and velocity.y > 0.0:
+		var ground := GroundProbe.ground_y(self, from + Vector2(0.0, -4.0), position + Vector2(0.0, 5.0))
+		if ground < INF:
+			position.y = ground - 5.0
+			velocity.y = -velocity.y * 0.3
+			velocity.x *= 0.55
+			if absf(velocity.y) < 40.0:
+				velocity = Vector2.ZERO
 	if not _sucked and position.y > floor_y - 5.0:
 		position.y = floor_y - 5.0
 		velocity.y = -velocity.y * 0.3

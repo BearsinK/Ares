@@ -5,7 +5,7 @@ extends Camera2D
 ## zwischen den Spielern kommt spaeter.
 
 @export var margin := Vector2(360.0, 230.0)
-@export var min_zoom := 0.55
+@export var min_zoom := 0.45
 @export var max_zoom := 1.3
 
 var targets: Array[Node2D] = []

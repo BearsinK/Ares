@@ -12,6 +12,7 @@ func _ready() -> void:
 	main.max_waves = 2
 	main.boss_enabled = false
 	main.intro_enabled = false
+	main.stage_id = "classic"
 	add_child(main)
 	_run.call_deferred()
 

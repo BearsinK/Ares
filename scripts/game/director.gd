@@ -19,6 +19,8 @@ const SHAFT_RIGHT := 2910.0
 var enabled := true
 var arena_size := Vector2(3200.0, 1350.0)
 var floor_y := 1250.0
+## Layout der aktuellen Karte (siehe Stages). Leer = alte flache Halle.
+var stage: Dictionary = {}
 var players: Array[Player] = []
 var enemies: Array[Enemy] = []
 ## Raster fuer die Abstandssuche der Gegner, wird jeden Frame neu gefuellt.
@@ -142,6 +144,7 @@ func spawn(kind: String, at: Variant = null, elite := false, elite_kind := "") -
 	enemy.setup(kind, hp_scale(), damage_scale(), players, elite, elite_kind)
 	enemy.siblings = enemies
 	enemy.grid = grid
+	enemy.stuck.connect(relocate)
 	enemy.speed_mult = float(modifier.get("speed", 1.0))
 	enemy.position = at if at != null else _spawn_position(kind)
 	enemy.fire_projectile.connect(projectile_requested.emit)
@@ -154,6 +157,8 @@ func spawn(kind: String, at: Variant = null, elite := false, elite_kind := "") -
 
 func _spawn_position(kind: String) -> Vector2:
 	var info := EnemyTypes.get_type(kind)
+	if not stage.is_empty():
+		return _stage_spawn_position(kind, info)
 	# Gegner erscheinen in einiger Entfernung zu einem zufaelligen Spieler, damit
 	# der Kampf schnell beginnt und sie nicht ueber die ganze Arena laufen muessen.
 	var anchor := players[randi() % players.size()].global_position
@@ -169,3 +174,53 @@ func _spawn_position(kind: String) -> Vector2:
 	if info.movement == "fly":
 		return Vector2(x, randf_range(250.0, 800.0))
 	return Vector2(x, floor_y - float(info.radius) - 4.0)
+
+
+## Auf grossen Karten: Bodengegner erscheinen auf begehbaren Flaechen auf aehnlicher Hoehe wie ein
+## Spieler, ausserhalb des Bildes. Flieger in den Luftbereichen der Karte.
+func _stage_spawn_position(kind: String, info: Dictionary) -> Vector2:
+	var anchor: Vector2 = players[randi() % players.size()].global_position
+	if info.movement == "fly":
+		var options: Array[Vector2] = []
+		for rect: Rect2 in stage.air:
+			var point := Vector2(randf_range(rect.position.x, rect.end.x), randf_range(rect.position.y, rect.end.y))
+			if point.distance_to(anchor) > 650.0 and point.distance_to(anchor) < 1800.0 and not Stages.point_in_terrain(stage, point):
+				options.append(point)
+		if options.is_empty():
+			var fallback := anchor + Vector2(randf_range(-900.0, 900.0), -500.0)
+			return fallback if not Stages.point_in_terrain(stage, fallback) else anchor + Vector2(0.0, -300.0)
+		return options[randi() % options.size()]
+	var best: Array[Vector2] = []
+	var fallback: Array[Vector2] = []
+	for point: Vector2 in stage.ground:
+		var distance := point.distance_to(anchor)
+		if distance < 600.0 or distance > 1900.0:
+			continue
+		var too_close := false
+		for player in players:
+			if player.global_position.distance_to(point) < MIN_SPAWN_DISTANCE:
+				too_close = true
+		if too_close:
+			continue
+		fallback.append(point)
+		# Am liebsten auf der Ebene eines Spielers und nicht im Bild.
+		if absf(point.y - anchor.y) < 260.0 and distance > 800.0:
+			best.append(point)
+	var pool: Array[Vector2] = best if not best.is_empty() else fallback
+	if pool.is_empty():
+		var points: Array = stage.ground
+		var any: Vector2 = points[randi() % points.size()]
+		return any + Vector2(0.0, -float(info.radius) - 4.0)
+	return pool[randi() % pool.size()] + Vector2(0.0, -float(info.radius) - 4.0)
+
+
+## Ein Gegner steckt unter einem Spieler auf einer anderen Ebene fest: er taucht auf der Ebene des Spielers wieder auf.
+func relocate(enemy: Enemy) -> void:
+	if enemy == null or not is_instance_valid(enemy):
+		return
+	var pos := _spawn_position(enemy.kind)
+	if Fx.instance:
+		Fx.instance.spark(enemy.global_position, Color(0.7, 0.8, 1.0), 6, 200.0)
+		Fx.instance.spark(pos, Color(0.7, 0.8, 1.0), 6, 200.0)
+	enemy.global_position = pos
+	enemy.velocity = Vector2.ZERO

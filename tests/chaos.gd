@@ -64,7 +64,7 @@ func _physics_process(delta: float) -> void:
 		if not is_finite(player.global_position.x) or not is_finite(player.global_position.y) or not is_finite(player.velocity.x):
 			_note("NaN P%d" % (i + 1))
 		var p := player.global_position
-		if p.x < -60.0 or p.x > 3260.0 or p.y < -200.0 or p.y > 1450.0:
+		if p.x < -60.0 or p.x > main.arena_size.x + 60.0 or p.y < -200.0 or p.y > main.arena_size.y + 200.0:
 			_note("ausserhalb P%d bei %d,%d" % [i + 1, p.x, p.y])
 		if main.phase != main.Phase.BOSS or OS.get_environment("CHAOS_GOD") != "":
 			player.hp = player.max_health()

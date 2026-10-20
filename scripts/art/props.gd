@@ -6,6 +6,12 @@ extends Node2D
 const FLOOR_Y := 1250.0
 
 var shaft := Rect2()
+## Karten (Stages): Dekor und Dampfauslaesse kommen aus dem Layout statt der festen Liste der Halle.
+var classic := true
+var decor: Array[Dictionary] = []
+var steam_points: Array[Vector2] = []
+var ember_center := Vector2(1600.0, 700.0)
+var ember_extents := Vector2(1700.0, 650.0)
 ## Im Bosskampf entfallen Kisten, Foerderbaender und Dampf (das Laufband ist dann Teil des Kampfs).
 var boss_mode := false
 
@@ -55,6 +61,11 @@ class Animated extends Node2D:
 func _ready() -> void:
 	z_index = -10
 	if boss_mode:
+		_add_embers()
+		return
+	if not classic:
+		for point in steam_points:
+			_add_steam(point)
 		_add_embers()
 		return
 	var shaft_layer := Animated.new()
@@ -112,12 +123,12 @@ func _add_steam(pos: Vector2) -> void:
 
 func _add_embers() -> void:
 	var embers := CPUParticles2D.new()
-	embers.position = Vector2(1600.0, 700.0)
+	embers.position = ember_center
 	embers.amount = 70
 	embers.lifetime = 9.0
 	embers.preprocess = 9.0
 	embers.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	embers.emission_rect_extents = Vector2(1700.0, 650.0)
+	embers.emission_rect_extents = ember_extents
 	embers.direction = Vector2(0, -1)
 	embers.spread = 40.0
 	embers.initial_velocity_min = 6.0
@@ -137,6 +148,23 @@ func _add_embers() -> void:
 
 func _draw() -> void:
 	if boss_mode:
+		return
+	if not classic:
+		for item in decor:
+			match item.type:
+				"crate":
+					_crate(item.pos, float(item.size))
+				"stack":
+					_crate(item.pos, float(item.size))
+					_crate(item.pos + Vector2(float(item.size), 0.0), float(item.size))
+					_crate(item.pos + Vector2(float(item.size) * 0.5, -float(item.size)), float(item.size) * 0.85)
+				"barrel":
+					_barrel(item.pos)
+					_barrel(item.pos + Vector2(42.0, 0.0))
+				"machine":
+					_machine(item.pos, item.size, item.color)
+				"sign":
+					_sign(item.pos, item.text)
 		return
 	# Kisten, Faesser und Maschinen am Boden (rein dekorativ, ohne Kollision).
 	_machine(Vector2(560, FLOOR_Y), Vector2(90, 120), Color(0.26, 0.3, 0.42))

@@ -76,6 +76,7 @@ func _run() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	main.director_enabled = false
 	main.intro_enabled = false
+	main.stage_id = "classic"
 	add_child(main)
 	await _frames(10)
 	var p1: Player = main.players[0]

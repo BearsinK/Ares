@@ -10,6 +10,7 @@ func _ready() -> void:
 	main = load("res://scenes/main.tscn").instantiate()
 	main.director_enabled = false
 	main.intro_enabled = false
+	main.stage_id = "classic"
 	add_child(main)
 	_run.call_deferred()
 

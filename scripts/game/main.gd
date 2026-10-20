@@ -93,6 +93,14 @@ var run_recorded := false
 ## Modifikator der aktuellen Welle (Id) und Einblendung beim Wellenstart.
 var wave_modifier := "normal"
 var wave_banner_time := 0.0
+## Karte: "" = Zufallsreihenfolge pro Lauf (alle drei Wellen eine neue), eine Id aus Stages.IDS oder
+## "classic" fuer die alte flache Halle (Tests). arena_size ist die Groesse der aktuellen Welt.
+var stage_id := ""
+var stage_layout: Dictionary = {}
+var arena_size := ARENA_SIZE
+var stage_banner_time := 0.0
+var _stage_order: Array = []
+const TETHER := Vector2(3000.0, 1500.0)
 var wave_intro := 0.0
 ## Gewaehlte Team-Perks (id -> Anzahl) und das Banner nach der Wahl.
 var perks_taken := {}
@@ -108,6 +116,8 @@ var _intro_beat := 0
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(BG_COLOR)
+	_read_sandbox_early()
+	_pick_stage(wave)
 	_build_arena()
 	projectiles = Node2D.new()
 	add_child(projectiles)
@@ -116,7 +126,7 @@ func _ready() -> void:
 	pickups = Node2D.new()
 	add_child(pickups)
 	fx = Fx.new()
-	fx.floor_y = FLOOR_Y
+	fx.floor_y = _ground_fallback()
 	add_child(fx)
 	_spawn_players()
 	_setup_camera()
@@ -147,6 +157,8 @@ func _physics_process(delta: float) -> void:
 	wave_banner_time = maxf(0.0, wave_banner_time - delta)
 	wave_go = maxf(0.0, wave_go - delta)
 	perk_banner_time = maxf(0.0, perk_banner_time - delta)
+	stage_banner_time = maxf(0.0, stage_banner_time - delta)
+	_apply_tether()
 	Music.set_layer_level(1.0 if phase == Phase.BOSS else clampf(0.2 + 0.08 * float(wave), 0.2, 0.9))
 	_check_level_up()
 	_update_wave(delta)
@@ -303,6 +315,8 @@ func _on_shop_closed() -> void:
 		return
 	wave += 1
 	wave_time_left = wave_duration
+	if stage_id != "classic" and (wave - 1) % Stages.WAVES_PER_STAGE == 0:
+		_change_stage()
 	_apply_modifier()
 	phase = Phase.WAVE
 	director.enabled = director_enabled
@@ -336,6 +350,9 @@ func _start_boss() -> void:
 		else:
 			player.hp = minf(player.max_health(), player.hp + player.max_health() * 0.4)
 		player.iframes = 1.5
+	_update_camera_limits()
+	fx.floor_y = FLOOR_Y
+	director.stage = {}
 	camera.bias = Vector2(350.0, -80.0)
 	camera.max_zoom = 0.8
 	camera.global_position = (players[0].global_position + players[1].global_position) * 0.5 + camera.bias
@@ -398,6 +415,91 @@ func _switch_class(index: int) -> void:
 	get_tree().reload_current_scene()
 
 
+## Sandbox: Karte und Startwelle muessen vor dem Aufbau der Welt feststehen.
+func _read_sandbox_early() -> void:
+	var config: Dictionary = Engine.get_meta("sandbox", {})
+	if config.is_empty():
+		return
+	var chosen := String(config.get("stage", "random"))
+	if chosen != "random":
+		stage_id = chosen
+	if int(config.wave) < SandboxConfig.BOSS_WAVE:
+		wave = int(config.wave)
+
+
+## Waehlt die Karte fuer die Welle (leeres Layout = alte flache Halle).
+func _pick_stage(wave_number: int) -> void:
+	if stage_id == "classic":
+		stage_layout = {}
+		arena_size = ARENA_SIZE
+		return
+	if _stage_order.is_empty():
+		_stage_order = Stages.random_order() if stage_id == "" else [stage_id]
+	stage_layout = Stages.build(Stages.id_for_wave(wave_number, _stage_order), randf() < 0.5)
+	arena_size = stage_layout.size
+
+
+## Hoehe, ab der Beute und Truemmer ohne echten Boden liegen bleiben.
+func _ground_fallback() -> float:
+	return arena_size.y if not stage_layout.is_empty() else FLOOR_Y
+
+
+## Neue Karte (alle drei Wellen): Welt neu bauen, Spieler an den Start, Beute und Geschosse weg.
+func _change_stage() -> void:
+	for bullet in enemy_projectiles.get_children():
+		bullet.queue_free()
+	for bullet in projectiles.get_children():
+		bullet.queue_free()
+	for pickup in pickups.get_children():
+		pickup.queue_free()
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy is Enemy:
+			enemy.queue_free()
+	_clear_arena()
+	_pick_stage(wave)
+	_build_arena()
+	for i in players.size():
+		_place_at_start(players[i], i)
+		players[i].velocity = Vector2.ZERO
+	_update_camera_limits()
+	director.stage = stage_layout
+	fx.floor_y = _ground_fallback()
+	stage_banner_time = 3.2
+	camera.global_position = (players[0].global_position + players[1].global_position) * 0.5
+
+
+func _place_at_start(player: Player, index: int) -> void:
+	var half: float = float(player.stats.size.y) * 0.5
+	if stage_layout.is_empty():
+		player.global_position = Vector2(300.0 + index * 110.0, FLOOR_Y - half - 2.0)
+	else:
+		var start: Vector2 = stage_layout.starts[index]
+		player.global_position = Vector2(start.x, start.y - half - 2.0)
+
+
+func _update_camera_limits() -> void:
+	camera.limit_right = int(arena_size.x)
+	camera.limit_bottom = int(arena_size.y)
+
+
+## Die Kamera muss beide Spieler im Bild halten: Wer sich zu weit vom Partner entfernt, kommt nicht weiter weg.
+func _apply_tether() -> void:
+	if players.size() < 2:
+		return
+	for i in 2:
+		var player := players[i]
+		var other := players[1 - i]
+		var offset := player.global_position - other.global_position
+		if absf(offset.x) > TETHER.x:
+			player.global_position.x = other.global_position.x + signf(offset.x) * TETHER.x
+			if signf(player.velocity.x) == signf(offset.x):
+				player.velocity.x = 0.0
+		if absf(offset.y) > TETHER.y:
+			player.global_position.y = other.global_position.y + signf(offset.y) * TETHER.y
+			if signf(player.velocity.y) == signf(offset.y):
+				player.velocity.y = 0.0
+
+
 ## Wendet die Sandbox-Einstellung (Engine-Meta "sandbox") auf Spieler und Startwelle an.
 func _apply_sandbox() -> void:
 	var config: Dictionary = Engine.get_meta("sandbox", {})
@@ -443,7 +545,7 @@ func _spawn_players() -> void:
 			for j in TEST_LOADOUTS[i].size():
 				player.weapons.append(TEST_LOADOUTS[i][j])
 				player.modules.append(TEST_MODULES[i][j])
-		player.position = Vector2(300.0 + i * 110.0, FLOOR_Y - float(player.stats.size.y) * 0.5 - 2.0)
+		_place_at_start(player, i)
 		player.fired.connect(_on_player_fired)
 		player.went_down.connect(_on_player_down)
 		player.hurt.connect(_on_player_hurt)
@@ -500,8 +602,9 @@ func _on_player_down(_player: Player) -> void:
 func _setup_director() -> void:
 	director = Director.new()
 	director.enabled = director_enabled
-	director.arena_size = ARENA_SIZE
+	director.arena_size = arena_size
 	director.floor_y = FLOOR_Y
+	director.stage = stage_layout
 	director.players = players
 	director.parent_node = self
 	director.enemy_spawned.connect(_on_enemy_spawned)
@@ -578,7 +681,7 @@ func _spawn_scrap(enemy: Enemy) -> void:
 			existing[0].queue_free()
 		var scrap := Scrap.new()
 		scrap.players = players
-		scrap.floor_y = FLOOR_Y
+		scrap.floor_y = _ground_fallback()
 		scrap.tint = Color(enemy.data.color).darkened(0.2)
 		scrap.position = enemy.global_position + Vector2(randf_range(-10.0, 10.0), 0.0)
 		scrap.collected.connect(_on_scrap_collected)
@@ -608,7 +711,7 @@ func _spawn_pickup(kind: String, value: int, pos: Vector2) -> void:
 	pickup.kind = kind
 	pickup.value = value
 	pickup.players = players
-	pickup.floor_y = FLOOR_Y
+	pickup.floor_y = _ground_fallback()
 	pickup.force_pull = phase == Phase.CLEARING
 	pickup.position = pos
 	pickup.collected.connect(_on_pickup_collected)
@@ -633,7 +736,7 @@ func _on_pickup_collected(pickup: Pickup, player: Player) -> void:
 
 ## Aufwind im Schacht rechts: Spieler im Schacht werden nach oben getragen (zur Plattform oben).
 func _apply_shaft_lift(_delta: float) -> void:
-	if phase == Phase.BOSS or not shaft_lift:
+	if phase == Phase.BOSS or not shaft_lift or not stage_layout.is_empty():
 		return
 	for player in players:
 		if player.downed:
@@ -723,14 +826,19 @@ func _build_arena(boss_mode := false) -> void:
 	add_child(_arena_root)
 	move_child(_arena_root, 0)
 	if boss_mode:
+		arena_size = ARENA_SIZE
+		stage_layout = {}
 		_build_boss_layout()
-	else:
+	elif stage_layout.is_empty():
 		_build_wave_layout()
-	var props := Props.new()
-	props.boss_mode = boss_mode
-	if not boss_mode:
-		props.shaft = Rect2(2640.0, 600.0, 200.0, 650.0)
-	_arena_root.add_child(props)
+	else:
+		StageBuilder.build(_arena_root, stage_layout, randi())
+	if boss_mode or stage_layout.is_empty():
+		var props := Props.new()
+		props.boss_mode = boss_mode
+		if not boss_mode:
+			props.shaft = Rect2(2640.0, 600.0, 200.0, 650.0)
+		_arena_root.add_child(props)
 	if backdrop == null:
 		backdrop = Backdrop.new()
 		add_child(backdrop)
@@ -837,8 +945,8 @@ func _setup_camera() -> void:
 	camera = CoopCamera.new()
 	camera.limit_left = 0
 	camera.limit_top = 0
-	camera.limit_right = int(ARENA_SIZE.x)
-	camera.limit_bottom = int(ARENA_SIZE.y)
+	camera.limit_right = int(arena_size.x)
+	camera.limit_bottom = int(arena_size.y)
 	for player in players:
 		camera.targets.append(player)
 	add_child(camera)

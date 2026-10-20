@@ -37,6 +37,7 @@ func _start(classes: Array) -> void:
 	main = load("res://scenes/main.tscn").instantiate()
 	main.director_enabled = false
 	main.intro_enabled = false
+	main.stage_id = "classic"
 	add_child(main)
 	await _frames(20)
 	for p in main.players:

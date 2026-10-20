@@ -59,7 +59,17 @@ func _physics_process(delta: float) -> void:
 
 	if not _pulling:
 		velocity.y += GRAVITY * delta
+	var from := position
 	position += velocity * delta
+	if not _pulling and velocity.y > 0.0:
+		# Echter Boden: Strahl vom alten zum neuen Punkt (Felsen, Rampen, Stege).
+		var ground := GroundProbe.ground_y(self, from + Vector2(0.0, -4.0), position + Vector2(0.0, 8.0))
+		if ground < INF:
+			position.y = ground - 8.0
+			velocity.y = -velocity.y * 0.35
+			velocity.x *= 0.6
+			if absf(velocity.y) < 30.0:
+				velocity.y = 0.0
 	if position.y > floor_y - 8.0:
 		position.y = floor_y - 8.0
 		velocity.y = -velocity.y * 0.35
