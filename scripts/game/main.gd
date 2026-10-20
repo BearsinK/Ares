@@ -369,7 +369,7 @@ func _start_boss() -> void:
 	fx.floor_y = FLOOR_Y
 	director.stage = {}
 	camera.bias = Vector2(350.0, -80.0)
-	camera.max_zoom = 0.8
+	camera.max_zoom = 1.0
 	camera.global_position = (players[0].global_position + players[1].global_position) * 0.5 + camera.bias
 	Sfx.play("levelup")
 

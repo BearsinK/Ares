@@ -93,19 +93,19 @@ func _draw_wave_banner(view: Vector2) -> void:
 	var slide := (1.0 - _ease_out(elapsed / 0.55)) * -view.x * 0.6
 	var alpha := clampf(main.wave_intro / 0.35, 0.0, 1.0)
 	var title_color := Color(1.0, 0.55, 0.3, alpha) if last else Color(1.0, 0.92, 0.55, alpha)
-	_text(Vector2(slide + 4.0, view.y * 0.3 + 4.0), title, 96, Color(0, 0, 0, 0.5 * alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	_text(Vector2(slide, view.y * 0.3), title, 96, title_color, HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(slide + 4.0, view.y * 0.26 + 4.0), title, 96, Color(0, 0, 0, 0.5 * alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(slide, view.y * 0.26), title, 96, title_color, HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	if main.wave_modifier != "normal":
 		var info: Dictionary = WaveModifiers.DATA[main.wave_modifier]
 		var pop := _ease_out((elapsed - 0.5) / 0.35)
-		_text(Vector2(0, view.y * 0.3 + 56.0), String(info.name), int(36.0 + 14.0 * pop), Color(1.0, 0.65, 0.25, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-		_text(Vector2(0, view.y * 0.3 + 92.0), String(info.text), 22, Color(0.95, 0.95, 1.0, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		_text(Vector2(0, view.y * 0.26 + 56.0), String(info.name), int(36.0 + 14.0 * pop), Color(1.0, 0.65, 0.25, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		_text(Vector2(0, view.y * 0.26 + 92.0), String(info.text), 22, Color(0.95, 0.95, 1.0, alpha * pop), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	# Countdown: jede Zahl poppt gross auf und schrumpft.
 	if main.wave_intro <= 3.0:
 		var number := int(ceil(main.wave_intro))
 		var frac: float = 1.0 - (float(main.wave_intro) - float(number - 1))
 		var size := int(150.0 - 50.0 * _ease_out(frac * 1.5))
-		_text(Vector2(0, view.y * 0.55 + 40.0), str(number), size, Color(1, 1, 1, clampf(1.2 - frac * 0.5, 0.0, 1.0)), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		_text(Vector2(0, view.y * 0.55 + 40.0), str(number), size, Color(1, 1, 1, 0.65 * clampf(1.2 - frac * 0.5, 0.0, 1.0)), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
 ## Wellenende: grosses WELLE GESCHAFFT mit Aufpoppen, Zusammenfassung und Bonus.
@@ -117,7 +117,7 @@ func _draw_wave_clear(view: Vector2) -> void:
 	var fade := clampf(remaining / 0.4, 0.0, 1.0)
 	var pop := _ease_out(elapsed / 0.35)
 	var overshoot := 1.0 + 0.25 * sin(clampf(elapsed / 0.35, 0.0, 1.0) * PI)
-	var y := view.y * 0.3
+	var y := view.y * 0.22
 	# Leuchtband hinter dem Titel.
 	var band := Rect2(0, y - 20.0, view.x * pop, 110.0)
 	_canvas.draw_rect(band, Color(0.05, 0.04, 0.0, 0.55 * fade))
@@ -275,7 +275,9 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 
 
 func _draw_boss_bar(view: Vector2, boss: Boss) -> void:
-	var width := 620.0
+	# Passt zwischen die beiden Spielerpanels, damit nichts ueberdeckt wird.
+	var free := view.x - 2.0 * ((PANEL_WIDTH + 20.0) * ui_scale(view) + 24.0)
+	var width := clampf(free - 40.0, 340.0, 620.0)
 	var bar := Rect2(Vector2(view.x * 0.5 - width * 0.5, 44.0), Vector2(width, 22.0))
 	var panel := Rect2(bar.position + Vector2(-16.0, -38.0), Vector2(width + 32.0, 104.0))
 	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.78), 12.0)
@@ -290,10 +292,10 @@ func _draw_boss_bar(view: Vector2, boss: Boss) -> void:
 	for mark in [0.33, 0.66]:
 		_canvas.draw_line(Vector2(bar.position.x + bar.size.x * mark, bar.position.y), Vector2(bar.position.x + bar.size.x * mark, bar.end.y), Color(0, 0, 0, 0.6), 3.0)
 	Art.rrect_line(_canvas, bar, Color(1, 1, 1, 0.35), 7.0, 1.5)
-	var status := "PANZER GESCHLOSSEN: nur 25 Prozent Schaden" if not boss.open else "KERN OFFEN: voller Schaden"
+	var status := "PANZER ZU: nur 25 % Schaden" if not boss.open else "KERN OFFEN: voller Schaden"
 	if boss.is_invulnerable() and not boss.dying:
 		status = "unverwundbar"
-	_text(Vector2(0, 78), "%s     Schwach gegen Hydro und Cryo" % status, 14, Color(0.85, 0.87, 0.95), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(0, 78), "%s   Schwach: Hydro, Cryo" % status, 14, Color(0.85, 0.87, 0.95), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	if boss.banner_time > 0.0:
 		var alpha := clampf(boss.banner_time / 0.4, 0.0, 1.0)
 		_text(Vector2(0, view.y * 0.3), boss.banner, 46, Color(1.0, 0.8, 0.3, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)

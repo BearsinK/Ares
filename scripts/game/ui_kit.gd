@@ -12,7 +12,7 @@ const CLASS_INFO := {
 		"damage": 3, "difficulty": 2,
 	},
 	"hexapod": {
-		"tags": ["Sniper", "Climber", "Turret"],
+		"tags": ["Gunner", "Climber", "Turret"],
 		"blurb": "Klettert Wände und Decken wie eine Spinne und schießt schnell, geht dabei aber nur halb so schnell. Beim Schießen steckt er 20 % weniger ein.",
 		"ability": "Overwatch: kurz doppelte Feuerrate, auch voll beweglich",
 		"damage": 4, "difficulty": 4,
