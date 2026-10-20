@@ -2,7 +2,7 @@ class_name RobotClasses
 extends RefCounted
 ## Basiswerte der Klassen. Alle Klassen starten mit demselben Grundkit
 ## (laufen, springen, Hauptangriff), unterscheiden sich in den Werten.
-## Die Klassenfaehigkeiten kommen spaeter.
+## Jede Klasse hat eine Faehigkeit auf L2 (siehe Ability).
 
 const DATA := {
 	"roomba": {
@@ -22,6 +22,7 @@ const DATA := {
 		"stationary_fire": false,
 		"weapons": ["dust"],
 		"damage_mult": 1.0,
+		"ability": {"id": "suck", "name": "Sog", "cooldown": 9.0, "duration": 1.4},
 	},
 	"hexapod": {
 		"name": "Hexapod",
@@ -43,6 +44,7 @@ const DATA := {
 		"wall_climb": true,
 		"weapons": ["turret"],
 		"damage_mult": 1.0,
+		"ability": {"id": "overwatch", "name": "Overwatch", "cooldown": 14.0, "duration": 4.0},
 	},
 	"vending": {
 		"name": "Automat",
@@ -61,6 +63,7 @@ const DATA := {
 		"stationary_fire": false,
 		"weapons": ["can"],
 		"damage_mult": 1.2,
+		"ability": {"id": "roll", "name": "Walze", "cooldown": 12.0, "duration": 3.0},
 	},
 	"printer": {
 		"name": "Drucker",
@@ -79,6 +82,7 @@ const DATA := {
 		"stationary_fire": false,
 		"weapons": ["rapid"],
 		"damage_mult": 1.0,
+		"ability": {"id": "print", "name": "Druck", "cooldown": 15.0, "duration": 9.0},
 	},
 }
 

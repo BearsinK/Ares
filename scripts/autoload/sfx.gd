@@ -44,6 +44,10 @@ func _ready() -> void:
 	_streams["can_throw"] = _synth(220.0, 520.0, 0.14, "sine", 0.35, 0.1)
 	_streams["pop"] = _synth(500.0, 120.0, 0.1, "square", 0.3, 0.5)
 	_streams["turret"] = _synth(950.0, 220.0, 0.11, "saw", 0.3, 0.35)
+	_streams["ability"] = _synth(200.0, 700.0, 0.3, "saw", 0.35, 0.3)
+	_streams["ready"] = _synth(900.0, 1300.0, 0.08, "sine", 0.2, 0.0)
+	_streams["suck"] = _synth(150.0, 420.0, 0.25, "sine", 0.3, 0.4)
+	_streams["drone"] = _synth(1300.0, 700.0, 0.07, "square", 0.14, 0.2)
 	_streams["kill"] = _synth(300.0, 40.0, 0.35, "saw", 0.4, 0.6)
 
 

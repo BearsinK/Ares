@@ -12,12 +12,17 @@ enum State { CHASE, WINDUP, COOLDOWN }
 const GRAVITY := 2000.0
 const MAX_FALL_SPEED := 1400.0
 const SEPARATION_DISTANCE := 30.0
+const ELITE_HP_MULT := 3.5
+const ELITE_SCALE := 1.35
 
 var kind := "walker"
 var data: Dictionary = {}
 var hp := 1.0
 var max_hp := 1.0
 var damage_scale := 1.0
+## Elite: groesser, zaeher, gefaehrlicher, laesst mehr Beute und ein Reparaturkit fallen.
+var elite := false
+var body_scale := 1.0
 var players: Array[Player] = []
 var siblings: Array[Enemy] = []
 
@@ -36,12 +41,14 @@ var _facing := 1.0
 var _walk_phase := 0.0
 
 
-func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_players: Array[Player]) -> void:
+func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_players: Array[Player], new_elite := false) -> void:
 	kind = new_kind
 	data = EnemyTypes.get_type(kind)
-	max_hp = float(data.hp) * hp_scale
+	elite = new_elite
+	body_scale = ELITE_SCALE if elite else 1.0
+	max_hp = float(data.hp) * hp_scale * (ELITE_HP_MULT if elite else 1.0)
 	hp = max_hp
-	damage_scale = new_damage_scale
+	damage_scale = new_damage_scale * (1.25 if elite else 1.0)
 	players = new_players
 	_phase = randf() * TAU
 	_cooldown = randf_range(0.3, 1.2)
@@ -54,7 +61,7 @@ func _ready() -> void:
 	add_to_group("enemies")
 	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
-	circle.radius = data.radius
+	circle.radius = radius()
 	shape.shape = circle
 	add_child(shape)
 
@@ -64,7 +71,7 @@ func _ready() -> void:
 	hurtbox.collision_mask = 0
 	var hurt_shape := CollisionShape2D.new()
 	var hurt_circle := CircleShape2D.new()
-	hurt_circle.radius = float(data.radius) + 3.0
+	hurt_circle.radius = radius() + 3.0
 	hurt_shape.shape = hurt_circle
 	hurtbox.add_child(hurt_shape)
 	add_child(hurtbox)
@@ -84,16 +91,26 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 	velocity += direction * 140.0 * float(data.knockback)
 	Sfx.play("hit")
 	if Fx.instance:
-		Fx.instance.number(global_position + Vector2(0.0, -float(data.radius) - 8.0), amount, Elements.color_of(element, Color(1, 1, 0.5)))
+		Fx.instance.number(global_position + Vector2(0.0, -radius() - 8.0), amount, Elements.color_of(element, Color(1, 1, 0.5)))
 	if hp <= 0.0:
 		_die()
+
+
+func radius() -> float:
+	return float(data.radius) * body_scale
+
+
+func reach() -> float:
+	return float(data.reach) * body_scale
 
 
 func _die() -> void:
 	_dead = true
 	Sfx.play("kill")
 	if Fx.instance:
-		Fx.instance.spark(global_position, data.color, 14, 380.0)
+		Fx.instance.spark(global_position, data.color, 36 if elite else 14, 520.0 if elite else 380.0)
+		if elite:
+			Fx.instance.explosion(global_position, 90.0, Color(1.0, 0.85, 0.3))
 	died.emit(self)
 	queue_free()
 
@@ -167,7 +184,7 @@ func _ground_movement(delta: float) -> void:
 				desired = direction
 			elif distance < keep - 100.0:
 				desired = -direction
-		elif distance > float(data.reach) * 0.7:
+		elif distance > reach() * 0.7:
 			desired = direction
 		# Springen: ueber Hindernisse und zu hoeher liegenden Spielern.
 		if is_on_floor() and desired != 0.0:
@@ -235,7 +252,7 @@ func _update_attack(delta: float) -> void:
 func _in_attack_range() -> bool:
 	var distance := global_position.distance_to(_target.global_position)
 	if data.attack == "melee":
-		return distance <= float(data.reach) + 10.0
+		return distance <= reach() + 10.0
 	return distance <= float(data.range)
 
 
@@ -243,7 +260,7 @@ func _execute_attack() -> void:
 	var damage := float(data.damage) * damage_scale
 	if data.attack == "ranged":
 		Sfx.play("enemy_shoot")
-		fire_projectile.emit(self, global_position + _aim * (float(data.radius) + 6.0), _aim, float(data.projectile_speed), damage)
+		fire_projectile.emit(self, global_position + _aim * (radius() + 6.0), _aim, float(data.projectile_speed), damage)
 		return
 
 	_slam_flash = 0.12
@@ -253,31 +270,49 @@ func _execute_attack() -> void:
 		if player.downed:
 			continue
 		var to_player := player.global_position - global_position
-		var in_reach := to_player.length() <= float(data.reach) + float(player.stats.radius)
+		var in_reach := to_player.length() <= reach() + float(player.stats.radius)
 		var in_front: bool = data.melee_shape == "circle" or _aim.dot(to_player.normalized()) > 0.2
 		if in_reach and in_front:
 			player.take_hit(damage, global_position)
 	if Fx.instance:
-		Fx.instance.ring(global_position + _aim * 20.0, float(data.reach), Color(data.color, 0.9))
+		Fx.instance.ring(global_position + _aim * 20.0, reach(), Color(data.color, 0.9))
 
 
 func _draw() -> void:
-	var r: float = data.radius
+	var r := radius()
 	_draw_telegraph(r)
 	statuses.draw_overlay(self, r, _time)
 	var windup := -1.0
 	if _state == State.WINDUP:
 		windup = 1.0 - _state_time / float(data.windup)
+	if elite:
+		_draw_elite_aura(r)
 	RobotArt.draw_enemy(self, kind, {
 		"facing": _facing, "aim": _aim, "t": _time, "walk": _walk_phase,
 		"flash": _flash > 0.0, "windup": windup, "slam": _slam_flash > 0.0,
-	})
-	if hp < max_hp and (kind == "brute" or hp < max_hp * 0.99):
+	}, Vector2.ZERO, body_scale)
+	if elite:
+		_draw_crown(r)
+	if hp < max_hp and (elite or kind == "brute" or hp < max_hp * 0.99):
 		var width := maxf(r * 2.0, 30.0)
-		var top := -r - (22.0 if kind == "brute" else 14.0)
+		var top := -r - (22.0 if kind == "brute" or elite else 14.0) - (10.0 if elite else 0.0)
 		draw_rect(Rect2(-width * 0.5, top, width, 5.0), Color(0.08, 0.08, 0.1, 0.85))
 		draw_rect(Rect2(-width * 0.5, top, width * clampf(hp / max_hp, 0.0, 1.0), 5.0), Color(0.9, 0.3, 0.3))
 		draw_rect(Rect2(-width * 0.5, top, width, 5.0), Color(1, 1, 1, 0.3), false, 1.0)
+
+
+func _draw_elite_aura(r: float) -> void:
+	var pulse := 0.5 + 0.5 * sin(_time * 4.0)
+	Art.glow(self, Vector2.ZERO, r * 2.2, Color(1.0, 0.8, 0.25))
+	draw_arc(Vector2.ZERO, r + 8.0 + pulse * 3.0, 0.0, TAU, 36, Color(1.0, 0.85, 0.3, 0.55 + 0.3 * pulse), 2.5, true)
+
+
+func _draw_crown(r: float) -> void:
+	var y := -r - 14.0
+	var gold := Color(1.0, 0.85, 0.3)
+	var points := PackedVector2Array([Vector2(-10, y), Vector2(-10, y - 10), Vector2(-5, y - 5), Vector2(0, y - 13), Vector2(5, y - 5), Vector2(10, y - 10), Vector2(10, y)])
+	draw_colored_polygon(points, gold)
+	draw_polyline(points, Art.OUTLINE, 1.5, true)
 
 
 func _draw_telegraph(r: float) -> void:
@@ -290,11 +325,11 @@ func _draw_telegraph(r: float) -> void:
 		var alpha := 0.1 + 0.5 * progress
 		draw_line(_aim * r, _aim * length, Color(1.0, 0.3, 0.3, alpha), 1.5 + 2.5 * progress, true)
 	elif data.melee_shape == "circle":
-		var reach: float = data.reach
+		var reach := reach()
 		draw_circle(Vector2.ZERO, reach * progress, Color(1.0, 0.2, 0.2, 0.25))
 		draw_arc(Vector2.ZERO, reach, 0.0, TAU, 48, Color(1.0, 0.3, 0.3, 0.8), 3.0)
 	else:
-		var reach: float = data.reach
+		var reach := reach()
 		var angle := _aim.angle()
 		var fill := Color(1.0, 0.3, 0.3, 0.15 + 0.35 * progress)
 		var points := PackedVector2Array([Vector2.ZERO])

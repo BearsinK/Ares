@@ -8,6 +8,8 @@ const PANEL_HEIGHT := 128.0
 
 var main: Node = null
 var _canvas: Node2D
+var _flash_color := Color(0, 0, 0, 0)
+var _flash_time := 0.0
 
 
 func _ready() -> void:
@@ -17,8 +19,15 @@ func _ready() -> void:
 	add_child(_canvas)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_flash_time = maxf(0.0, _flash_time - delta)
 	_canvas.queue_redraw()
+
+
+## Farbiger Bildschirmrand-Blitz (z.B. rot bei Treffern).
+func flash(color: Color) -> void:
+	_flash_color = color
+	_flash_time = 0.35
 
 
 func _text(pos: Vector2, text: String, size := 18, color := Color.WHITE, align := HORIZONTAL_ALIGNMENT_LEFT, width := -1.0) -> void:
@@ -32,12 +41,40 @@ func _draw_hud() -> void:
 	if main == null:
 		return
 	var view := _canvas.get_viewport_rect().size
+	_draw_flash(view)
 	_draw_player_panel(main.players[0], Vector2(24.0, 16.0))
 	_draw_player_panel(main.players[1], Vector2(view.x - PANEL_WIDTH - 24.0, 16.0))
 	if not main.shop_menu.is_open:
 		_draw_top_center(view)
 	_draw_xp_bar(view)
 	_draw_debug(view)
+
+
+func _draw_flash(view: Vector2) -> void:
+	if _flash_time <= 0.0:
+		return
+	var strength := _flash_time / 0.35
+	var edge := Color(_flash_color, _flash_color.a * strength)
+	var clear := Color(_flash_color, 0.0)
+	var depth := 180.0
+	# Vier Farbverlaeufe an den Raendern.
+	for side in 4:
+		var points := PackedVector2Array()
+		var colors := PackedColorArray()
+		match side:
+			0:
+				points = PackedVector2Array([Vector2(0, 0), Vector2(view.x, 0), Vector2(view.x, depth), Vector2(0, depth)])
+				colors = PackedColorArray([edge, edge, clear, clear])
+			1:
+				points = PackedVector2Array([Vector2(0, view.y - depth), Vector2(view.x, view.y - depth), Vector2(view.x, view.y), Vector2(0, view.y)])
+				colors = PackedColorArray([clear, clear, edge, edge])
+			2:
+				points = PackedVector2Array([Vector2(0, 0), Vector2(depth, 0), Vector2(depth, view.y), Vector2(0, view.y)])
+				colors = PackedColorArray([edge, clear, clear, edge])
+			3:
+				points = PackedVector2Array([Vector2(view.x - depth, 0), Vector2(view.x, 0), Vector2(view.x, view.y), Vector2(view.x - depth, view.y)])
+				colors = PackedColorArray([clear, edge, edge, clear])
+		_canvas.draw_polygon(points, colors)
 
 
 func _draw_player_panel(player: Player, origin: Vector2) -> void:
@@ -80,6 +117,18 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 	for i in player.dash_max():
 		var pill := Rect2(origin + Vector2(i * 22.0, 52), Vector2(18, 7))
 		Art.rrect(_canvas, pill, accent if i < player.dash_charges else Color(1, 1, 1, 0.14), 3.0)
+
+	# Klassenfaehigkeit (L2): Leiste fuellt sich, bei Bereitschaft leuchtet sie.
+	var ability := player.ability
+	var ability_bar := Rect2(origin + Vector2(112, 47), Vector2(PANEL_WIDTH - 112.0, 15))
+	var ability_color := Color(1.0, 0.85, 0.3) if ability.is_ready() else accent
+	Art.rrect(_canvas, ability_bar, Color(0.1, 0.1, 0.14), 5.0)
+	var ability_fill := ability.time / float(ability.data.duration) if ability.is_active() else ability.readiness()
+	if ability_fill > 0.0:
+		Art.rrect(_canvas, Rect2(ability_bar.position, Vector2(maxf(ability_bar.size.x * ability_fill, 8.0), ability_bar.size.y)), ability_color if not ability.is_active() else Color(1, 1, 1), 5.0)
+	Art.rrect_line(_canvas, ability_bar, Color(ability_color, 0.8 if ability.is_ready() else 0.35), 5.0, 1.5)
+	var ability_text := "L2 %s  BEREIT" % ability.data.name if ability.is_ready() else "L2 %s" % ability.data.name
+	_text(ability_bar.position + Vector2(0, 12), ability_text, 12, Color(0.05, 0.06, 0.1) if ability_fill > 0.55 else Color(0.85, 0.88, 0.95), HORIZONTAL_ALIGNMENT_CENTER, ability_bar.size.x)
 
 	# Waffen als Chips, aktive Waffe hervorgehoben.
 	var x := 0.0

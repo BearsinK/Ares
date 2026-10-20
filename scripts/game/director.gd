@@ -9,6 +9,8 @@ signal projectile_requested(enemy: Enemy, origin: Vector2, direction: Vector2, s
 
 const SPAWN_INTERVAL := 0.35
 const MIN_SPAWN_DISTANCE := 500.0
+const ELITE_FROM := 60.0
+const ELITE_COST_MULT := 3.0
 
 var enabled := true
 var arena_size := Vector2(3200.0, 1350.0)
@@ -24,6 +26,11 @@ var _spawn_timer := 1.0
 
 func current_cap() -> int:
 	return mini(30 + int(time / 5.0), 200)
+
+
+## Anteil der Spawns, die als Elite erscheinen (ab ELITE_FROM, wachsend bis 15 Prozent).
+func elite_chance() -> float:
+	return clampf(0.04 + (time - ELITE_FROM) / 1500.0, 0.0, 0.15)
 
 
 func hp_scale() -> float:
@@ -50,9 +57,14 @@ func _physics_process(delta: float) -> void:
 	var kind := _choose_kind()
 	if kind == "":
 		return
+	var elite := time >= ELITE_FROM and randf() < elite_chance()
+	var cost := float(EnemyTypes.get_type(kind).cost) * (ELITE_COST_MULT if elite else 1.0)
+	if cost > _credits:
+		elite = false
+		cost = float(EnemyTypes.get_type(kind).cost)
 	_spawn_timer = SPAWN_INTERVAL
-	_credits -= float(EnemyTypes.get_type(kind).cost)
-	spawn(kind)
+	_credits -= cost
+	spawn(kind, null, elite)
 
 
 func _choose_kind() -> String:
@@ -77,9 +89,9 @@ func _choose_kind() -> String:
 	return options[0]
 
 
-func spawn(kind: String, at: Variant = null) -> Enemy:
+func spawn(kind: String, at: Variant = null, elite := false) -> Enemy:
 	var enemy := Enemy.new()
-	enemy.setup(kind, hp_scale(), damage_scale(), players)
+	enemy.setup(kind, hp_scale(), damage_scale(), players, elite)
 	enemy.siblings = enemies
 	enemy.position = at if at != null else _spawn_position(kind)
 	enemy.fire_projectile.connect(projectile_requested.emit)

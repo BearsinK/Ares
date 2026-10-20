@@ -97,6 +97,8 @@ var _hurt_timer := 0.0
 var _happy_timer := 0.0
 var _arm_deploy := 0.0
 
+var ability: Ability
+
 
 func setup(index: int, new_class_id: String) -> void:
 	player_index = index
@@ -138,7 +140,14 @@ func max_health() -> float:
 
 
 func move_speed() -> float:
-	return float(stats.speed) * (1.0 + float(mods.speed))
+	var rolling := 1.7 if ability != null and ability.is_active("roll") else 1.0
+	return float(stats.speed) * (1.0 + float(mods.speed)) * rolling
+
+
+## Feuerrate-Faktor aus Perks und Overwatch.
+func fire_rate_mult() -> float:
+	var boost := 2.0 if ability != null and ability.is_active("overwatch") else 1.0
+	return (1.0 + float(mods.fire_rate)) * boost
 
 
 func damage_mult() -> float:
@@ -157,6 +166,8 @@ func take_hit(amount: float, from: Vector2) -> bool:
 	if downed or iframes > 0.0:
 		return false
 	var final_amount := amount * maxf(0.1, 1.0 - float(mods.dmg_taken))
+	if ability != null and ability.is_active("roll"):
+		final_amount *= 0.5
 	hp -= final_amount
 	iframes = HIT_IFRAMES
 	_hurt_timer = 0.45
@@ -207,6 +218,9 @@ func _ready() -> void:
 	# Spieler kollidieren nur mit der Welt, nicht mit Gegnern oder dem Partner.
 	collision_mask = WORLD_MASK
 	floor_snap_length = 8.0
+	ability = Ability.new()
+	add_child(ability)
+	ability.setup(self)
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = stats.size
@@ -236,6 +250,8 @@ func _physics_process(delta: float) -> void:
 		_jump_buffer = JUMP_BUFFER_TIME
 	if Input.is_action_just_pressed(_prefix + "dash"):
 		_try_dash()
+	if Input.is_action_just_pressed(_prefix + "ability"):
+		ability.try_use()
 	if Input.is_action_just_pressed(_prefix + "hook"):
 		if hook_active:
 			_release_hook()
@@ -520,7 +536,7 @@ func current_module() -> String:
 func _can_fire(weapon_id: String) -> bool:
 	# Klassenregel Hexapod: Die Klassenwaffe (erste Waffe) schiesst nur im Stand.
 	if stats.stationary_fire and weapon_id == stats.weapons[0]:
-		return _stand_time >= DEPLOY_TIME
+		return _stand_time >= DEPLOY_TIME or ability.is_active("overwatch")
 	return true
 
 
@@ -547,7 +563,7 @@ func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 			Sfx.play("shake", 0.2)
 	elif _lob_charging and not held:
 		_lob_charging = false
-		_fire_cooldown = 1.0 / (float(weapon.fire_rate) * (1.0 + float(mods.fire_rate)))
+		_fire_cooldown = 1.0 / (float(weapon.fire_rate) * fire_rate_mult())
 		var origin: Vector2 = global_position + _muzzle_offset() + aim_dir * float(weapon.barrel)
 		velocity -= aim_dir * float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
 		var thrown_charge := shake_charge
@@ -576,7 +592,7 @@ func _handle_fire(_delta: float) -> void:
 	var weapon := Weapons.get_weapon(weapon_id)
 	if weapon.kind == "lob":
 		return
-	_fire_cooldown = 1.0 / (float(weapon.fire_rate) * (1.0 + float(mods.fire_rate)))
+	_fire_cooldown = 1.0 / (float(weapon.fire_rate) * fire_rate_mult())
 	var origin: Vector2 = global_position + _muzzle_offset() + aim_dir * float(weapon.barrel)
 	# Rueckstoss: am Boden schwaecher, in der Luft staerker.
 	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
@@ -604,7 +620,7 @@ func _art_state() -> Dictionary:
 	return {
 		"facing": facing, "aim": aim_dir, "t": _art_time, "vx": 0.0 if downed else velocity.x,
 		"walk": _walk_phase, "grounded": is_on_floor(), "clinging": _clinging, "cling_dir": _cling_dir,
-		"planted": bool(stats.stationary_fire) and _stand_time >= DEPLOY_TIME,
+		"planted": bool(stats.stationary_fire) and (_stand_time >= DEPLOY_TIME or ability.is_active("overwatch")),
 		"mood": mood, "firing": _fire_flash, "charge": shake_charge, "arm": _arm_deploy,
 		"weapon_color": weapon_color, "accent": RobotClasses.PLAYER_COLORS[player_index - 1],
 		"eye_color": stats.eye_color,
@@ -614,6 +630,8 @@ func _art_state() -> Dictionary:
 func _draw() -> void:
 	var size: Vector2 = stats.size
 	var accent: Color = RobotClasses.PLAYER_COLORS[player_index - 1]
+
+	ability.draw_aura(self, _art_time)
 
 	# Nachbilder vom Dash.
 	for entry in _trail:

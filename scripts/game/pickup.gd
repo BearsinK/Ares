@@ -37,6 +37,9 @@ func _physics_process(delta: float) -> void:
 	for player in players:
 		if player.downed:
 			continue
+		# Reparaturkits gehen nur an Spieler, die sie brauchen.
+		if kind == "hp" and player.hp >= player.max_health():
+			continue
 		var distance := global_position.distance_to(player.global_position)
 		if distance < best:
 			best = distance
@@ -66,7 +69,14 @@ func _physics_process(delta: float) -> void:
 
 func _draw() -> void:
 	var pulse := 1.0 + 0.15 * sin(_age * 8.0)
-	if kind == "gold":
+	if kind == "hp":
+		var fade := 1.0 if _age < LIFETIME - 5.0 else (0.4 + 0.6 * absf(sin(_age * 10.0)))
+		draw_circle(Vector2.ZERO, 22.0 * pulse, Color(0.4, 1.0, 0.5, 0.15 * fade))
+		draw_circle(Vector2.ZERO, 11.0 * pulse, Color(0.92, 0.98, 0.94, fade))
+		draw_arc(Vector2.ZERO, 11.0 * pulse, 0.0, TAU, 18, Color(0.15, 0.55, 0.3, fade), 2.0, true)
+		draw_rect(Rect2(-6, -2, 12, 4), Color(0.2, 0.75, 0.35, fade))
+		draw_rect(Rect2(-2, -6, 4, 12), Color(0.2, 0.75, 0.35, fade))
+	elif kind == "gold":
 		draw_circle(Vector2.ZERO, 8.0 * pulse, Color(1.0, 0.82, 0.25))
 		draw_arc(Vector2.ZERO, 8.0 * pulse, 0.0, TAU, 16, Color(0.7, 0.5, 0.1), 2.0)
 	else:

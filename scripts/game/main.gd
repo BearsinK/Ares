@@ -29,6 +29,8 @@ const TEST_MODULES := [
 const DUMMY_RESPAWN_TIME := 4.0
 const RESULT_DELAY := 1.4
 const CLEAR_DELAY := 3.0
+const HEALTH_DROP_CHANCE := 0.04
+const HEALTH_DROP_HEAL := 0.25
 
 enum Phase { WAVE, CLEARING, SHOP, VICTORY }
 
@@ -248,11 +250,28 @@ func _spawn_players() -> void:
 		player.position = Vector2(300.0 + i * 110.0, FLOOR_Y - float(player.stats.size.y) * 0.5 - 2.0)
 		player.fired.connect(_on_player_fired)
 		player.went_down.connect(_on_player_down)
+		player.hurt.connect(_on_player_hurt)
 		player.slam_landed.connect(_on_slam_landed)
 		add_child(player)
 		players.append(player)
 	players[0].partner = players[1]
 	players[1].partner = players[0]
+
+
+## Kurzer Stillstand bei harten Treffern (laeuft in Echtzeit, nicht in Spielzeit).
+func hitstop(duration: float) -> void:
+	if Engine.time_scale < 1.0 or game_over:
+		return
+	Engine.time_scale = 0.08
+	get_tree().create_timer(duration, true, false, true).timeout.connect(func() -> void: Engine.time_scale = 1.0)
+
+
+func _on_player_hurt(player: Player, amount: float) -> void:
+	camera.add_shake(minf(8.0 + amount * 0.5, 18.0))
+	hud.flash(Color(1.0, 0.15, 0.1, 0.35))
+	if amount >= 15.0:
+		hitstop(0.06)
+	Fx.instance.spark(player.global_position, Color(1.0, 0.4, 0.3), 10, 400.0)
 
 
 func _on_slam_landed(player: Player, pos: Vector2) -> void:
@@ -287,15 +306,22 @@ func _on_enemy_spawned(enemy: Enemy) -> void:
 func _on_enemy_died(enemy: Enemy) -> void:
 	kills += 1
 	var info: Dictionary = enemy.data
-	_spawn_pickup("xp", int(info.xp), enemy.global_position)
+	_spawn_pickup("xp", int(info.xp) * (3 if enemy.elite else 1), enemy.global_position)
 	var gold_value := 1 + int(director.time / 90.0)
 	var coins := int(float(info.gold_chance)) + (1 if randf() < fmod(float(info.gold_chance), 1.0) else 0)
+	if enemy.elite:
+		coins += 3
 	for i in coins:
 		_spawn_pickup("gold", gold_value, enemy.global_position)
+	if enemy.elite or randf() < HEALTH_DROP_CHANCE:
+		_spawn_pickup("hp", 1, enemy.global_position)
+	if enemy.elite:
+		hitstop(0.09)
+		camera.add_shake(12.0)
 
 
 func _spawn_pickup(kind: String, value: int, pos: Vector2) -> void:
-	if pickups.get_child_count() > 150:
+	if pickups.get_child_count() > 150 and kind != "hp":
 		# Zu viele Objekte: Wert direkt gutschreiben statt ein weiteres zu erzeugen.
 		if kind == "xp":
 			xp += value
@@ -315,6 +341,12 @@ func _on_pickup_collected(pickup: Pickup, player: Player) -> void:
 	if pickup.kind == "xp":
 		xp += pickup.value
 		Sfx.play("pickup")
+	elif pickup.kind == "hp":
+		var heal := player.max_health() * HEALTH_DROP_HEAL
+		player.hp = minf(player.max_health(), player.hp + heal)
+		Sfx.play("revive")
+		if Fx.instance:
+			Fx.instance.number(player.global_position + Vector2(0.0, -70.0), heal, Color(0.5, 1.0, 0.6), 24)
 	else:
 		player.gold += maxi(1, int(round(pickup.value * (1.0 + float(player.mods.gold)))))
 		Sfx.play("coin")
@@ -488,6 +520,23 @@ func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, dire
 		bullet.explosion_damage = float(weapon.get("explosion_damage", 0.0)) * player.damage_mult()
 		bullet.hit.connect(_on_projectile_hit)
 		projectiles.add_child(bullet)
+
+
+## Explosivgeschoss einer Drucker-Drohne.
+func spawn_drone_shot(player: Player, origin: Vector2, direction: Vector2) -> void:
+	var bullet := Projectile.new()
+	bullet.position = origin
+	bullet.direction = direction
+	bullet.speed = 750.0
+	bullet.damage = 6.0 * player.damage_mult()
+	bullet.lifetime = 1.0
+	bullet.size = 4.0
+	bullet.color = Color(1.0, 0.65, 0.25)
+	bullet.shooter = player
+	bullet.explosion_radius = 55.0
+	bullet.explosion_damage = 9.0 * player.damage_mult()
+	bullet.hit.connect(_on_projectile_hit)
+	projectiles.add_child(bullet)
 
 
 func _fire_hitscan(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
