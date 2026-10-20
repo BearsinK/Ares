@@ -139,9 +139,9 @@ func _choose_kind() -> String:
 	return options[0]
 
 
-func spawn(kind: String, at: Variant = null, elite := false, elite_kind := "") -> Enemy:
+func spawn(kind: String, at: Variant = null, elite := false, elite_kind := "", champion := false) -> Enemy:
 	var enemy := Enemy.new()
-	enemy.setup(kind, hp_scale(), damage_scale(), players, elite, elite_kind)
+	enemy.setup(kind, hp_scale(), damage_scale(), players, elite, elite_kind, champion)
 	enemy.siblings = enemies
 	enemy.grid = grid
 	enemy.stuck.connect(relocate)

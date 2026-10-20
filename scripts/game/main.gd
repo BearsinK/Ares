@@ -102,6 +102,11 @@ var stage_banner_time := 0.0
 var _stage_order: Array = []
 const TETHER := Vector2(3000.0, 1500.0)
 var gates: GateOverlay
+## Waechter: Mini-Boss in der letzten Welle jeder Karte (Welle 3, 6, 9), mit Belohnung bei Sieg.
+var guardian: Enemy = null
+var guardian_enabled := true
+var guardian_banner_time := 0.0
+var _guardian_spawned := false
 ## Kisten auf der Karte (Gold gegen Item): Behaelter, Schalter und Zaehler der geoeffneten Kisten auf dieser Karte.
 var chests: Node2D
 var chests_enabled := true
@@ -257,6 +262,7 @@ func _update_intro(delta: float) -> void:
 
 
 func _update_wave(delta: float) -> void:
+	guardian_banner_time = maxf(0.0, guardian_banner_time - delta)
 	match phase:
 		Phase.WAVE:
 			if not director_enabled or game_over:
@@ -264,6 +270,7 @@ func _update_wave(delta: float) -> void:
 			if wave_intro > 0.0:
 				_update_intro(delta)
 				return
+			_update_guardian()
 			wave_time_left -= delta
 			director.wave_progress = 1.0 - wave_time_left / wave_duration
 			if wave_time_left <= 0.0:
@@ -282,6 +289,52 @@ func _update_wave(delta: float) -> void:
 					_open_shop()
 
 
+## Letzte Welle einer Karte (3, 6, 9): nach etwas Anlauf erscheint ein Waechter.
+func is_guardian_wave() -> bool:
+	return guardian_enabled and not stage_layout.is_empty() and wave % Stages.WAVES_PER_STAGE == 0 and wave < max_waves
+
+
+func _update_guardian() -> void:
+	if _guardian_spawned or not is_guardian_wave() or director.wave_progress < 0.35:
+		return
+	_guardian_spawned = true
+	guardian = director.spawn("brute", null, true, "", true)
+	guardian_banner_time = 3.4
+	camera.add_shake(9.0)
+	Sfx.play("levelup")
+	if Fx.instance:
+		Fx.instance.ring(guardian.global_position, 240.0, Color(1.0, 0.4, 0.3))
+
+
+## Sieg ueber den Waechter: eine gratis Goldkiste an seiner Stelle, Reparatur fuer beide und Beute.
+func _guardian_defeated(pos: Vector2, radius: float) -> void:
+	guardian = null
+	if phase != Phase.WAVE:
+		return
+	var ground := GroundProbe.ground_y(self, pos, pos + Vector2(0.0, radius + 120.0))
+	var spot := Vector2(pos.x, ground if ground != INF else pos.y + radius)
+	var chest := Chest.new()
+	chest.players = players
+	chest.large = true
+	chest.bounty = true
+	chest.price = 0
+	chest.position = spot
+	chest.opened.connect(_on_chest_opened)
+	chests.add_child(chest)
+	for player in players:
+		if player.downed:
+			player.revive(0.5)
+		else:
+			player.hp = minf(player.max_health(), player.hp + player.max_health() * 0.4)
+		if Fx.instance:
+			Fx.instance.number_text(player.global_position + Vector2(0.0, -float(player.stats.size.y) * 0.5 - 40.0), "Wächter besiegt", Color(1.0, 0.85, 0.4), 24)
+	for i in 10:
+		_spawn_pickup("gold", 1 + int(director.difficulty() * 1.1), pos)
+	hitstop(0.14)
+	camera.add_shake(14.0)
+	Sfx.play("levelup")
+
+
 func _end_wave() -> void:
 	phase = Phase.CLEARING
 	_clear_time = CLEAR_DELAY
@@ -292,6 +345,14 @@ func _end_wave() -> void:
 	wave_bonus = 4 + 2 * wave
 	for player in players:
 		player.gold += wave_bonus
+	# Nicht abgeholte Waechterbeute geht an den naechsten Spieler.
+	for chest in chests.get_children():
+		if chest is Chest and chest.bounty and not chest.is_open:
+			var nearest: Player = players[0]
+			for player in players:
+				if player.global_position.distance_to(chest.global_position) < nearest.global_position.distance_to(chest.global_position):
+					nearest = player
+			chest.force_open(nearest)
 	camera.add_shake(10.0)
 	hitstop(0.12)
 	if hud != null:
@@ -341,6 +402,8 @@ func _on_shop_closed() -> void:
 	_apply_modifier()
 	phase = Phase.WAVE
 	director.enabled = director_enabled
+	_guardian_spawned = false
+	guardian = null
 	_begin_wave_intro()
 	_refresh_chests()
 
@@ -495,10 +558,10 @@ func _change_stage() -> void:
 func _place_at_start(player: Player, index: int) -> void:
 	var half: float = float(player.stats.size.y) * 0.5
 	if stage_layout.is_empty():
-		player.global_position = Vector2(300.0 + index * 110.0, FLOOR_Y - half - 2.0)
+		player.teleport(Vector2(300.0 + index * 110.0, FLOOR_Y - half - 2.0))
 	else:
 		var start: Vector2 = stage_layout.starts[index]
-		player.global_position = Vector2(start.x, start.y - half - 2.0)
+		player.teleport(Vector2(start.x, start.y - half - 2.0))
 
 
 func _update_camera_limits() -> void:
@@ -668,7 +731,9 @@ func _on_enemy_died(enemy: Enemy) -> void:
 		_death_blast(enemy.global_position, blast)
 	if enemy.elite or randf() < HEALTH_DROP_CHANCE:
 		_spawn_pickup("hp", 1, enemy.global_position)
-	if enemy.elite:
+	if enemy.champion:
+		_guardian_defeated(enemy.global_position, enemy.radius())
+	elif enemy.elite:
 		hitstop(0.09)
 		camera.add_shake(12.0)
 
@@ -689,7 +754,7 @@ func chest_price(large := false) -> int:
 
 func _update_chest_prices() -> void:
 	for chest in chests.get_children():
-		if chest is Chest and not chest.is_open:
+		if chest is Chest and not chest.is_open and not chest.bounty:
 			chest.price = chest_price(chest.large)
 
 
@@ -701,7 +766,7 @@ func _refresh_chests() -> void:
 	_update_chest_prices()
 	var live: Array[Vector2] = []
 	for chest in chests.get_children():
-		if chest is Chest and not chest.is_open:
+		if chest is Chest and not chest.is_open and not chest.bounty:
 			live.append(chest.position)
 	if not _large_chest_placed:
 		var spot := _chest_spot(live, true)
@@ -763,7 +828,8 @@ func _add_chest(pos: Vector2, large: bool) -> void:
 
 
 func _on_chest_opened(chest: Chest, player: Player) -> void:
-	chests_opened += 1
+	if not chest.bounty:
+		chests_opened += 1
 	var pool: Array = Perks.RARE_IDS if chest.large else Perks.DATA.keys()
 	# Nicht zweimal dasselbe in Folge, solange es Auswahl gibt.
 	var options: Array = pool.filter(func(id: String) -> bool: return int(player.items.get(id, 0)) == 0)

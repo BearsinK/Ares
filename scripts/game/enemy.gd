@@ -16,6 +16,9 @@ const MAX_FALL_SPEED := 1400.0
 const SEPARATION_DISTANCE := 30.0
 const ELITE_HP_MULT := 3.5
 const ELITE_SCALE := 1.35
+## Waechter (Mini-Boss am Ende jeder Karte): noch groesser und deutlich zaeher als eine Elite.
+const CHAMPION_HP_MULT := 5.0
+const CHAMPION_SCALE := 1.9
 const FROST_RADIUS := 230.0
 
 var kind := "walker"
@@ -25,6 +28,8 @@ var max_hp := 1.0
 var damage_scale := 1.0
 ## Elite: groesser, zaeher, gefaehrlicher, laesst mehr Beute und ein Reparaturkit fallen.
 var elite := false
+## Waechter: Elite mit eigener Lebensleiste im HUD und garantierter Belohnung.
+var champion := false
 ## Art der Elite (fire, shield, storm, frost), siehe EnemyTypes.ELITE_KINDS.
 var elite_kind := ""
 var shield := 0.0
@@ -66,13 +71,14 @@ var _fall_speed := 0.0
 var _was_grounded := false
 
 
-func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_players: Array[Player], new_elite := false, new_elite_kind := "") -> void:
+func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_players: Array[Player], new_elite := false, new_elite_kind := "", new_champion := false) -> void:
 	kind = new_kind
 	data = EnemyTypes.get_type(kind)
-	elite = new_elite
+	champion = new_champion
+	elite = new_elite or champion
 	elite_kind = (new_elite_kind if new_elite_kind != "" else EnemyTypes.random_elite_kind()) if elite else ""
-	body_scale = ELITE_SCALE if elite else 1.0
-	max_hp = float(data.hp) * hp_scale * (ELITE_HP_MULT if elite else 1.0)
+	body_scale = CHAMPION_SCALE if champion else (ELITE_SCALE if elite else 1.0)
+	max_hp = float(data.hp) * hp_scale * (CHAMPION_HP_MULT if champion else (ELITE_HP_MULT if elite else 1.0))
 	hp = max_hp
 	if elite_kind == "shield":
 		max_shield = max_hp * 0.6

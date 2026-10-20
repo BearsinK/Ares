@@ -332,6 +332,19 @@ func take_hit(amount: float, from: Vector2) -> bool:
 	return true
 
 
+## Setzt den Spieler an einen neuen Ort (Kartenwechsel) und beendet alles, was ihn gerade bewegt.
+func teleport(pos: Vector2) -> void:
+	global_position = pos
+	velocity = Vector2.ZERO
+	if hook_active:
+		_release_hook()
+	_dash_time_left = 0.0
+	on_rope = false
+	_clinging = false
+	_ceiling = false
+	_slamming = false
+
+
 func revive(health_fraction := 0.5) -> void:
 	downed = false
 	revive_progress = 0.0

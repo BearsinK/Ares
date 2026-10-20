@@ -13,6 +13,8 @@ var players: Array[Player] = []
 var price := 20
 var large := false
 var is_open := false
+## Beute eines Waechters: gratis, immer ein Verhaltens-Item.
+var bounty := false
 
 var _age := 0.0
 var _lid := 0.0
@@ -68,11 +70,22 @@ func _reviving(player: Player) -> bool:
 
 
 func _try_open(player: Player) -> void:
-	if not can_afford(player):
+	if not bounty and not can_afford(player):
 		_deny = 1.0
 		Sfx.play("hurt", 0.05)
 		return
-	player.gold -= price
+	if not bounty:
+		player.gold -= price
+	is_open = true
+	_age = 0.0
+	Sfx.play("deploy", 0.05)
+	opened.emit(self, player)
+
+
+## Wird die Beute am Wellenende nicht abgeholt, bekommt sie der naechste Spieler automatisch.
+func force_open(player: Player) -> void:
+	if is_open:
+		return
 	is_open = true
 	_age = 0.0
 	Sfx.play("deploy", 0.05)
@@ -120,15 +133,18 @@ func _draw() -> void:
 	# Preis ueber der Kiste, gruen wenn der naechste Spieler ihn zahlen kann, sonst rot.
 	var font := ThemeDB.fallback_font
 	var tag_y := -BODY.y * scale_factor - 40.0
-	var affordable := _near < 0 or can_afford(players[_near])
+	var affordable := bounty or _near < 0 or can_afford(players[_near])
 	var tag_color := gold if affordable else Color(1.0, 0.45, 0.4)
-	var label := "%d" % price
+	var label := "gratis" if bounty else "%d" % price
 	var tag := Rect2(Vector2(-36.0, tag_y - 16.0), Vector2(72.0, 26.0))
 	Art.rrect(self, tag, Color(0.04, 0.05, 0.09, 0.85), 8.0)
 	Art.rrect_line(self, tag, Color(tag_color, 0.9), 8.0, 1.5)
-	draw_circle(tag.position + Vector2(15, 13), 6.0, gold)
-	draw_arc(tag.position + Vector2(15, 13), 6.0, 0.0, TAU, 14, Color(0.6, 0.4, 0.05), 1.5, true)
-	draw_string(font, tag.position + Vector2(26, 19), label, HORIZONTAL_ALIGNMENT_LEFT, 44.0, 16, tag_color)
+	if bounty:
+		draw_string(font, tag.position + Vector2(0, 19), label, HORIZONTAL_ALIGNMENT_CENTER, tag.size.x, 16, tag_color)
+	else:
+		draw_circle(tag.position + Vector2(15, 13), 6.0, gold)
+		draw_arc(tag.position + Vector2(15, 13), 6.0, 0.0, TAU, 14, Color(0.6, 0.4, 0.05), 1.5, true)
+		draw_string(font, tag.position + Vector2(26, 19), label, HORIZONTAL_ALIGNMENT_LEFT, 44.0, 16, tag_color)
 	if _near >= 0:
 		var prompt := "Kreis / G / L: öffnen" if affordable else "zu wenig Gold"
 		draw_string_outline(font, Vector2(-100.0, tag_y + 30.0), prompt, HORIZONTAL_ALIGNMENT_CENTER, 200.0, 15, 5, Color(0.03, 0.03, 0.07, 0.9))

@@ -65,6 +65,7 @@ func _draw_hud() -> void:
 	_draw_perk_strip(view)
 	_draw_perk_banner(view)
 	_draw_chest_markers(view)
+	_draw_guardian(view)
 	_draw_xp_bar(view)
 	_draw_debug(view)
 
@@ -402,6 +403,49 @@ func _draw_chest_markers(view: Vector2) -> void:
 		var tip := edge + dir * 30.0
 		var side := dir.orthogonal() * 9.0
 		_canvas.draw_colored_polygon(PackedVector2Array([tip + dir * 8.0, tip - dir * 4.0 + side, tip - dir * 4.0 - side]), Color(color, 0.95))
+
+
+## Waechter: Banner beim Erscheinen, Lebensleiste oben in der Mitte und ein Pfeil am Rand, wenn er ausserhalb des Bildes ist.
+func _draw_guardian(view: Vector2) -> void:
+	if main.shop_menu.is_open or main.levelup_menu.is_open:
+		return
+	if main.guardian_banner_time > 0.0:
+		var t: float = main.guardian_banner_time
+		var alpha := clampf(minf(t / 0.5, (3.4 - t) / 0.25), 0.0, 1.0)
+		var pop := 1.0 + 0.2 * (1.0 - _ease_out((3.4 - t) / 0.3))
+		_text(Vector2(0, view.y * 0.34 + 3.0), "WÄCHTER ERSCHEINT", int(64.0 * pop), Color(0, 0, 0, 0.55 * alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		_text(Vector2(0, view.y * 0.34), "WÄCHTER ERSCHEINT", int(64.0 * pop), Color(1.0, 0.4, 0.3, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		_text(Vector2(0, view.y * 0.34 + 40.0), "Besiegt ihn für eine Goldkiste und volle Reparatur", 22, Color(1.0, 0.92, 0.85, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	var guardian: Enemy = main.guardian
+	if guardian == null or not is_instance_valid(guardian):
+		return
+	var kind_info: Dictionary = EnemyTypes.ELITE_KINDS.get(guardian.elite_kind, {"name": "", "color": Color(1.0, 0.5, 0.3)})
+	var accent: Color = kind_info.color
+	var width := 460.0
+	var bar := Rect2(Vector2(view.x * 0.5 - width * 0.5, 204.0), Vector2(width, 18.0))
+	Art.rrect(_canvas, bar.grow(3.0), Color(0.04, 0.05, 0.09, 0.85), 8.0)
+	var fraction := clampf(guardian.hp / guardian.max_hp, 0.0, 1.0)
+	Art.rrect(_canvas, bar, Color(0.1, 0.1, 0.14), 6.0)
+	if fraction > 0.0:
+		Art.rrect_grad(_canvas, Rect2(bar.position, Vector2(maxf(bar.size.x * fraction, 8.0), bar.size.y)), accent.lightened(0.2), accent.darkened(0.3), 6.0)
+	if guardian.shield > 0.0:
+		_canvas.draw_rect(Rect2(bar.position + Vector2(0, -3), Vector2(bar.size.x * clampf(guardian.shield / guardian.max_shield, 0.0, 1.0), 4.0)), Color(0.5, 0.88, 1.0))
+	Art.rrect_line(_canvas, bar, Color(1, 1, 1, 0.4), 6.0, 1.5)
+	_text(Vector2(0, bar.position.y - 6.0), "WÄCHTER  %s" % String(kind_info.name), 17, accent.lightened(0.25), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	# Pfeil am Bildrand, solange er nicht zu sehen ist.
+	var xf: Transform2D = main.get_viewport().get_canvas_transform()
+	var inner := Rect2(Vector2(70.0, 240.0), view - Vector2(140.0, 370.0))
+	var screen: Vector2 = xf * guardian.global_position
+	if not inner.has_point(screen):
+		var edge := Vector2(clampf(screen.x, inner.position.x, inner.end.x), clampf(screen.y, inner.position.y, inner.end.y))
+		var dir := (screen - edge).normalized() if screen != edge else Vector2.UP
+		var plate := Rect2(edge - Vector2(22.0, 14.0), Vector2(44.0, 28.0))
+		Art.rrect(_canvas, plate, Color(0.1, 0.03, 0.04, 0.9), 8.0)
+		Art.rrect_line(_canvas, plate, Color(1.0, 0.35, 0.3), 8.0, 2.0)
+		_text(plate.position + Vector2(0, 21), "W", 18, Color(1.0, 0.5, 0.4), HORIZONTAL_ALIGNMENT_CENTER, plate.size.x)
+		var tip := edge + dir * 28.0
+		var side := dir.orthogonal() * 9.0
+		_canvas.draw_colored_polygon(PackedVector2Array([tip + dir * 8.0, tip - dir * 4.0 + side, tip - dir * 4.0 - side]), Color(1.0, 0.4, 0.35))
 
 
 func _draw_xp_bar(view: Vector2) -> void:
