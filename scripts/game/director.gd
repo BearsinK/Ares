@@ -74,6 +74,7 @@ func _physics_process(delta: float) -> void:
 	for i in range(enemies.size() - 1, -1, -1):
 		if not is_instance_valid(enemies[i]) or enemies[i].is_queued_for_deletion():
 			enemies.remove_at(i)
+	_update_visibility()
 	if not enabled:
 		return
 	time += delta
@@ -95,6 +96,16 @@ func _physics_process(delta: float) -> void:
 	var elite := _next_elite
 	_next_kind = ""
 	spawn(kind, null, elite)
+
+
+func _update_visibility() -> void:
+	var viewport := get_viewport()
+	if viewport == null:
+		return
+	var view: Rect2 = viewport.get_canvas_transform().affine_inverse() * viewport.get_visible_rect()
+	view = view.grow(260.0)
+	for enemy in enemies:
+		enemy.on_screen = view.has_point(enemy.global_position)
 
 
 func _choose_kind() -> String:

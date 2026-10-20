@@ -4,7 +4,7 @@ extends Node2D
 
 enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING }
 
-const MENU_ITEMS: Array[String] = ["Spielen", "Werkstatt", "Steuerung", "Beenden"]
+const MENU_ITEMS: Array[String] = ["Spielen", "Werkstatt", "Steuerung", "Musik", "Beenden"]
 const COUNTDOWN := 1.1
 
 var state := State.MAIN
@@ -50,6 +50,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_time += delta
 	_camera.position.x = 1600.0 + sin(_time * 0.12) * 500.0
+	Music.set_layer_level(0.3)
 	match state:
 		State.MAIN:
 			_update_main()
@@ -83,6 +84,8 @@ func _update_main() -> void:
 			2:
 				state = State.CONTROLS
 			3:
+				Music.set_enabled(not Music.enabled)
+			4:
 				get_tree().quit()
 
 
@@ -206,6 +209,12 @@ func _draw_ui() -> void:
 			_draw_workshop(view)
 
 
+func _item_label(index: int) -> String:
+	if MENU_ITEMS[index] == "Musik":
+		return "Musik: %s" % ("An" if Music.enabled else "Aus")
+	return MENU_ITEMS[index]
+
+
 func _draw_main(view: Vector2) -> void:
 	# Logo.
 	var pulse := 0.5 + 0.5 * sin(_time * 2.0)
@@ -214,7 +223,7 @@ func _draw_main(view: Vector2) -> void:
 	Art.glow(_ui, Vector2(view.x * 0.5, 150), 160.0, Color(1.0, 0.6, 0.2))
 	for i in MENU_ITEMS.size():
 		var rect := Rect2(Vector2(view.x * 0.5 - 160, 310 + i * 76), Vector2(320, 60))
-		UiKit.button(_ui, rect, MENU_ITEMS[i], i == cursor and state == State.MAIN)
+		UiKit.button(_ui, rect, _item_label(i), i == cursor and state == State.MAIN)
 	UiKit.text(_ui, Vector2(0, view.y - 40), "Hoch/Runter waehlen, Kreuz oder Enter bestaetigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 

@@ -10,6 +10,7 @@ var main: Node = null
 var _canvas: Node2D
 var _flash_color := Color(0, 0, 0, 0)
 var _flash_time := 0.0
+var _age := 0.0
 
 
 func _ready() -> void:
@@ -22,6 +23,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_age += delta
 	_flash_time = maxf(0.0, _flash_time - delta)
 	_canvas.queue_redraw()
 
@@ -44,6 +46,7 @@ func _draw_hud() -> void:
 		return
 	var view := _canvas.get_viewport_rect().size
 	_draw_flash(view)
+	_draw_hints(view)
 	_draw_player_panel(main.players[0], Vector2(24.0, 16.0))
 	_draw_player_panel(main.players[1], Vector2(view.x - PANEL_WIDTH - 24.0, 16.0))
 	if main.boss != null and is_instance_valid(main.boss):
@@ -53,6 +56,21 @@ func _draw_hud() -> void:
 		_draw_top_center(view)
 	_draw_xp_bar(view)
 	_draw_debug(view)
+
+
+## Steuerungshinweis in den ersten Sekunden eines Laufs.
+func _draw_hints(view: Vector2) -> void:
+	var visible_time := 16.0
+	if _age > visible_time or main.wave > 1 or main.phase != main.Phase.WAVE:
+		return
+	var alpha := clampf(minf(_age / 0.6, (visible_time - _age) / 1.5), 0.0, 1.0)
+	var panel := Rect2(Vector2(view.x * 0.5 - 430.0, 104.0), Vector2(860.0, 112.0))
+	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.8 * alpha), 14.0)
+	Art.rrect_line(_canvas, panel, Color(1, 1, 1, 0.25 * alpha), 14.0, 2.0)
+	_text(panel.position + Vector2(0, 28), "STEUERUNG", 16, Color(1.0, 0.85, 0.4, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+	_text(panel.position + Vector2(0, 56), "Controller: R2 schiessen   R1 Dash   L1 Sprung   L2 Faehigkeit   Dreieck Waffe   Kreis Partner beleben", 15, Color(0.9, 0.92, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+	_text(panel.position + Vector2(0, 80), "Tastatur P1: WASD, Maus, Leertaste, Shift, E     P2: Pfeile, Punkt, Strich, Komma     F11 Vollbild", 15, Color(0.7, 0.74, 0.9, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+	_text(panel.position + Vector2(0, 102), "Je weiter ihr kommt, desto mehr Chips gibt es fuer die Werkstatt.", 13, Color(0.6, 0.95, 1.0, alpha * 0.9), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 
 
 func _draw_flash(view: Vector2) -> void:

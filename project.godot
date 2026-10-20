@@ -18,6 +18,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 
 InputSetup="*res://scripts/autoload/input_setup.gd"
 Sfx="*res://scripts/autoload/sfx.gd"
+Music="*res://scripts/autoload/music.gd"
 
 [display]
 
@@ -34,6 +35,7 @@ window/stretch/aspect="keep"
 2d_physics/layer_4="player_projectiles"
 2d_physics/layer_5="enemy_projectiles"
 2d_physics/layer_6="platforms"
+2d_physics/layer_8="player_walls"
 
 [rendering]
 

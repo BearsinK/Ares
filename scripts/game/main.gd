@@ -116,6 +116,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	Music.set_layer_level(1.0 if phase == Phase.BOSS else clampf(0.2 + 0.08 * float(wave), 0.2, 0.9))
 	_check_level_up()
 	_update_wave(delta)
 	for entry in _respawns:

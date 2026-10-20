@@ -6,7 +6,7 @@ extends CanvasLayer
 enum Mode { CLOSED, PAUSE, RESULT }
 enum Page { MAIN, CONTROLS, CONFIRM }
 
-const PAUSE_ITEMS: Array[String] = ["Weiter", "Steuerung", "Neustart", "Hauptmenue"]
+const PAUSE_ITEMS: Array[String] = ["Weiter", "Steuerung", "Musik", "Neustart", "Hauptmenue"]
 const RESULT_ITEMS: Array[String] = ["Neustart", "Hauptmenue"]
 const INPUT_GRACE := 0.5
 
@@ -101,6 +101,8 @@ func _update_main() -> void:
 			close()
 		"Steuerung":
 			page = Page.CONTROLS
+		"Musik":
+			Music.set_enabled(not Music.enabled)
 		"Neustart":
 			_ask("restart")
 		"Hauptmenue":
@@ -158,7 +160,10 @@ func _draw_menu() -> void:
 	var items := _items()
 	for i in items.size():
 		var rect := Rect2(Vector2(view.x * 0.5 - 160.0, top + i * 70.0), Vector2(320, 56))
-		UiKit.button(_canvas, rect, items[i], i == cursor)
+		var label := items[i]
+		if label == "Musik":
+			label = "Musik: %s" % ("An" if Music.enabled else "Aus")
+		UiKit.button(_canvas, rect, label, i == cursor)
 	UiKit.text(_canvas, Vector2(0, view.y - 40.0), "Hoch/Runter waehlen, Kreuz oder Enter bestaetigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 

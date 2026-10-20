@@ -27,6 +27,8 @@ var elite := false
 ## Art der Elite (fire, shield, storm, frost), siehe EnemyTypes.ELITE_KINDS.
 var elite_kind := ""
 var shield := 0.0
+## Vom Director gesetzt: false, wenn der Gegner ausserhalb des Bildes ist (spart Zeichenzeit).
+var on_screen := true
 var max_shield := 0.0
 var body_scale := 1.0
 var players: Array[Player] = []
@@ -167,7 +169,7 @@ func _physics_process(delta: float) -> void:
 	_update_attack(delta)
 	_update_elite(delta)
 	move_and_slide()
-	queue_redraw()
+	_maybe_redraw()
 
 
 func _frozen_physics(delta: float) -> void:
@@ -181,6 +183,15 @@ func _frozen_physics(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, 0.0, 2500.0 * delta)
 		velocity.y = minf(velocity.y + GRAVITY * delta, MAX_FALL_SPEED)
 	move_and_slide()
+	_maybe_redraw()
+
+
+## Zeichnet nur, was im Bild ist, und bei sehr vielen Gegnern nur jeden zweiten Frame.
+func _maybe_redraw() -> void:
+	if not on_screen:
+		return
+	if siblings.size() > 45 and (Engine.get_physics_frames() + get_instance_id()) % 2 == 0:
+		return
 	queue_redraw()
 
 
