@@ -39,7 +39,8 @@ const HOOK_MAX_TIME := 0.7
 const DROP_TIME := 0.25
 const CLIMB_SPEED := 300.0
 const DEPLOY_TIME := 0.2
-const WORLD_MASK := (1 << 0) | (1 << 5)
+# Ebene 8: unsichtbare Waende, die nur Spieler aufhalten (z.B. vor dem Boss), Geschosse fliegen durch.
+const WORLD_MASK := (1 << 0) | (1 << 5) | (1 << 7)
 
 var player_index := 1
 var class_id := "roomba"
@@ -63,6 +64,8 @@ var hook_active := false
 var hook_anchor := Vector2.ZERO
 ## Schuettel-Aufladung der Dose (0 bis 1), solange Schiessen gehalten wird.
 var shake_charge := 0.0
+## Zug eines Laufbands in px/s (negativ = nach links), wirkt nur am Boden.
+var belt_push := 0.0
 # Dauerhafte Boni aus Perks und Items (Anteile, ausser max_hp als fester Wert).
 var mods := {"damage": 0.0, "fire_rate": 0.0, "speed": 0.0, "max_hp": 0.0, "dmg_taken": 0.0,
 	"dash_cd": 0.0, "pickup": 0.0, "gold": 0.0, "ability_cd": 0.0, "crit": 0.0, "kill_heal": 0.0,
@@ -267,6 +270,8 @@ func _physics_process(delta: float) -> void:
 		_process_movement(delta, move)
 
 	move_and_slide()
+	if belt_push != 0.0 and is_on_floor():
+		move_and_collide(Vector2(belt_push * delta, 0.0))
 	var still := (is_on_floor() and absf(velocity.x) < 30.0) or (_clinging and absf(velocity.y) < 30.0)
 	if still and _dash_time_left <= 0.0 and not hook_active:
 		_stand_time += delta
@@ -284,7 +289,7 @@ func _update_timers(delta: float) -> void:
 	_wall_lock = maxf(0.0, _wall_lock - delta)
 	_hook_cooldown = maxf(0.0, _hook_cooldown - delta)
 	_drop_time = maxf(0.0, _drop_time - delta)
-	collision_mask = (1 << 0) if _drop_time > 0.0 else WORLD_MASK
+	collision_mask = ((1 << 0) | (1 << 7)) if _drop_time > 0.0 else WORLD_MASK
 	_switch_cooldown = maxf(0.0, _switch_cooldown - delta)
 	_art_time += delta
 	_fire_flash = maxf(0.0, _fire_flash - delta * 6.0)

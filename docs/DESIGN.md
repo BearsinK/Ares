@@ -262,10 +262,11 @@ Umgesetzt und automatisch getestet:
 - Gegner: Rammbock (Ansturm) und Mörser (Flächenschlag) zusätzlich, Elites (größer, zäher, mehr Beute), Reparaturkits
 - Perks mit Procs: Crit, Heilung pro Kill, Durchschlag, Kettenexplosion, Fähigkeits-Ladezeit
 - Treffer-Rückmeldung: Wackeln, roter Rand, Hitstop
+- Endboss "Der Schmelzer" mit Laufband-Ofen, Hindernissen (Kiste, Stapel, Säge, Träger), Panzer/Kern-Mechanik, drei Phasen, Elementschwäche (Wasser, Eis)
 
 Noch offen:
 - Roomba saugt noch keine Beute-Kategorien (Müll als Munition), Drucker druckt noch keine Zusatzwaffen
-- Bosse (Bullet-Hell, Elementschwäche, Schwachpunkte, Laufband-Ofen), Elites mit Element und Mechanik (aktuell nur größer und zäher)
+- Weitere Bosse für die Zwischenbereiche, Boss-Balance durch echte Spieltests, Elites mit Element und Mechanik (aktuell nur größer und zäher)
 - Item-System mit Procs und Stacking, Team-Items (Kabelbaum u.a.)
 - Perma-Progression und Meta-Menü, Musik
 - Balancing durch Spieltests

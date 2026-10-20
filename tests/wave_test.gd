@@ -10,6 +10,7 @@ func _ready() -> void:
 	main = load("res://scenes/main.tscn").instantiate()
 	main.wave_duration = 3.0
 	main.max_waves = 2
+	main.boss_enabled = false
 	add_child(main)
 	_run.call_deferred()
 

@@ -32,7 +32,7 @@ const CLEAR_DELAY := 3.0
 const HEALTH_DROP_CHANCE := 0.07
 const HEALTH_DROP_HEAL := 0.25
 
-enum Phase { WAVE, CLEARING, SHOP, VICTORY }
+enum Phase { WAVE, CLEARING, SHOP, BOSS, VICTORY }
 
 ## Tests koennen diese Werte vor dem Einhaengen der Szene setzen.
 var use_dummies := false
@@ -43,6 +43,8 @@ var test_loadout := false
 ## Wellen: Dauer in Sekunden und Anzahl bis zum Sieg.
 var wave_duration := 120.0
 var max_waves := 10
+## Nach der letzten Welle folgt der Endboss. Ohne Boss endet der Lauf mit dem Sieg.
+var boss_enabled := true
 
 var players: Array[Player] = []
 var camera: CoopCamera
@@ -55,6 +57,8 @@ var enemy_projectiles: Node2D
 var pickups: Node2D
 var levelup_menu: LevelUpMenu
 var shop_menu: ShopMenu
+var boss: Boss
+var boss_arena: BossArena
 var pause_menu: PauseMenu
 
 var level := 1
@@ -71,6 +75,7 @@ var _respawns: Array[Dictionary] = []
 var _game_over_time := 0.0
 var _clear_time := 0.0
 var _blast_depth := 0
+var _arena_root: Node2D
 
 
 func _ready() -> void:
@@ -201,20 +206,65 @@ func _end_wave() -> void:
 
 
 func _open_shop() -> void:
-	if wave >= max_waves:
+	if wave >= max_waves and not boss_enabled:
 		phase = Phase.VICTORY
 		_game_over_time = 0.0
 		return
 	phase = Phase.SHOP
+	shop_menu.before_boss = wave >= max_waves
 	shop_menu.open(players, wave)
 
 
 func _on_shop_closed() -> void:
+	if wave >= max_waves:
+		_start_boss()
+		return
 	wave += 1
 	wave_time_left = wave_duration
 	director.start_wave(wave)
 	phase = Phase.WAVE
 	director.enabled = director_enabled
+
+
+## Endkampf: Die Arena wird zur Ofenhalle mit Laufband, der Boss tritt auf.
+func _start_boss() -> void:
+	phase = Phase.BOSS
+	director.enabled = false
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy is Enemy:
+			enemy.queue_free()
+	for bullet in enemy_projectiles.get_children():
+		bullet.queue_free()
+	for pickup in pickups.get_children():
+		pickup.queue_free()
+	_clear_arena()
+	_build_arena(true)
+	boss_arena = BossArena.new()
+	add_child(boss_arena)
+	boss_arena.setup(self, players)
+	boss = boss_arena.boss
+	boss.died.connect(_on_boss_died)
+	for i in players.size():
+		var player := players[i]
+		player.global_position = Vector2(1650.0 + i * 120.0, FLOOR_Y - float(player.stats.size.y) * 0.5 - 2.0)
+		player.velocity = Vector2.ZERO
+		if player.downed:
+			player.revive(0.6)
+		else:
+			player.hp = minf(player.max_health(), player.hp + player.max_health() * 0.4)
+		player.iframes = 1.5
+	camera.bias = Vector2(350.0, -80.0)
+	camera.max_zoom = 0.8
+	camera.global_position = (players[0].global_position + players[1].global_position) * 0.5 + camera.bias
+	Sfx.play("levelup")
+
+
+func _on_boss_died() -> void:
+	phase = Phase.VICTORY
+	_game_over_time = 0.0
+	for player in players:
+		if player.downed:
+			player.revive(0.5)
 
 
 func _cycle_weapon(index: int) -> void:
@@ -430,7 +480,32 @@ func _on_dummy_died(pos: Vector2) -> void:
 	_respawns.append({"pos": pos, "t": DUMMY_RESPAWN_TIME})
 
 
-func _build_arena() -> void:
+func _clear_arena() -> void:
+	if _arena_root != null:
+		_arena_root.queue_free()
+		_arena_root = null
+
+
+func _build_arena(boss_mode := false) -> void:
+	_arena_root = Node2D.new()
+	add_child(_arena_root)
+	move_child(_arena_root, 0)
+	if boss_mode:
+		_build_boss_layout()
+	else:
+		_build_wave_layout()
+	var props := Props.new()
+	props.boss_mode = boss_mode
+	if not boss_mode:
+		props.shaft = Rect2(2640.0, 600.0, 200.0, 650.0)
+	_arena_root.add_child(props)
+	if backdrop == null:
+		backdrop = Backdrop.new()
+		add_child(backdrop)
+		move_child(backdrop, 0)
+
+
+func _build_wave_layout() -> void:
 	# Boden, Waende, Decke.
 	_add_block(Rect2(0.0, FLOOR_Y, ARENA_SIZE.x, 100.0), "floor")
 	_add_block(Rect2(-100.0, -100.0, 100.0, ARENA_SIZE.y + 200.0), "wall")
@@ -461,11 +536,38 @@ func _build_arena() -> void:
 	_add_block(Rect2(2840.0, 600.0, 40.0, 650.0), "wall")
 	_add_block(Rect2(2570.0, 600.0, 340.0, 24.0), "platform")
 
-	var props := Props.new()
-	props.shaft = Rect2(2640.0, 600.0, 200.0, 650.0)
-	add_child(props)
-	backdrop = Backdrop.new()
-	add_child(backdrop)
+
+## Ofenhalle: links die Verbrennungsgrube, ueber den Boden laeuft das Band.
+## Die Plattformen liegen ueber dem Band und sind der Ausweichweg.
+func _build_boss_layout() -> void:
+	_add_block(Rect2(BossArena.PIT_WIDTH, FLOOR_Y, ARENA_SIZE.x - BossArena.PIT_WIDTH, 100.0), "floor")
+	_add_block(Rect2(0.0, FLOOR_Y + 90.0, BossArena.PIT_WIDTH, 60.0), "floor")
+	_add_block(Rect2(-100.0, -100.0, 100.0, ARENA_SIZE.y + 200.0), "wall")
+	_add_block(Rect2(ARENA_SIZE.x, -100.0, 100.0, ARENA_SIZE.y + 200.0), "wall")
+	_add_block(Rect2(0.0, -100.0, ARENA_SIZE.x, 100.0), "ceiling")
+	# Der Boss steht in seiner Nische: eine unsichtbare Wand haelt die Spieler davor.
+	var wall := StaticBody2D.new()
+	wall.collision_layer = 1 << 7
+	wall.collision_mask = 0
+	wall.position = Vector2(BossArena.BOSS_WALL_X + 100.0, ARENA_SIZE.y * 0.5)
+	var wall_shape := CollisionShape2D.new()
+	var wall_box := RectangleShape2D.new()
+	wall_box.size = Vector2(200.0, ARENA_SIZE.y + 400.0)
+	wall_shape.shape = wall_box
+	wall.add_child(wall_shape)
+	_arena_root.add_child(wall)
+	var platforms: Array[Rect2] = [
+		Rect2(360.0, 1070.0, 300.0, 24.0),
+		Rect2(930.0, 1070.0, 300.0, 24.0),
+		Rect2(1500.0, 1070.0, 300.0, 24.0),
+		Rect2(2070.0, 1070.0, 300.0, 24.0),
+		Rect2(650.0, 890.0, 260.0, 24.0),
+		Rect2(1230.0, 890.0, 260.0, 24.0),
+		Rect2(1810.0, 890.0, 260.0, 24.0),
+		Rect2(2380.0, 890.0, 220.0, 24.0),
+	]
+	for rect in platforms:
+		_add_block(rect, "platform")
 
 
 func _add_block(rect: Rect2, kind := "platform") -> void:
@@ -488,7 +590,7 @@ func _add_block(rect: Rect2, kind := "platform") -> void:
 	art.kind = kind
 	art.size = rect.size
 	body.add_child(art)
-	add_child(body)
+	_arena_root.add_child(body)
 
 
 func _setup_camera() -> void:

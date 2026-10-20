@@ -46,7 +46,10 @@ func _draw_hud() -> void:
 	_draw_flash(view)
 	_draw_player_panel(main.players[0], Vector2(24.0, 16.0))
 	_draw_player_panel(main.players[1], Vector2(view.x - PANEL_WIDTH - 24.0, 16.0))
-	if not main.shop_menu.is_open and not main.levelup_menu.is_open:
+	if main.boss != null and is_instance_valid(main.boss):
+		if not main.shop_menu.is_open and not main.levelup_menu.is_open:
+			_draw_boss_bar(view, main.boss)
+	elif not main.shop_menu.is_open and not main.levelup_menu.is_open:
 		_draw_top_center(view)
 	_draw_xp_bar(view)
 	_draw_debug(view)
@@ -156,6 +159,31 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 		_text(origin + Vector2(0, 108), "  ".join(fw_parts), 13, Color(0.55, 0.92, 0.7))
 	if player.downed:
 		_text(origin + Vector2(0, 108), "AM BODEN: Partner haelt Interagieren", 14, Color(1.0, 0.5, 0.4))
+
+
+func _draw_boss_bar(view: Vector2, boss: Boss) -> void:
+	var width := 620.0
+	var bar := Rect2(Vector2(view.x * 0.5 - width * 0.5, 44.0), Vector2(width, 22.0))
+	var panel := Rect2(bar.position + Vector2(-16.0, -38.0), Vector2(width + 32.0, 104.0))
+	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.78), 12.0)
+	Art.rrect_line(_canvas, panel, Color(1.0, 0.45, 0.2, 0.6), 12.0, 2.0)
+	_text(Vector2(0, 28), boss.boss_name, 22, Color(1.0, 0.75, 0.35), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	Art.rrect(_canvas, bar, Color(0.1, 0.1, 0.14), 7.0)
+	var fraction := clampf(boss.hp / Boss.MAX_HP, 0.0, 1.0)
+	var top := Color(1.0, 0.75, 0.3) if boss.open else Color(0.75, 0.78, 0.9)
+	var bottom := Color(0.95, 0.35, 0.15) if boss.open else Color(0.45, 0.48, 0.6)
+	if fraction > 0.0:
+		Art.rrect_grad(_canvas, Rect2(bar.position, Vector2(maxf(bar.size.x * fraction, 8.0), bar.size.y)), top, bottom, 7.0)
+	for mark in [0.33, 0.66]:
+		_canvas.draw_line(Vector2(bar.position.x + bar.size.x * mark, bar.position.y), Vector2(bar.position.x + bar.size.x * mark, bar.end.y), Color(0, 0, 0, 0.6), 3.0)
+	Art.rrect_line(_canvas, bar, Color(1, 1, 1, 0.35), 7.0, 1.5)
+	var status := "PANZER GESCHLOSSEN: nur 25 Prozent Schaden" if not boss.open else "KERN OFFEN: voller Schaden"
+	if boss.is_invulnerable() and not boss.dying:
+		status = "unverwundbar"
+	_text(Vector2(0, 78), "%s     Schwach gegen Wasser und Eis" % status, 14, Color(0.85, 0.87, 0.95), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	if boss.banner_time > 0.0:
+		var alpha := clampf(boss.banner_time / 0.4, 0.0, 1.0)
+		_text(Vector2(0, view.y * 0.3), boss.banner, 46, Color(1.0, 0.8, 0.3, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
 func _draw_top_center(view: Vector2) -> void:

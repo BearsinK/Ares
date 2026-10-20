@@ -9,6 +9,8 @@ extends Camera2D
 @export var max_zoom := 1.0
 
 var targets: Array[Node2D] = []
+## Verschiebt den Bildmittelpunkt, z.B. nach rechts im Bosskampf.
+var bias := Vector2.ZERO
 
 var _shake := 0.0
 
@@ -36,6 +38,7 @@ func _process(delta: float) -> void:
 		if target is Player and not target.downed:
 			look += clampf(target.velocity.x * 0.18, -110.0, 110.0)
 	center.x += look / targets.size()
+	center += bias
 	var needed := (max_pos - min_pos) + margin * 2.0
 	var view := get_viewport_rect().size
 	var zoom_value := clampf(minf(view.x / needed.x, view.y / needed.y), min_zoom, max_zoom)

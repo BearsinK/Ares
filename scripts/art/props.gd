@@ -6,6 +6,8 @@ extends Node2D
 const FLOOR_Y := 1250.0
 
 var shaft := Rect2()
+## Im Bosskampf entfallen Kisten, Foerderbaender und Dampf (das Laufband ist dann Teil des Kampfs).
+var boss_mode := false
 
 
 class Animated extends Node2D:
@@ -52,6 +54,9 @@ class Animated extends Node2D:
 
 func _ready() -> void:
 	z_index = -10
+	if boss_mode:
+		_add_embers()
+		return
 	var shaft_layer := Animated.new()
 	shaft_layer.props = self
 	shaft_layer.z_index = -9
@@ -131,6 +136,8 @@ func _add_embers() -> void:
 
 
 func _draw() -> void:
+	if boss_mode:
+		return
 	# Kisten, Faesser und Maschinen am Boden (rein dekorativ, ohne Kollision).
 	_machine(Vector2(560, FLOOR_Y), Vector2(90, 120), Color(0.26, 0.3, 0.42))
 	_crate(Vector2(930, FLOOR_Y), 62.0)

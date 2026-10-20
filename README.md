@@ -51,6 +51,7 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Sechs Gegnertypen: dazu Rammbock (kündigt einen Ansturm an, der Schaden macht, wenn man im Weg steht) und Mörser (Warnkreis am Boden, dann Einschlag). Ab etwa einer Minute erscheinen Elites: größer, zäher, goldene Aura, viel Beute und ein Reparaturkit
 - Reparaturkits (grünes Kreuz) heilen den Spieler, der sie braucht. Treffer erzeugen Kamerawackeln, roten Bildschirmrand und einen kurzen Hitstop
 - Dreizehn Perks mit Symbolen, darunter Glückschip (Crit), Notstrom (Heilung pro Kill), Durchschlag, Sprengkapsel (Kettenexplosionen) und Kühlkreislauf (Fähigkeit lädt schneller)
+- Endboss "Der Schmelzer" nach Welle 10 (nach einem letzten Shop): Die Halle wird zum Laufband-Ofen. Das Band zieht alles am Boden nach links in den Verbrennungsofen (Feuer, 30 Schaden). Der Boss rechts schickt Hindernisse aufs Band: Kisten und Stapel (springen, mit Anlauf), rollende Sägen (springen) und hängende Träger (drunter durchlaufen). Plattformen über dem Band sind sicher. Dazu Feuersalven mit Zielstrahl, Ascheregen mit Warnkreisen und ab Phase 3 Schweißdrohnen. Sein Panzer nimmt nur 25 Prozent Schaden, nur im Vent (Kern offen) volle. Wasser +50 Prozent, Eis +25 Prozent, Feuer -40 Prozent. Bei 66 und 33 Prozent Leben wechselt die Phase, das Band wird schneller
 - Pausemenü (Weiter, Steuerung, Neustart, Hauptmenü mit Rückfrage) und Ergebnisbildschirm nach Game Over oder Sieg
 - Spieler-Leben mit Unverwundbarkeit nach Treffer, Wiederbeleben durch Halten von Interagieren (Kreis), Game Over wenn beide am Boden liegen
 
@@ -86,6 +87,7 @@ godot --headless --path . res://tests/hexapod_test.tscn
 godot --headless --path . res://tests/menu_test.tscn
 godot --headless --path . res://tests/ability_test.tscn
 godot --headless --path . res://tests/loop_test.tscn
+godot --headless --path . res://tests/boss_test.tscn
 ```
 
 Die Tests simulieren Eingaben und prüfen Bewegung, Waffen, Gegnerangriffe, Wiederbeleben, Game Over und den Director.
