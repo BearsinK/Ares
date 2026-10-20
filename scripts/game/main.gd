@@ -94,6 +94,7 @@ func _ready() -> void:
 	pickups = Node2D.new()
 	add_child(pickups)
 	fx = Fx.new()
+	fx.floor_y = FLOOR_Y
 	add_child(fx)
 	_spawn_players()
 	_setup_camera()

@@ -92,6 +92,23 @@ func _run() -> void:
 	await _frames(60)
 	_check(get_tree().get_nodes_in_group("dash_ghosts").is_empty(), "Nachbilder verschwinden wieder")
 
+	# Gegner zerfallen beim Tod in Truemmerteile und zucken bei Treffern.
+	var victim: Enemy = main.director.spawn("walker", p1.global_position + Vector2(300.0, 0.0))
+	victim._cooldown = 99.0
+	await _frames(5)
+	victim.take_damage(1.0, p1, Vector2.RIGHT, "")
+	_check(victim._hurt_time > 0.2, "Treffer loest Zucken aus")
+	var gibs_before := 0
+	for item in Fx.instance._items:
+		if item.type == "gib":
+			gibs_before += 1
+	victim.take_damage(9999.0, p1, Vector2.RIGHT, "")
+	var gibs_after := 0
+	for item in Fx.instance._items:
+		if item.type == "gib":
+			gibs_after += 1
+	_check(gibs_after > gibs_before + 3, "Tod erzeugt Truemmerteile (%d)" % (gibs_after - gibs_before))
+
 	# Dash waehrend des Hakens verbraucht keine Ladung.
 	p1.hook_active = true
 	var charges := p1.dash_charges

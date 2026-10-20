@@ -53,6 +53,11 @@ var _charge_dir := 1.0
 var _elite_timer := 2.0
 var _elite_warn := 0.0
 var _charge_hit: Array[Player] = []
+var _hurt_time := 0.0
+var _fire_flash := 0.0
+var _squash := 0.0
+var _fall_speed := 0.0
+var _was_grounded := false
 
 
 func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_players: Array[Player], new_elite := false, new_elite_kind := "") -> void:
@@ -116,6 +121,7 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 			Sfx.play("freeze")
 	hp -= amount
 	_flash = 0.08
+	_hurt_time = 0.25
 	velocity += direction * 140.0 * float(data.knockback)
 	Sfx.play("hit")
 	if Fx.instance:
@@ -137,14 +143,33 @@ func _die() -> void:
 	Sfx.play("kill")
 	if Fx.instance:
 		Fx.instance.spark(global_position, data.color, 36 if elite else 14, 520.0 if elite else 380.0)
+		_spawn_gibs()
 		if elite:
 			Fx.instance.explosion(global_position, 90.0, Color(1.0, 0.85, 0.3))
 	died.emit(self)
 	queue_free()
 
 
+## Truemmer beim Tod: Platten in Gegnerfarbe, Raeder und Schrauben fliegen davon.
+func _spawn_gibs() -> void:
+	if not on_screen or Fx.instance == null:
+		return
+	var r := radius()
+	var plates := (7 if elite else 4) + (3 if kind == "brute" else 0)
+	for i in plates:
+		Fx.instance.gib(global_position, Color(data.color).darkened(randf_range(0.0, 0.35)), "plate", randf_range(0.5, 0.9) * r, 420.0 + r * 4.0)
+	if kind != "flyer":
+		for i in 2:
+			Fx.instance.gib(global_position + Vector2((i * 2 - 1) * r * 0.5, r * 0.4), Color.WHITE, "wheel", r * 0.8, 300.0)
+	for i in 5:
+		Fx.instance.gib(global_position, Color.WHITE, "bolt", 6.0, 500.0)
+
+
 func _physics_process(delta: float) -> void:
 	_time += delta
+	_hurt_time = maxf(0.0, _hurt_time - delta)
+	_fire_flash = maxf(0.0, _fire_flash - delta * 5.0)
+	_squash = maxf(0.0, _squash - delta * 6.0)
 	_flash = maxf(0.0, _flash - delta)
 	_slam_flash = maxf(0.0, _slam_flash - delta)
 	_cooldown = maxf(0.0, _cooldown - delta)
@@ -170,7 +195,16 @@ func _physics_process(delta: float) -> void:
 	_apply_separation(delta)
 	_update_attack(delta)
 	_update_elite(delta)
+	if not is_on_floor():
+		_fall_speed = maxf(_fall_speed, velocity.y)
 	move_and_slide()
+	if is_on_floor() and not _was_grounded and _fall_speed > 350.0 and data.movement == "ground":
+		_squash = clampf(_fall_speed / 900.0, 0.3, 1.0)
+		if Fx.instance and on_screen:
+			Fx.instance.spark(global_position + Vector2(0.0, radius()), Color(0.75, 0.77, 0.82, 0.7), 3, 120.0)
+	if is_on_floor():
+		_fall_speed = 0.0
+	_was_grounded = is_on_floor()
 	_maybe_redraw()
 
 
@@ -360,6 +394,8 @@ func _update_charge(delta: float) -> void:
 		_state = State.COOLDOWN
 		_cooldown = float(data.cooldown)
 		velocity.x *= 0.2
+		if Fx.instance and on_screen:
+			Fx.instance.spark(global_position + Vector2(_charge_dir * radius() * 0.6, radius() * 0.9), Color(0.8, 0.78, 0.72, 0.8), 8, 220.0)
 
 
 func _execute_attack() -> void:
@@ -370,10 +406,12 @@ func _execute_attack() -> void:
 		var lead := _target.velocity * 0.35 if _target != null else Vector2.ZERO
 		var spot := (_target.global_position if _target != null else global_position + _aim * 300.0) + Vector2(lead.x, 0.0)
 		strike_requested.emit(self, spot, float(data.strike_radius), float(data.strike_delay), damage)
+		_fire_flash = 1.0
 		return
 	if data.attack == "ranged":
 		Sfx.play("enemy_shoot")
 		fire_projectile.emit(self, global_position + _aim * (radius() + 6.0), _aim, float(data.projectile_speed), damage)
+		_fire_flash = 1.0
 		return
 
 	_slam_flash = 0.12
@@ -401,10 +439,14 @@ func _draw() -> void:
 	var charging := _state == State.CHARGE
 	if elite:
 		_draw_elite_aura(r)
+	var grow := 1.0 - pow(1.0 - clampf(_time / 0.3, 0.0, 1.0), 3.0)
 	RobotArt.draw_enemy(self, kind, {
 		"facing": _facing, "aim": _aim, "t": _time, "walk": _walk_phase,
 		"flash": _flash > 0.0, "windup": windup, "slam": _slam_flash > 0.0 or charging,
-	}, Vector2.ZERO, body_scale)
+		"vx": velocity.x, "grounded": is_on_floor(), "hurt": _hurt_time / 0.25, "fire": _fire_flash,
+		"hp_frac": hp / max_hp, "foot": float(data.radius),
+		"squash": Vector2(1.0 + 0.2 * _squash, 1.0 - 0.24 * _squash),
+	}, Vector2.ZERO, body_scale * maxf(grow, 0.05))
 	if elite:
 		_draw_crown(r)
 	if elite or (hp < max_hp and (kind == "brute" or hp < max_hp * 0.99)):

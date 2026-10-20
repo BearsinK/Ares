@@ -8,6 +8,8 @@ const MAX_ITEMS := 500
 ## Letzte Instanz, damit Gegner und Pickups Effekte ohne feste Verdrahtung erzeugen koennen.
 static var instance: Fx = null
 
+## Hoehe des Bodens fuer Truemmerteile (wird von der Hauptszene gesetzt).
+var floor_y := 1250.0
 var _items: Array[Dictionary] = []
 
 
@@ -39,6 +41,19 @@ func spark(pos: Vector2, color: Color, count := 6, speed := 260.0) -> void:
 		})
 
 
+## Truemmerteil eines zerstoerten Roboters. shape: plate, wheel oder bolt.
+func gib(pos: Vector2, color: Color, shape: String, size: float, speed: float) -> void:
+	if _items.size() >= MAX_ITEMS - 40:
+		return
+	var angle := randf_range(-PI * 0.95, -PI * 0.05)
+	var life := randf_range(0.9, 1.5)
+	_items.append({
+		"type": "gib", "pos": pos, "vel": Vector2(cos(angle), sin(angle)) * randf_range(0.4, 1.0) * speed,
+		"rot": randf() * TAU, "spin": randf_range(-14.0, 14.0), "t": life, "max": life, "color": color,
+		"shape": shape, "size": size,
+	})
+
+
 func muzzle(pos: Vector2, dir: Vector2, color: Color) -> void:
 	_items.append({"type": "muzzle", "pos": pos, "dir": dir, "t": 0.06, "max": 0.06, "color": color})
 
@@ -64,6 +79,16 @@ func _process(delta: float) -> void:
 			item.vel *= 0.9
 		elif item.type == "number":
 			item.pos.y -= 70.0 * delta
+		elif item.type == "gib":
+			item.vel.y += 1800.0 * delta
+			item.pos += item.vel * delta
+			item.rot += item.spin * delta
+			var rest: float = floor_y - float(item.size) * 0.5
+			if item.pos.y > rest:
+				item.pos.y = rest
+				item.vel.y *= -0.35
+				item.vel.x *= 0.65
+				item.spin *= 0.5
 	_items = _items.filter(func(item: Dictionary) -> bool: return item.t > 0.0)
 	queue_redraw()
 
@@ -79,6 +104,24 @@ func _draw() -> void:
 			"number":
 				color.a = fade
 				draw_string(ThemeDB.fallback_font, item.pos, item.text, HORIZONTAL_ALIGNMENT_CENTER, -1, item.size, color)
+			"gib":
+				var alpha := clampf(fade * 3.0, 0.0, 1.0)
+				var size: float = item.size
+				var rot: float = item.rot
+				var axis := Vector2(cos(rot), sin(rot))
+				var side := axis.orthogonal()
+				match item.shape:
+					"wheel":
+						draw_circle(item.pos, size * 0.5, Color(0.12, 0.12, 0.16, alpha))
+						draw_line(item.pos - axis * size * 0.45, item.pos + axis * size * 0.45, Color(0.6, 0.55, 0.55, alpha), 1.5)
+					"bolt":
+						draw_circle(item.pos, size * 0.35, Color(0.75, 0.78, 0.85, alpha))
+					_:
+						var points := PackedVector2Array([item.pos + axis * size * 0.6 + side * size * 0.3, item.pos - axis * size * 0.6 + side * size * 0.3, item.pos - axis * size * 0.6 - side * size * 0.3, item.pos + axis * size * 0.6 - side * size * 0.3])
+						color.a = alpha
+						draw_colored_polygon(points, color)
+						points.append(points[0])
+						draw_polyline(points, Color(Art.OUTLINE, alpha), 1.5, true)
 			"muzzle":
 				color.a = fade
 				draw_circle(item.pos, 9.0, color)

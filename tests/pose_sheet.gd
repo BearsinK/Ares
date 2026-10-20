@@ -52,6 +52,9 @@ func _printer_poses() -> Array:
 
 func _draw() -> void:
 	var cls := OS.get_environment("POSE_CLASS") if OS.get_environment("POSE_CLASS") != "" else "hexapod"
+	if cls == "enemies":
+		_draw_enemy_sheet()
+		return
 	if cls == "down":
 		_draw_down_sheet()
 		return
@@ -134,3 +137,30 @@ func _draw_down_sheet() -> void:
 			draw_line(Vector2(center.x - 150.0, floor_y), Vector2(center.x + 150.0, floor_y), Color(1, 1, 1, 0.25))
 			RobotArt.draw_player(self, classes[i], s, center, zoom)
 			draw_string(font, Vector2(center.x - 100.0, floor_y + 24.0), "%s %.1f" % [classes[i], amount], HORIZONTAL_ALIGNMENT_CENTER, 200.0, 18, Color.WHITE)
+
+
+## Alle Gegner in ihren Zustaenden: eine Zeile pro Typ.
+func _draw_enemy_sheet() -> void:
+	var font := ThemeDB.fallback_font
+	var states := [
+		["Idle", {}],
+		["Lauf", {"vx": 150.0, "walk": 2.0}],
+		["Vorwarnung", {"windup": 0.8}],
+		["Angriff", {"slam": true}],
+		["Schuss", {"fire": 1.0}],
+		["Treffer", {"hurt": 1.0, "flash": true}],
+		["Wenig Leben", {"hp_frac": 0.15}],
+		["Landung", {"squash": Vector2(1.2, 0.76)}],
+	]
+	var kinds := ["walker", "shooter", "flyer", "charger", "mortar", "brute"]
+	for row in kinds.size():
+		var data: Dictionary = EnemyTypes.get_type(kinds[row])
+		for col in states.size():
+			var s := {"facing": 1.0, "aim": Vector2(1, -0.2), "t": 1.3, "walk": 0.0, "flash": false, "windup": -1.0, "slam": false,
+				"vx": 0.0, "grounded": true, "hurt": 0.0, "fire": 0.0, "hp_frac": 1.0, "foot": float(data.radius), "squash": Vector2.ONE}
+			for key in states[col][1]:
+				s[key] = states[col][1][key]
+			var center := Vector2(110.0 + col * 195.0, 85.0 + row * 145.0)
+			RobotArt.draw_enemy(self, kinds[row], s, center, 2.0)
+			if row == 0:
+				draw_string(font, center + Vector2(-90, -60), states[col][0], HORIZONTAL_ALIGNMENT_CENTER, 180.0, 16, Color.WHITE)

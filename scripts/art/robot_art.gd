@@ -724,7 +724,20 @@ static func _printer(c: CanvasItem, s: Dictionary) -> void:
 
 static func draw_enemy(c: CanvasItem, kind: String, s: Dictionary, offset := Vector2.ZERO, zoom := 1.0) -> void:
 	var facing: float = s.facing
-	c.draw_set_transform(offset, 0.0, Vector2(facing * zoom, zoom))
+	var hurt := float(s.get("hurt", 0.0))
+	var vx := float(s.get("vx", 0.0))
+	var flying := kind == "flyer"
+	var grounded := bool(s.get("grounded", true)) and not flying
+	# Neigung mit der Fahrt (Flieger staerker), Zurueckzucken bei Treffern.
+	var tilt := clampf(vx / 900.0, -0.12, 0.12) * (2.0 if flying else 1.0) - facing * hurt * 0.16
+	var squash: Vector2 = s.get("squash", Vector2.ONE)
+	var foot := float(s.get("foot", 14.0))
+	var pivot := Vector2(0.0, foot * zoom * (1.0 - squash.y)) if not flying else Vector2.ZERO
+	# Gangwippen und Stoss nach hinten beim Treffer.
+	var speed_factor := clampf(absf(vx) / 150.0, 0.0, 1.0) if grounded else 0.0
+	var step := absf(sin(float(s.get("walk", 0.0)) * 0.5)) * 1.4 * speed_factor * zoom
+	var hit_shift := Vector2(-facing * 3.0 * hurt, 0.0) * zoom
+	c.draw_set_transform(offset + pivot + hit_shift + Vector2(0.0, -step), tilt, Vector2(facing * zoom * squash.x, zoom * squash.y))
 	match kind:
 		"walker":
 			_walker(c, s)
@@ -738,7 +751,30 @@ static func draw_enemy(c: CanvasItem, kind: String, s: Dictionary, offset := Vec
 			_charger(c, s)
 		"mortar":
 			_mortar(c, s)
+	# Schwer beschaedigt: Rauch und Funken.
+	var low := 1.0 - clampf(float(s.get("hp_frac", 1.0)) / 0.35, 0.0, 1.0)
+	if low > 0.0:
+		var t := float(s.t)
+		for k in 2:
+			var life := fposmod(t * 1.1 + k * 0.5, 1.0)
+			c.draw_circle(Vector2(sin(t * 3.0 + k) * 3.0, -foot * 0.6 - life * 16.0), 2.0 + life * 3.5, Color(0.2, 0.2, 0.23, 0.5 * (1.0 - life) * low))
+		if low > 0.4 and fmod(t + float(s.get("walk", 0.0)) * 0.01, 0.9) < 0.07:
+			var spark_at := Vector2(foot * 0.3, -foot * 0.4)
+			c.draw_line(spark_at, spark_at + Vector2(5, -4), Color(1.0, 0.85, 0.4), 1.5, true)
+			c.draw_line(spark_at + Vector2(5, -4), spark_at + Vector2(3, 1), Color(1.0, 0.85, 0.4), 1.5, true)
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Muendungsblitz: Stern an einem Punkt (lokale Koordinaten), fire 0 bis 1.
+static func _flash_star(c: CanvasItem, at: Vector2, fire: float, color: Color) -> void:
+	if fire <= 0.3:
+		return
+	var star := PackedVector2Array()
+	var rot := randf() * TAU
+	for k in 8:
+		var ang := rot + k * TAU / 8.0
+		star.append(at + Vector2(cos(ang), sin(ang)) * (7.0 if k % 2 == 0 else 2.5) * fire)
+	c.draw_colored_polygon(star, color)
 
 
 static func _tint(color: Color, s: Dictionary) -> Color:
@@ -777,6 +813,9 @@ static func _walker(c: CanvasItem, s: Dictionary) -> void:
 	Art.bar(c, hand, tip, 3.0, _tint(Color(0.9, 0.3, 0.25), s))
 	if windup >= 0.0:
 		Art.glow(c, tip, 7.0 + 6.0 * windup, Color(1.0, 0.3, 0.2))
+	if bool(s.slam):
+		# Schlagbogen des Stocks.
+		c.draw_arc(shoulder, 21.0, -1.9, 1.5, 12, Color(1.0, 0.9, 0.7, 0.75), 2.5, true)
 
 
 static func _shooter(c: CanvasItem, s: Dictionary) -> void:
@@ -793,13 +832,15 @@ static func _shooter(c: CanvasItem, s: Dictionary) -> void:
 	Art.panel(c, Rect2(-10, -9, 20, 17), body, 7.0)
 	Art.rrect(c, Rect2(-10, 1, 20, 3), _tint(Color(1.0, 0.65, 0.15), s), 1.0)
 	var aim_local := Vector2(float(s.aim.x) * float(s.facing), float(s.aim.y))
-	var barrel_tip := Vector2(0, -2) + aim_local * 19.0
+	var fire := float(s.get("fire", 0.0))
+	var barrel_tip := Vector2(0, -2) + aim_local * (19.0 - 4.0 * fire)
 	Art.bar(c, Vector2(0, -2), barrel_tip, 5.0, _tint(Color(0.35, 0.36, 0.46), s))
 	var lens := Color(1.0, 0.25 + 0.4 * (1.0 - maxf(windup, 0.0)), 0.2)
 	Art.disc(c, Vector2(3, -4), 4.5, Color(0.1, 0.05, 0.08))
 	Art.led(c, Vector2(3, -4), 3.0, lens, true)
 	if windup >= 0.0:
 		Art.glow(c, barrel_tip, 8.0 + 8.0 * windup, Color(1.0, 0.3, 0.3))
+	_flash_star(c, barrel_tip + aim_local * 3.0, fire, Color(1.0, 0.6, 0.3, 0.9))
 	c.draw_line(Vector2(-6, -9), Vector2(-8, -14), Color(0.6, 0.6, 0.7), 1.5, true)
 	Art.led(c, Vector2(-8, -14), 1.3, Color(1.0, 0.3, 0.2), fmod(t, 1.0) < 0.5)
 
@@ -824,9 +865,10 @@ static func _flyer(c: CanvasItem, s: Dictionary) -> void:
 	Art.disc(c, Vector2(5, -0.5), 3.8, Color(0.08, 0.04, 0.06))
 	Art.led(c, Vector2(5, -0.5), 2.6, Color(1.0, 0.25 + 0.5 * (1.0 - maxf(windup, 0.0)), 0.15), true)
 	Art.glow(c, Vector2(-1, 9), 6.0 + sin(t * 30.0) * 1.5, Color(0.5, 0.8, 1.0))
+	var aim_local := Vector2(float(s.aim.x) * float(s.facing), float(s.aim.y))
 	if windup >= 0.0:
-		var aim_local := Vector2(float(s.aim.x) * float(s.facing), float(s.aim.y))
 		Art.glow(c, aim_local * 12.0, 7.0 + 6.0 * windup, Color(1.0, 0.3, 0.3))
+	_flash_star(c, aim_local * 14.0, float(s.get("fire", 0.0)), Color(1.0, 0.6, 0.3, 0.9))
 
 
 static func _charger(c: CanvasItem, s: Dictionary) -> void:
@@ -891,6 +933,8 @@ static func _mortar(c: CanvasItem, s: Dictionary) -> void:
 	var recoil := 0.0
 	if windup >= 0.0:
 		recoil = -4.0 * sin(windup * PI)
+	var fire := float(s.get("fire", 0.0))
+	recoil -= 6.0 * fire
 	var dir := Vector2(cos(angle), sin(angle))
 	var pivot := Vector2(4, -3)
 	var tip := pivot + dir * (24.0 + recoil)
@@ -898,6 +942,11 @@ static func _mortar(c: CanvasItem, s: Dictionary) -> void:
 	Art.bar(c, tip - dir * 4.0, tip, 10.0, dark)
 	if windup >= 0.0:
 		Art.glow(c, tip, 10.0 + 12.0 * windup, Color(1.0, 0.55, 0.25))
+	if fire > 0.0:
+		_flash_star(c, tip + dir * 4.0, fire, Color(1.0, 0.7, 0.3, 0.9))
+		for k in 3:
+			var life := 1.0 - fire
+			c.draw_circle(tip + dir * (6.0 + life * 10.0) + Vector2((k - 1) * 4.0 * life, -life * 12.0), 3.0 + life * 6.0, Color(0.75, 0.75, 0.8, 0.5 * fire))
 	# Rumpf mit Kopf.
 	Art.panel(c, Rect2(-14, -9, 26, 17), body, 6.0)
 	Art.rrect(c, Rect2(-14, 1, 26, 3), _tint(Color(1.0, 0.65, 0.15), s), 1.0)
