@@ -22,10 +22,17 @@ var arc_gravity := 0.0
 var collide_platforms := false
 var shaken := false
 var charge := 0.0
+## Verfolgungsrakete: Lenkrate in rad/s (0 = ungelenkt), Beschleunigung bis speed_max, Wucht beim Treffer.
+var homing := 0.0
+var accel := 0.0
+var speed_max := 0.0
+var push := 1.0
 
 var _hit_targets: Array[Node] = []
 var _velocity := Vector2.ZERO
 var _trail_timer := 0.0
+var _target: Node2D = null
+var _age := 0.0
 
 
 func _ready() -> void:
@@ -42,6 +49,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_age += delta
+	if homing > 0.0:
+		_steer(delta)
 	_velocity.y += arc_gravity * delta
 	position += _velocity * delta
 	if arc_gravity > 0.0:
@@ -56,7 +66,39 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 
 
+## Lenkt auf den naechsten Gegner vor der Rakete und beschleunigt bis zur Hoechstgeschwindigkeit.
+func _steer(delta: float) -> void:
+	if accel > 0.0:
+		var now := minf(_velocity.length() + accel * delta, speed_max if speed_max > 0.0 else speed)
+		_velocity = _velocity.normalized() * now
+	if _age < 0.12:
+		return
+	if _target == null or not is_instance_valid(_target) or _target.is_queued_for_deletion():
+		_target = null
+		var best := 1100.0
+		for enemy in get_tree().get_nodes_in_group("enemies"):
+			var offset: Vector2 = enemy.global_position - global_position
+			var distance := offset.length()
+			# Nur Gegner einigermassen in Flugrichtung, sonst dreht die Rakete Kreise.
+			if distance < best and offset.normalized().dot(_velocity.normalized()) > -0.15:
+				best = distance
+				_target = enemy
+	if _target != null:
+		var wanted := (_target.global_position - global_position).angle()
+		var diff := angle_difference(_velocity.angle(), wanted)
+		_velocity = _velocity.rotated(clampf(diff, -homing * delta, homing * delta))
+	direction = _velocity.normalized()
+	queue_redraw()
+	_trail_timer -= delta
+	if _trail_timer <= 0.0 and Fx.instance:
+		_trail_timer = 0.025
+		Fx.instance.spark(global_position - direction * 10.0, Color(1.0, 0.7, 0.3, 0.8), 1, 70.0)
+
+
 func _draw() -> void:
+	if homing > 0.0:
+		_draw_rocket()
+		return
 	if arc_gravity > 0.0:
 		_draw_can()
 		return
@@ -64,6 +106,20 @@ func _draw() -> void:
 	draw_line(-direction * streak, Vector2.ZERO, Color(color, 0.5), size * 1.2)
 	draw_circle(Vector2.ZERO, size, color)
 	draw_circle(Vector2.ZERO, size * 1.8, Color(color, 0.25))
+
+
+func _draw_rocket() -> void:
+	# Rakete: Rumpf mit Spitze, Leitwerk und Flamme, zeigt in Flugrichtung.
+	draw_set_transform(Vector2.ZERO, _velocity.angle())
+	var flame := 8.0 + 6.0 * absf(sin(_age * 40.0))
+	draw_colored_polygon(PackedVector2Array([Vector2(-size * 1.4, -size * 0.45), Vector2(-size * 1.4 - flame, 0.0), Vector2(-size * 1.4, size * 0.45)]), Color(1.0, 0.7, 0.2, 0.9))
+	draw_colored_polygon(PackedVector2Array([Vector2(-size * 1.4, -size * 0.25), Vector2(-size * 1.4 - flame * 0.6, 0.0), Vector2(-size * 1.4, size * 0.25)]), Color(1.0, 0.95, 0.7))
+	draw_rect(Rect2(-size * 1.4, -size * 0.55, size * 2.2, size * 1.1), Color(0.75, 0.78, 0.85))
+	draw_colored_polygon(PackedVector2Array([Vector2(size * 0.8, -size * 0.55), Vector2(size * 1.8, 0.0), Vector2(size * 0.8, size * 0.55)]), color)
+	draw_colored_polygon(PackedVector2Array([Vector2(-size * 1.4, -size * 0.55), Vector2(-size * 1.9, -size * 1.1), Vector2(-size * 0.8, -size * 0.55)]), color.darkened(0.2))
+	draw_colored_polygon(PackedVector2Array([Vector2(-size * 1.4, size * 0.55), Vector2(-size * 1.9, size * 1.1), Vector2(-size * 0.8, size * 0.55)]), color.darkened(0.2))
+	draw_set_transform(Vector2.ZERO)
+	draw_circle(Vector2.ZERO, size * 2.2, Color(color, 0.2))
 
 
 func _draw_can() -> void:
@@ -94,7 +150,7 @@ func _on_area_entered(area: Area2D) -> void:
 	if not area.has_method("take_damage") or area in _hit_targets:
 		return
 	_hit_targets.append(area)
-	area.take_damage(damage, shooter, direction, element)
+	area.take_damage(damage, shooter, direction * push, element)
 	hit.emit(self, global_position, area)
 	if pierce <= 0:
 		queue_free()

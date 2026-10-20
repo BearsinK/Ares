@@ -8,7 +8,7 @@ const POOL_SIZE := 16
 ## Lautstaerke einzelner Sounds (1.0 = unveraendert). Schuesse sind bewusst leiser,
 ## weil sie staendig vorkommen.
 const GAIN := {
-	"shoot": 0.4, "shoot_heavy": 0.55, "shotgun": 0.55, "rocket": 0.6, "beam": 0.35, "sniper": 0.6,
+	"shoot": 0.4, "shoot_rapid": 0.3, "shoot_heavy": 0.55, "shotgun": 0.55, "rocket": 0.6, "beam": 0.35, "sniper": 0.6,
 	"turret": 0.45, "turret_over": 0.45, "can_throw": 0.55, "enemy_shoot": 0.45, "drone": 0.3, "drone_shot": 0.3,
 	"hit": 0.55, "kill": 0.7, "shake": 0.6, "pop": 0.6,
 }
@@ -27,6 +27,7 @@ func _ready() -> void:
 		_players.append(player)
 
 	_streams["shoot"] = _synth(1100.0, 450.0, 0.07, "square", 0.22, 0.0)
+	_streams["shoot_rapid"] = _synth(1700.0, 1000.0, 0.035, "square", 0.18, 0.1)
 	_streams["shoot_heavy"] = _synth(500.0, 90.0, 0.22, "saw", 0.35, 0.3)
 	_streams["jump"] = _synth(280.0, 620.0, 0.12, "sine", 0.35, 0.0)
 	_streams["dash"] = _synth(700.0, 150.0, 0.16, "saw", 0.2, 0.7)

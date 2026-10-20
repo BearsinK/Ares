@@ -26,6 +26,8 @@ func _ready() -> void:
 			var deadzone := TRIGGER_DEADZONE if action in ["fire", "ability"] else STICK_DEADZONE
 			_add_action("p%d_%s" % [player, action], deadzone)
 
+	if SaveData.fullscreen_enabled() and DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	_bind_gamepad(1, 0)
 	_bind_gamepad(2, 1)
 	_bind_keyboard_p1()
@@ -39,8 +41,22 @@ func _ready() -> void:
 ## F11 schaltet zwischen Fenster und Vollbild um.
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
-		var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
+		toggle_fullscreen()
+
+
+func is_fullscreen() -> bool:
+	return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+
+
+## Vollbild an oder aus (Menue, F11) und merken fuer den naechsten Start. Im in den Godot-Editor
+## eingebetteten Spielfenster geht das nicht: dort im Game-Tab "Spiel einbetten" ausschalten.
+func set_fullscreen(on: bool) -> void:
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if on else DisplayServer.WINDOW_MODE_WINDOWED)
+	SaveData.set_fullscreen(on)
+
+
+func toggle_fullscreen() -> void:
+	set_fullscreen(not is_fullscreen())
 
 
 func _add_action(action: String, deadzone: float) -> void:

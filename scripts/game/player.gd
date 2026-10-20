@@ -96,6 +96,10 @@ var _aim_memory := 0.0
 var _mouse_timer := 0.0
 var _trail_timer := 0.0
 var _shine_timer := 0.0
+var _channel := 0.0
+var _laser_length := 600.0
+const LASER_RANGE := 640.0
+const LASER_COLORS: Array[Color] = [Color(0.3, 0.95, 1.0), Color(0.65, 1.0, 0.3)]
 var _shine_last := Vector2.ZERO
 var _wall_lock := 0.0
 var _slamming := false
@@ -179,6 +183,9 @@ func max_health() -> float:
 func move_speed() -> float:
 	var rolling := 1.7 if ability != null and ability.is_active("roll") else 1.0
 	var slowed := 0.6 if slow_time > 0.0 else 1.0
+	# Dauerstrahl haelt den Schuetzen fest (langsamer, solange er feuert).
+	if _channel > 0.05:
+		slowed *= float(Weapons.get_weapon(current_weapon_id()).get("slow", 1.0))
 	return float(stats.speed) * (1.0 + float(mods.speed)) * rolling * slowed
 
 
@@ -300,6 +307,7 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 		return
 	_update_aim(delta)
+	_update_laser()
 
 	var move := Input.get_axis(_prefix + "left", _prefix + "right")
 	if absf(move) > 0.1:
@@ -848,19 +856,21 @@ func current_weapon_id() -> String:
 
 
 ## Setzt das Elementmodul der aktiven Waffe (ersetzt ein vorhandenes).
-func set_module(element: String) -> void:
-	modules[weapon_index] = element
+func set_module(element: String, index := -1) -> void:
+	modules[weapon_index if index < 0 or index >= modules.size() else index] = element
 
 
-## Neue Waffe: freier Slot, sonst ersetzt sie die aktive Waffe (inklusive Modul).
-func add_weapon(weapon_id: String) -> void:
+## Neue Waffe: freier Slot, sonst ersetzt sie die Waffe in replace_index (Standard: die aktive), inklusive Modul.
+func add_weapon(weapon_id: String, replace_index := -1) -> void:
 	if weapons.size() < 3:
 		weapons.append(weapon_id)
 		modules.append("")
 		weapon_index = weapons.size() - 1
 	else:
-		weapons[weapon_index] = weapon_id
-		modules[weapon_index] = ""
+		var index := weapon_index if replace_index < 0 or replace_index >= weapons.size() else replace_index
+		weapons[index] = weapon_id
+		modules[index] = ""
+		weapon_index = index
 
 
 func current_module() -> String:
@@ -914,10 +924,24 @@ func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 		shake_charge = 0.0
 
 
+## 0 bis 1: wie lange ein Dauerstrahl schon gehalten wird (Schadensanstieg).
+func channel_ratio() -> float:
+	var ramp_time := float(Weapons.get_weapon(current_weapon_id()).get("ramp_time", 0.0))
+	return clampf(_channel / ramp_time, 0.0, 1.0) if ramp_time > 0.0 else 0.0
+
+
+func heat_level() -> float:
+	return _heat
+
+
 func _handle_fire(_delta: float) -> void:
 	if Input.is_action_just_pressed(_prefix + "weapon"):
 		_rotate_weapon()
 	var current := Weapons.get_weapon(current_weapon_id())
+	if current.has("ramp_time") and Input.is_action_pressed(_prefix + "fire") and not downed:
+		_channel = minf(_channel + _delta, float(current.ramp_time))
+	else:
+		_channel = maxf(0.0, _channel - _delta * 3.0)
 	if current.kind == "lob":
 		_handle_lob(current_weapon_id(), current, _delta)
 		return
@@ -1040,22 +1064,42 @@ func _draw() -> void:
 		_draw_downed(size)
 		return
 	_draw_marker(size, accent)
-	if _deploy_amount > 0.9 and weapon_has_sight():
-		_draw_sight()
+	_draw_laser()
 	if shake_charge > 0.0:
 		_draw_lob_preview(size)
 
 
-func weapon_has_sight() -> bool:
-	return bool(stats.stationary_fire) and Weapons.get_weapon(current_weapon_id()).kind == "hitscan"
+## Laserpointer jedes Spielers: Zielen ist schwer, der Strahl zeigt die Richtung bis zur ersten Wand.
+## P1 cyan, P2 gruen, damit man seinen eigenen erkennt und nichts mit den roten Gegner-Warnlinien verwechselt.
+func laser_color() -> Color:
+	return LASER_COLORS[player_index - 1]
 
 
-## Duenner Zielstrahl des aufgestellten Geschuetzes.
-func _draw_sight() -> void:
-	var from := _muzzle_offset() + aim_dir * 26.0
-	var pulse := 0.5 + 0.5 * sin(_art_time * 6.0)
-	draw_line(from, from + aim_dir * 520.0, Color(1.0, 0.3, 0.25, 0.1 + 0.06 * pulse), 1.5, true)
-	draw_circle(from + aim_dir * 520.0, 3.0, Color(1.0, 0.3, 0.25, 0.25))
+func _draw_laser() -> void:
+	var from := _muzzle_offset() + aim_dir * 18.0
+	var length := _laser_length
+	var color := laser_color()
+	var pulse := 0.8 + 0.2 * sin(_art_time * 9.0)
+	var boost := 1.0 + 0.7 * _fire_flash
+	var segments := 12
+	for i in segments:
+		var a := from + aim_dir * length * float(i) / float(segments)
+		var b := from + aim_dir * length * float(i + 1) / float(segments)
+		var fade := 1.0 - float(i) / float(segments)
+		draw_line(a, b, Color(color, (0.08 + 0.34 * fade * fade) * pulse * boost), 3.0 + 1.5 * fade, true)
+		draw_line(a, b, Color(1, 1, 1, 0.1 + 0.3 * fade * fade), 1.0, true)
+	var end := from + aim_dir * length
+	draw_circle(end, 4.5, Color(color, 0.8 * pulse))
+	draw_circle(end, 9.0, Color(color, 0.22))
+	draw_circle(end, 1.8, Color(1, 1, 1, 0.9))
+
+
+func _update_laser() -> void:
+	var space := get_world_2d().direct_space_state
+	var from := global_position + _muzzle_offset() + aim_dir * 18.0
+	var query := PhysicsRayQueryParameters2D.create(from, from + aim_dir * LASER_RANGE, 1 << 0)
+	var hit := space.intersect_ray(query)
+	_laser_length = LASER_RANGE if hit.is_empty() else from.distance_to(hit.position)
 
 
 func _draw_marker(size: Vector2, accent: Color) -> void:

@@ -46,6 +46,10 @@ func _draw_hud() -> void:
 		return
 	var view := _canvas.get_viewport_rect().size
 	_draw_flash(view)
+	if main.shop_menu.is_open:
+		# Der Shop zeigt Gold und Waffen selbst, die Spieleranzeige stoert dort nur.
+		_draw_xp_bar(view)
+		return
 	_draw_hints(view)
 	_draw_wave_banner(view)
 	_draw_wave_clear(view)

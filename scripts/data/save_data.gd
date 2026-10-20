@@ -33,7 +33,7 @@ static func _defaults() -> Dictionary:
 	return {
 		"chips": 0, "levels": {}, "classes": [], "weapons": [],
 		"stats": {"runs": 0, "best_wave": 0, "kills": 0, "boss_kills": 0, "best_time": 0},
-		"music": true,
+		"music": true, "fullscreen": false,
 	}
 
 
@@ -113,6 +113,17 @@ static func stats() -> Dictionary:
 static func music_enabled() -> bool:
 	_ensure()
 	return bool(_data.music)
+
+
+static func fullscreen_enabled() -> bool:
+	_ensure()
+	return bool(_data.get("fullscreen", false))
+
+
+static func set_fullscreen(enabled: bool) -> void:
+	_ensure()
+	_data.fullscreen = enabled
+	save()
 
 
 static func set_music(enabled: bool) -> void:

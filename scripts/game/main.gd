@@ -101,6 +101,7 @@ var arena_size := ARENA_SIZE
 var stage_banner_time := 0.0
 var _stage_order: Array = []
 const TETHER := Vector2(3000.0, 1500.0)
+var gates: GateOverlay
 var wave_intro := 0.0
 ## Gewaehlte Team-Perks (id -> Anzahl) und das Banner nach der Wahl.
 var perks_taken := {}
@@ -141,6 +142,9 @@ func _ready() -> void:
 	levelup_menu = LevelUpMenu.new()
 	levelup_menu.chosen.connect(_on_perk_chosen)
 	add_child(levelup_menu)
+	gates = GateOverlay.new()
+	gates.closed.connect(_on_gates_closed)
+	add_child(gates)
 	add_child(Vignette.new())
 	hud = Hud.new()
 	hud.main = self
@@ -260,7 +264,11 @@ func _update_wave(delta: float) -> void:
 		Phase.CLEARING:
 			_clear_time -= delta
 			if _clear_time <= 0.0 and not game_over and not levelup_menu.is_open:
-				_open_shop()
+				if intro_enabled and not (wave >= max_waves and not boss_enabled):
+					# Erst schliessen sich die Metalltore, dann oeffnet sich der Shop dahinter.
+					gates.close()
+				else:
+					_open_shop()
 
 
 func _end_wave() -> void:
@@ -298,6 +306,11 @@ func _end_wave() -> void:
 			player.hp = minf(player.max_health(), player.hp + player.max_health() * 0.3)
 
 
+func _on_gates_closed() -> void:
+	if phase == Phase.CLEARING and not game_over:
+		_open_shop()
+
+
 func _open_shop() -> void:
 	if wave >= max_waves and not boss_enabled:
 		phase = Phase.VICTORY
@@ -310,6 +323,8 @@ func _open_shop() -> void:
 
 
 func _on_shop_closed() -> void:
+	if gates != null and gates.is_closed:
+		gates.open()
 	if wave >= max_waves:
 		_start_boss()
 		return
@@ -595,6 +610,8 @@ func _on_player_down(_player: Player) -> void:
 			return
 	game_over = true
 	_game_over_time = 0.0
+	if gates != null:
+		gates.reset()
 	_record_run(false)
 	Sfx.play("kill")
 
@@ -1001,8 +1018,13 @@ func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, dire
 	for i in int(weapon.pellets):
 		var bullet := Projectile.new()
 		bullet.position = origin
-		bullet.direction = direction.rotated(randf_range(-float(weapon.spread), float(weapon.spread)))
+		var spread := float(weapon.spread) + float(weapon.get("spread_heat", 0.0)) * player.heat_level()
+		bullet.direction = direction.rotated(randf_range(-spread, spread))
 		bullet.speed = float(weapon.speed) * randf_range(0.9, 1.0) if weapon.pellets > 1 else float(weapon.speed)
+		bullet.homing = float(weapon.get("homing", 0.0))
+		bullet.accel = float(weapon.get("accel", 0.0))
+		bullet.speed_max = float(weapon.get("speed_max", 0.0))
+		bullet.push = float(weapon.get("push", 1.0))
 		bullet.damage = damage
 		bullet.lifetime = float(weapon.lifetime)
 		bullet.pierce = int(weapon.pierce) + int(player.mods.pierce)
@@ -1043,6 +1065,10 @@ func _fire_hitscan(player: Player, weapon: Dictionary, origin: Vector2, directio
 	var end := target
 	var exclude: Array[RID] = []
 	var hits_left := int(weapon.pierce) + int(player.mods.pierce) + 1
+	# Dauerstrahl: je laenger gehalten, desto mehr Schaden.
+	if weapon.has("ramp_max"):
+		damage *= lerpf(1.0, float(weapon.ramp_max), player.channel_ratio())
+	var push := float(weapon.get("push", 1.0))
 	while hits_left > 0:
 		var query := PhysicsRayQueryParameters2D.create(origin, target, (1 << 0) | (1 << 2))
 		query.collide_with_areas = true
@@ -1053,7 +1079,7 @@ func _fire_hitscan(player: Player, weapon: Dictionary, origin: Vector2, directio
 			break
 		var collider: Object = result.collider
 		if collider.has_method("take_damage"):
-			collider.take_damage(damage, player, direction, element)
+			collider.take_damage(damage, player, direction * push, element)
 			fx.spark(result.position, color, 4)
 			exclude.append(result.rid)
 			hits_left -= 1

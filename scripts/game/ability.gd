@@ -209,7 +209,7 @@ func draw_aura(c: CanvasItem, t: float) -> void:
 		"overwatch":
 			var pulse := 0.5 + 0.5 * sin(t * 10.0)
 			var from: Vector2 = player._muzzle_offset()
-			c.draw_line(from, from + player.aim_dir * 1100.0, Color(1.0, 0.25, 0.2, (0.18 + 0.12 * pulse) * fade), 2.0, true)
+			c.draw_line(from, from + player.aim_dir * 1100.0, Color(player.laser_color(), (0.25 + 0.15 * pulse) * fade), 2.5, true)
 			c.draw_arc(Vector2.ZERO, radius + 12.0, 0.0, TAU, 32, Color(1.0, 0.3, 0.25, 0.55 * fade), 2.5, true)
 			Art.glow(c, Vector2.ZERO, radius + 20.0, Color(1.0, 0.3, 0.25))
 		"roll":

@@ -76,7 +76,7 @@ static func _random_offer(player: Player, wave: int) -> Dictionary:
 		"module":
 			var element: String = Elements.IDS[randi() % Elements.IDS.size()]
 			return {"type": "module", "id": element, "name": "%s-Modul" % Elements.NAMES[element],
-				"text": "in die aktive Waffe", "price": price_for("module", wave, player.purchases), "bought": false,
+				"text": Elements.INFO[element], "price": price_for("module", wave, player.purchases), "bought": false,
 				"color": Elements.COLORS[element]}
 		"weapon":
 			var candidates: Array[String] = []
@@ -86,7 +86,7 @@ static func _random_offer(player: Player, wave: int) -> Dictionary:
 			if candidates.is_empty():
 				return {}
 			var weapon_id: String = candidates[randi() % candidates.size()]
-			var slot_text := "neuer Slot" if player.weapons.size() < MAX_WEAPONS else "ersetzt aktive Waffe"
+			var slot_text := "neuer Slot" if player.weapons.size() < MAX_WEAPONS else "Waffe nach Wahl ersetzen"
 			return {"type": "weapon", "id": weapon_id, "name": Weapons.get_weapon(weapon_id).name,
 				"text": "%s\n%s" % [Weapons.summary(weapon_id), slot_text], "price": price_for("weapon", wave, player.purchases), "bought": false,
 				"color": Weapons.get_weapon(weapon_id).color}
@@ -98,7 +98,7 @@ static func _random_offer(player: Player, wave: int) -> Dictionary:
 
 
 ## Fuehrt den Kauf aus (Gold wurde schon abgezogen).
-static func apply(player: Player, offer: Dictionary) -> void:
+static func apply(player: Player, offer: Dictionary, slot := -1) -> void:
 	if offer.type != "repair":
 		player.purchases += 1
 	match offer.type:
@@ -107,8 +107,8 @@ static func apply(player: Player, offer: Dictionary) -> void:
 		"perk":
 			player.add_mods(Perks.mods_for(offer.id, player.class_id))
 		"module":
-			player.set_module(offer.id)
+			player.set_module(offer.id, slot)
 		"weapon":
-			player.add_weapon(offer.id)
+			player.add_weapon(offer.id, slot)
 		"firmware":
 			player.add_firmware(offer.id)

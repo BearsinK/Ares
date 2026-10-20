@@ -19,6 +19,15 @@ func _check(condition: bool, message: String) -> void:
 		failures += 1
 
 
+func _tap(action: String) -> void:
+	await get_tree().process_frame
+	Input.action_press(action)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	Input.action_release(action)
+	await get_tree().process_frame
+
+
 func _ready() -> void:
 	_run.call_deferred()
 
@@ -149,6 +158,10 @@ func _run() -> void:
 			gibs_after += 1
 	_check(gibs_after > gibs_before + 3, "Tod erzeugt Truemmerteile (%d)" % (gibs_after - gibs_before))
 
+	if main.levelup_menu.is_open:
+		main.levelup_menu._finish(main.levelup_menu.perk_ids[0])
+	get_tree().paused = false
+	await _frames(3)
 	# Der Schacht ist durchgaengig: unten durchlaufen, im Aufwind nach oben getragen.
 	p1.global_position = Vector2(2500.0, 1215.0)
 	p1.velocity = Vector2.ZERO
@@ -171,9 +184,89 @@ func _run() -> void:
 	_check(not seen_can_for_roomba, "Roomba bekommt weder Soda Bomb noch Turret im Shop")
 	_check(Weapons.usable_by("can", "vending") and not Weapons.usable_by("can", "roomba") and Weapons.usable_by("turret", "hexapod"), "Klassenwaffen sind exklusiv")
 
+	# Verfolgungsrakete: lenkt auf den Gegner und kommt ihm naeher als ein ungelenktes Geschoss.
+	for e in get_tree().get_nodes_in_group("enemies"):
+		e.queue_free()
+	await _frames(2)
+	p1.global_position = Vector2(600.0, 1215.0)
+	p2.global_position = Vector2(2000.0, 1215.0)
+	var target: Enemy = main.director.spawn("brute", Vector2(1100.0, 900.0))
+	target._cooldown = 99.0
+	target.hp = 9999.0
+	target.set_physics_process(false)
+	var rocket := Projectile.new()
+	var rw := Weapons.get_weapon("rocket")
+	rocket.position = Vector2(600.0, 1100.0)
+	rocket.direction = Vector2.RIGHT
+	rocket.speed = float(rw.speed)
+	rocket.speed_max = float(rw.speed_max)
+	rocket.accel = float(rw.accel)
+	rocket.homing = float(rw.homing)
+	rocket.lifetime = 2.2
+	rocket.shooter = p1
+	main.projectiles.add_child(rocket)
+	var closest := 99999.0
+	for i in 60:
+		await get_tree().physics_frame
+		if is_instance_valid(rocket):
+			closest = minf(closest, rocket.global_position.distance_to(target.global_position))
+	_check(closest < 120.0 or not is_instance_valid(rocket), "Verfolgungsrakete steuert auf den Gegner zu (%d)" % closest)
+	target.queue_free()
+
+	# Dauerstrahl: Schaden waechst beim Halten, der Schuetze wird langsamer.
+	p1.weapons = ["beam"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	var speed_before := p1.move_speed()
+	Input.action_press("p1_fire")
+	await _frames(100)
+	var ratio := p1.channel_ratio()
+	var speed_during := p1.move_speed()
+	Input.action_release("p1_fire")
+	_check(ratio > 0.9, "Beam wird beim Halten staerker (%.2f)" % ratio)
+	_check(speed_during < speed_before * 0.7, "Beam macht den Schuetzen langsamer (%d -> %d)" % [speed_before, speed_during])
+	await _frames(40)
+	_check(p1.channel_ratio() < 0.2, "Der Anstieg faellt nach dem Loslassen ab")
+	p1.weapons = ["dust"]
+	p1.modules = [""]
+
+	# Shop: Bei mehreren Waffen waehlt man den Slot fuer Modul und Ersatzwaffe.
+	var shop: ShopMenu = main.shop_menu
+	p1.weapons = ["dust", "rapid", "shotgun"]
+	p1.modules = ["", "", ""]
+	p1.weapon_index = 0
+	p1.gold = 500
+	shop.open(main.players, 2)
+	shop._age = 1.0
+	shop._offers[0] = [
+		{"type": "module", "id": "ice", "name": "Cryo-Modul", "text": "x", "price": 10, "bought": false, "color": Color.WHITE},
+		{"type": "weapon", "id": "rocket", "name": "Rocket", "text": "x", "price": 10, "bought": false, "color": Color.WHITE},
+		{}, {}]
+	shop._cursor[0] = 0
+	shop._activate(0)
+	_check(not shop._pick[0].is_empty() and p1.gold == 500, "Modul-Kauf fragt nach dem Slot, ohne zu bezahlen")
+	shop._pick[0].slot = 2
+	shop._handle_pick(0)
+	await _tap("p1_confirm")
+	_check(p1.modules == ["", "", "ice"] and p1.gold == 490, "Modul landet im gewaehlten Slot (%s)" % str(p1.modules))
+	shop._cursor[0] = 1
+	shop._activate(0)
+	_check(not shop._pick[0].is_empty(), "Waffe bei vollen Slots fragt nach dem Slot")
+	shop._pick[0].slot = 1
+	await _tap("p1_confirm")
+	_check(p1.weapons == ["dust", "rocket", "shotgun"] and p1.modules[1] == "", "Waffe ersetzt den gewaehlten Slot (%s)" % str(p1.weapons))
+	shop._pick[0] = {}
+	shop._finish()
+	get_tree().paused = false
+	p1.weapons = ["dust"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	await _frames(3)
+
 	# Team-Perk: Zaehler, Banner und Einigung per Zufall.
+	var taken_before: int = int(main.perks_taken.get("overclock", 0))
 	main._on_perk_chosen("overclock")
-	_check(main.perks_taken.get("overclock", 0) == 1 and main.perk_banner_time > 2.0, "Perk-Wahl zaehlt und zeigt ein Banner")
+	_check(int(main.perks_taken.get("overclock", 0)) == taken_before + 1 and main.perk_banner_time > 2.0, "Perk-Wahl zaehlt und zeigt ein Banner")
 	var menu: LevelUpMenu = main.levelup_menu
 	menu.open(main.players, ["overclock", "magnet", "piggy"], 2)
 	menu._age = 1.0
@@ -181,8 +274,17 @@ func _run() -> void:
 	var finished := [""]
 	menu.chosen.connect(func(id: String) -> void: finished[0] = id)
 	menu._split_time = LevelUpMenu.SPLIT_TIME - 0.01
-	await get_tree().create_timer(0.2, true, false, true).timeout
-	_check(finished[0] == "overclock" or finished[0] == "piggy", "Uneinigkeit wird nach kurzer Zeit zufaellig entschieden (%s)" % finished[0])
+	await get_tree().create_timer(0.3, true, false, true).timeout
+	_check(menu._roulette, "Uneinigkeit startet das Roulette")
+	var saw_both := {}
+	for i in 60:
+		await get_tree().create_timer(0.1, true, false, true).timeout
+		saw_both[menu._roulette_shown] = true
+		if finished[0] != "":
+			break
+	_check(saw_both.size() >= 2, "Roulette springt zwischen beiden Karten")
+	await get_tree().create_timer(5.0, true, false, true).timeout
+	_check(finished[0] == "overclock" or finished[0] == "piggy", "Roulette bleibt beim Gewinner und waehlt ihn (%s)" % finished[0])
 	get_tree().paused = false
 
 	# Dash waehrend des Hakens verbraucht keine Ladung.

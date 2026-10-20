@@ -21,6 +21,8 @@ var is_open := false
 
 var _offers: Array = [[], []]
 var _cursor := [0, 0]
+## Auswahl des Waffen-Slots beim Kauf: {} oder {offer, slot_cursor, kind}
+var _pick: Array[Dictionary] = [{}, {}]
 var _ready_flags := [false, false]
 var _rerolls := [0, 0]
 var _messages := ["", ""]
@@ -43,6 +45,7 @@ func open(new_players: Array[Player], new_wave: int) -> void:
 	wave = new_wave
 	_offers = [ShopItems.make_offers(players[0], wave), ShopItems.make_offers(players[1], wave)]
 	_cursor = [0, 0]
+	_pick = [{}, {}]
 	_ready_flags = [false, false]
 	_rerolls = [0, 0]
 	_messages = ["", ""]
@@ -67,8 +70,40 @@ func _process(delta: float) -> void:
 	_canvas.queue_redraw()
 
 
+func _handle_pick(i: int) -> void:
+	var prefix := "p%d_" % (i + 1)
+	var player := players[i]
+	var count: int = player.weapons.size()
+	var move := 0
+	if Input.is_action_just_pressed(prefix + "left"):
+		move -= 1
+	if Input.is_action_just_pressed(prefix + "right"):
+		move += 1
+	if move != 0:
+		_pick[i].slot = posmod(int(_pick[i].slot) + move, count)
+		Sfx.play("switch")
+	if Input.is_action_just_pressed(prefix + "interact"):
+		_pick[i] = {}
+		Sfx.play("switch")
+		return
+	if Input.is_action_just_pressed(prefix + "confirm"):
+		var offer: Dictionary = _pick[i].offer
+		if player.gold < offer.price:
+			_say(i, "Zu wenig Gold")
+			_pick[i] = {}
+			return
+		player.gold -= offer.price
+		offer.bought = true
+		ShopItems.apply(player, offer, int(_pick[i].slot))
+		_pick[i] = {}
+		Sfx.play("coin")
+
+
 func _handle_player(i: int) -> void:
 	var prefix := "p%d_" % (i + 1)
+	if not _pick[i].is_empty():
+		_handle_pick(i)
+		return
 	if _ready_flags[i]:
 		# Wer fertig ist, kann mit Interagieren zurueckgehen.
 		if Input.is_action_just_pressed(prefix + "interact"):
@@ -128,6 +163,12 @@ func _activate(i: int) -> void:
 			return
 		if player.gold < offer.price:
 			_say(i, "Zu wenig Gold")
+			return
+		# Waffe bei vollen Slots und Modul bei mehreren Waffen: erst waehlen, welcher Slot gemeint ist.
+		var needs_slot: bool = (offer.type == "weapon" and player.weapons.size() >= 3) or (offer.type == "module" and player.weapons.size() > 1)
+		if needs_slot:
+			_pick[i] = {"offer": offer, "slot": player.weapon_index}
+			Sfx.play("switch")
 			return
 		player.gold -= offer.price
 		offer.bought = true
@@ -189,6 +230,39 @@ func _draw_player_column(i: int, origin: Vector2, width: float, font: Font) -> v
 	_draw_button(i, READY_SLOT, ready_pos, Vector2(280.0, 50.0), "FERTIG" if not _ready_flags[i] else "BEREIT", font)
 	if _message_time[i] > 0.0:
 		_canvas.draw_string(font, Vector2(origin.x, button_y + 80.0), _messages[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(1.0, 0.5, 0.4))
+	if not _pick[i].is_empty():
+		_draw_pick(i, Rect2(origin + Vector2(0, 70.0), Vector2(width, CARD_HEIGHT + 90.0)), font)
+
+
+## Overlay: welcher Waffen-Slot bekommt die Waffe (ersetzt) oder das Modul.
+func _draw_pick(i: int, rect: Rect2, font: Font) -> void:
+	var player := players[i]
+	var offer: Dictionary = _pick[i].offer
+	var accent: Color = RobotClasses.PLAYER_COLORS[i]
+	Art.panel(_canvas, rect, Color(0.07, 0.08, 0.14), 14.0, accent)
+	var title := "Welche Waffe ersetzen?" if offer.type == "weapon" else "Welche Waffe bekommt das Modul?"
+	UiKit.text(_canvas, rect.position + Vector2(0, 40), title, 26, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, rect.size.x)
+	UiKit.text(_canvas, rect.position + Vector2(0, 74), "%s  (%d Gold)" % [offer.name, int(offer.price)], 20, offer.color, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x)
+	if offer.type == "module":
+		UiKit.text(_canvas, rect.position + Vector2(30, 106), String(offer.text), 16, Color(0.82, 0.85, 0.95), HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 60.0, true)
+	var count: int = player.weapons.size()
+	var width := (rect.size.x - 40.0 - (count - 1) * 12.0) / float(count)
+	for k in count:
+		var slot_rect := Rect2(rect.position + Vector2(20.0 + k * (width + 12.0), 150.0), Vector2(width, 150.0))
+		var selected: bool = int(_pick[i].slot) == k
+		Art.panel(_canvas, slot_rect, Color(0.2, 0.24, 0.36) if selected else Color(0.11, 0.12, 0.18), 12.0, accent if selected else Color(1, 1, 1, 0.2))
+		var weapon: Dictionary = Weapons.get_weapon(player.weapons[k])
+		UiKit.text(_canvas, slot_rect.position + Vector2(0, 34), "Slot %d" % (k + 1), 15, Color(0.7, 0.74, 0.88), HORIZONTAL_ALIGNMENT_CENTER, width)
+		UiKit.text(_canvas, slot_rect.position + Vector2(0, 66), String(weapon.name), 22, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, width)
+		var module: String = player.modules[k]
+		if module != "":
+			_canvas.draw_circle(slot_rect.position + Vector2(width * 0.5 - 40.0, 96.0), 7.0, Elements.COLORS[module])
+			UiKit.text(_canvas, slot_rect.position + Vector2(width * 0.5 - 28.0, 102.0), String(Elements.NAMES[module]), 16, Color(0.9, 0.92, 1.0))
+		else:
+			UiKit.text(_canvas, slot_rect.position + Vector2(0, 102), "kein Modul", 15, Color(0.55, 0.58, 0.7), HORIZONTAL_ALIGNMENT_CENTER, width)
+		if selected:
+			UiKit.text(_canvas, slot_rect.position + Vector2(0, 136), "<  wählen  >", 15, accent, HORIZONTAL_ALIGNMENT_CENTER, width)
+	UiKit.text(_canvas, rect.position + Vector2(0, rect.size.y - 24.0), "Links/Rechts: Slot, Kreuz: kaufen, Kreis: abbrechen", 16, Color(0.75, 0.78, 0.9), HORIZONTAL_ALIGNMENT_CENTER, rect.size.x)
 
 
 func _draw_offer(i: int, slot: int, pos: Vector2, offer: Dictionary, font: Font) -> void:

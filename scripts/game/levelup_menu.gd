@@ -21,6 +21,15 @@ var _cursor := [0, 0]
 var _locked := [-1, -1]
 var _age := 0.0
 var _split_time := 0.0
+## Zufallsentscheid bei Uneinigkeit: Hervorhebung springt zwischen den Karten und bleibt beim Gewinner.
+var _roulette := false
+var _roulette_t := 0.0
+var _roulette_order: Array[int] = []
+var _roulette_times: Array[float] = []
+var _roulette_shown := -1
+var _roulette_winner := -1
+var _roulette_end := 0.0
+const ROULETTE_HOLD := 1.5
 var _split_message := ""
 var _title := ""
 var _canvas: Node2D
@@ -42,6 +51,7 @@ func open(new_players: Array[Player], new_perk_ids: Array[String], level: int) -
 	_locked = [-1, -1]
 	_age = 0.0
 	_split_time = 0.0
+	_roulette = false
 	_title = "LEVEL UP!  Stufe %d" % level
 	is_open = true
 	visible = true
@@ -53,6 +63,10 @@ func _process(delta: float) -> void:
 	if not is_open:
 		return
 	_age += delta
+	if _roulette:
+		_update_roulette(delta)
+		_canvas.queue_redraw()
+		return
 	if _age >= GRACE_TIME:
 		for i in 2:
 			_handle_player(i)
@@ -62,10 +76,49 @@ func _process(delta: float) -> void:
 			# Beide bereit, aber auf verschiedenen Karten: nach kurzer Zeit entscheidet der Zufall.
 			_split_time += delta
 			if _split_time >= SPLIT_TIME:
-				_finish(perk_ids[_locked[randi() % 2]])
+				_start_roulette()
 		else:
 			_split_time = 0.0
 	_canvas.queue_redraw()
+
+
+func _start_roulette() -> void:
+	var a: int = _locked[0]
+	var b: int = _locked[1]
+	_roulette_winner = a if randi() % 2 == 0 else b
+	var loser := b if _roulette_winner == a else a
+	_roulette_order = []
+	_roulette_times = []
+	var t := 0.0
+	var delay := 0.07
+	var current := a
+	for k in 200:
+		_roulette_order.append(current)
+		_roulette_times.append(t)
+		t += delay
+		delay *= 1.15
+		if t > 2.0 and current == _roulette_winner:
+			break
+		current = loser if current == _roulette_winner else _roulette_winner
+	_roulette_end = t
+	_roulette_t = 0.0
+	_roulette_shown = -1
+	_roulette = true
+
+
+func _update_roulette(delta: float) -> void:
+	_roulette_t += delta
+	var shown := _roulette_order[0]
+	for k in _roulette_order.size():
+		if _roulette_times[k] <= _roulette_t:
+			shown = _roulette_order[k]
+	if shown != _roulette_shown:
+		_roulette_shown = shown
+		Sfx.play("switch")
+		if _roulette_t >= _roulette_end:
+			Sfx.play("levelup")
+	if _roulette_t >= _roulette_end + ROULETTE_HOLD:
+		_finish(perk_ids[_roulette_winner])
 
 
 func _handle_player(i: int) -> void:
@@ -98,7 +151,9 @@ func _draw_menu() -> void:
 	_canvas.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.74))
 	UiKit.text(_canvas, Vector2(0, 150), _title, 56, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	UiKit.text(_canvas, Vector2(0, 192), "Beide wählen dieselbe Karte. Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück", 20, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	if _locked[0] != -1 and _locked[1] != -1 and _locked[0] != _locked[1]:
+	if _roulette:
+		UiKit.text(_canvas, Vector2(0, 222), "Der Zufall entscheidet ..." if _roulette_t < _roulette_end else "Der Zufall hat entschieden!", 26, Color(1.0, 0.8, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	elif _locked[0] != -1 and _locked[1] != -1 and _locked[0] != _locked[1]:
 		UiKit.text(_canvas, Vector2(0, 222), "Uneinig! Der Zufall entscheidet in %.1f s" % maxf(0.0, SPLIT_TIME - _split_time), 24, Color(1.0, 0.6, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 	var total := perk_ids.size() * CARD_SIZE.x + (perk_ids.size() - 1) * CARD_GAP
@@ -112,10 +167,28 @@ func _draw_card(pos: Vector2, perk_id: String, index: int) -> void:
 	var highlighted: bool = _cursor[0] == index or _cursor[1] == index
 	var both: bool = _cursor[0] == index and _cursor[1] == index
 	var perk_color := PerkArt.color_of(perk_id)
+	var flash := 0.0
+	if _roulette:
+		# Roulette: nur die gerade leuchtende Karte ist hell, am Ende blinkt der Gewinner.
+		highlighted = index == _roulette_shown
+		both = highlighted
+		if _roulette_t >= _roulette_end:
+			flash = 0.5 + 0.5 * sin(_roulette_t * 16.0) if index == _roulette_winner else 0.0
+			highlighted = index == _roulette_winner
+		elif highlighted:
+			flash = 1.0
 	var rect := Rect2(pos, CARD_SIZE)
 	var lift := Vector2(0.0, -10.0) if highlighted else Vector2.ZERO
 	rect.position += lift
-	Art.panel(_canvas, rect, Color(0.2, 0.22, 0.32) if highlighted else Color(0.12, 0.13, 0.2), 16.0, Color(perk_color, 0.9 if both else (0.6 if highlighted else 0.25)))
+	var fill := Color(0.2, 0.22, 0.32) if highlighted else Color(0.12, 0.13, 0.2)
+	if flash > 0.0:
+		fill = fill.lerp(perk_color.lightened(0.2), 0.55 * flash)
+	Art.panel(_canvas, rect, fill, 16.0, Color(perk_color.lerp(Color.WHITE, flash * 0.6), 0.9 if both else (0.6 if highlighted else 0.25)))
+	if flash > 0.0:
+		Art.glow(_canvas, rect.get_center(), 190.0 * flash, perk_color)
+		_canvas.draw_rect(rect.grow(6.0), Color(1, 1, 1, 0.5 * flash), false, 4.0)
+	if _roulette and _roulette_t >= _roulette_end and index == _roulette_winner:
+		UiKit.text(_canvas, rect.position + Vector2(0, -16.0), "GEWONNEN!", 30, Color(1.0, 0.95, 0.5, 0.6 + 0.4 * flash), HORIZONTAL_ALIGNMENT_CENTER, CARD_SIZE.x)
 	_canvas.draw_rect(Rect2(rect.position + Vector2(20, 0), Vector2(80, 5)), perk_color)
 	PerkArt.draw(_canvas, perk_id, rect.position + Vector2(CARD_SIZE.x * 0.5, 84.0), 88.0)
 	UiKit.text(_canvas, rect.position + Vector2(0, 176), Perks.DATA[perk_id].name, 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, CARD_SIZE.x)

@@ -103,6 +103,7 @@ func _pause_and_result() -> void:
 	_check(menu.page == PauseMenu.Page.MAIN, "Kreis geht zurueck")
 	var music_before: bool = Music.enabled
 	await _tap("p2_down")
+	await _tap("p2_down")
 	await _tap("p2_confirm")
 	_check(Music.enabled != music_before, "Musik laesst sich im Pausemenue umschalten")
 	await _tap("p2_confirm")

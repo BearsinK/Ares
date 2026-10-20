@@ -4,7 +4,7 @@ extends Node2D
 
 enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING, SANDBOX }
 
-const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Steuerung", "Musik", "Beenden"]
+const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Steuerung", "Vollbild", "Musik", "Beenden"]
 const COUNTDOWN := 1.1
 
 var state := State.MAIN
@@ -96,6 +96,8 @@ func _update_main() -> void:
 				workshop_cursor = 0
 			"Steuerung":
 				state = State.CONTROLS
+			"Vollbild":
+				InputSetup.toggle_fullscreen()
 			"Musik":
 				Music.set_enabled(not Music.enabled)
 			"Beenden":
@@ -289,6 +291,8 @@ func _draw_ui() -> void:
 func _item_label(index: int) -> String:
 	if MENU_ITEMS[index] == "Musik":
 		return "Musik: %s" % ("An" if Music.enabled else "Aus")
+	if MENU_ITEMS[index] == "Vollbild":
+		return "Vollbild: %s" % ("An" if InputSetup.is_fullscreen() else "Aus")
 	return MENU_ITEMS[index]
 
 
@@ -299,7 +303,7 @@ func _draw_main(view: Vector2) -> void:
 	UiKit.text(_ui, Vector2(0, 240), "Der Aufstand der Apparate", 28, Color(0.8, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	Art.glow(_ui, Vector2(view.x * 0.5, 150), 160.0, Color(1.0, 0.6, 0.2))
 	for i in MENU_ITEMS.size():
-		var rect := Rect2(Vector2(view.x * 0.5 - 160, 310 + i * 76), Vector2(320, 60))
+		var rect := Rect2(Vector2(view.x * 0.5 - 160, 290 + i * 70), Vector2(320, 56))
 		UiKit.button(_ui, rect, _item_label(i), i == cursor and state == State.MAIN)
 	UiKit.text(_ui, Vector2(0, view.y - 40), "Hoch/Runter wählen, Kreuz oder Enter bestätigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
