@@ -215,6 +215,8 @@ func _run() -> void:
 	main._spawn_pickup("gold", 1, Vector2(platform.get_center().x, platform.position.y - 200.0))
 	var coin: Pickup = main.pickups.get_child(main.pickups.get_child_count() - 1)
 	coin.players = []
+	# Der Zufallsschwung beim Erscheinen koennte die Muenze ueber den Stegrand tragen: gerade fallen lassen.
+	coin.velocity = Vector2.ZERO
 	await _frames(90)
 	_check(absf(coin.position.y - (platform.position.y - 8.0)) < 14.0, "Beute bleibt auf dem Steg liegen (y=%d, Steg %d)" % [coin.position.y, platform.position.y])
 

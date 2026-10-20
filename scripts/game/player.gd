@@ -345,6 +345,12 @@ func teleport(pos: Vector2) -> void:
 	_slamming = false
 
 
+## Freiwilliger Preis in Leben (Blutaltar): kein Treffer, kein Iframe, aber das Panel blitzt kurz rot auf. Laesst mindestens 1 Leben.
+func pay_health(amount: float) -> void:
+	hp = maxf(1.0, hp - amount)
+	_hurt_timer = 0.3
+
+
 func revive(health_fraction := 0.5) -> void:
 	downed = false
 	revive_progress = 0.0

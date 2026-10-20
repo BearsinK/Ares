@@ -123,6 +123,7 @@ var chests_opened := 0
 const CHANCE_ODDS := 0.55
 var chance_roll_override := -1.0
 var _large_chest_placed := false
+var _altar_kinds: Array[String] = []
 var wave_intro := 0.0
 ## Gewaehlte Team-Perks (id -> Anzahl) und das Banner nach der Wahl.
 var perks_taken := {}
@@ -792,6 +793,7 @@ func _clear_chests() -> void:
 		chest.queue_free()
 	chests_opened = 0
 	_large_chest_placed = false
+	_altar_kinds.clear()
 
 
 func chest_price(large := false) -> int:
@@ -815,54 +817,57 @@ func _refresh_chests() -> void:
 	if not chests_enabled or stage_layout.is_empty() or phase == Phase.BOSS or stage_layout.ground.is_empty():
 		return
 	_update_chest_prices()
+	# Kisten halten untereinander grossen Abstand, Altaere duerfen enger stehen.
+	var chest_spots: Array[Vector2] = []
 	var live: Array[Vector2] = []
 	var normal := 0
-	var altar_kinds: Array[String] = []
 	for chest in chests.get_children():
 		if chest is Altar:
 			if not chest.is_open:
 				live.append(chest.position)
-				altar_kinds.append(chest.kind)
 		elif chest is Chest and not chest.is_open and not chest.bounty:
+			chest_spots.append(chest.position)
 			live.append(chest.position)
 			if not chest.large:
 				normal += 1
 	if not _large_chest_placed:
-		var spot := _chest_spot(live, true)
+		var spot := _chest_spot(chest_spots, true, [900.0, 700.0])
 		if spot != Vector2.INF:
 			_add_chest(spot, true)
+			chest_spots.append(spot)
 			live.append(spot)
 			_large_chest_placed = true
 	var target := mini(4, 2 + (wave - 1) / 2)
 	var tries := 0
 	while normal < target and tries < 12:
 		tries += 1
-		var spot := _chest_spot(live, false)
+		var spot := _chest_spot(chest_spots, false, [900.0, 700.0])
 		if spot == Vector2.INF:
-			continue
+			break
 		_add_chest(spot, false)
+		chest_spots.append(spot)
 		live.append(spot)
 		normal += 1
-	# Altaere: einer pro Karte, ab Welle 4 zwei verschiedene.
+	# Altaere: einer pro Karte, ab Welle 4 zwei verschiedene. Ein benutzter Altar wird nicht ersetzt.
 	var altar_target := 1 if wave < 4 else 2
 	tries = 0
-	while altar_kinds.size() < altar_target and tries < 12:
+	while _altar_kinds.size() < altar_target and tries < 12:
 		tries += 1
-		var spot := _chest_spot(live, false)
+		var spot := _chest_spot(live, false, [700.0, 450.0, 300.0])
 		if spot == Vector2.INF:
-			continue
-		var kind := "chance" if altar_kinds.has("blood") else ("blood" if altar_kinds.has("chance") else ("blood" if randf() < 0.5 else "chance"))
+			break
+		var kind := "chance" if _altar_kinds.has("blood") else ("blood" if _altar_kinds.has("chance") else ("blood" if randf() < 0.5 else "chance"))
 		_add_altar(spot, kind)
 		live.append(spot)
-		altar_kinds.append(kind)
+		_altar_kinds.append(kind)
 
 
 ## Ort fuer eine Kiste auf einer begehbaren Flaeche: weit weg von den Spielern und anderen Kisten.
 ## Die grosse Kiste kommt an den entlegensten, hoechsten Punkt der Karte (Belohnung fuers Erkunden).
-func _chest_spot(taken: Array[Vector2], large: bool) -> Vector2:
+func _chest_spot(taken: Array[Vector2], large: bool, spacings: Array) -> Vector2:
 	var ground: Array = stage_layout.ground
-	# Erst mit grossem Abstand suchen, wird es eng (viele Kisten und Altaere), mit kleinerem.
-	for spacing in [900.0, 650.0, 450.0, 300.0]:
+	# Erst mit grossem Abstand suchen, wird es eng, mit dem naechsten kleineren.
+	for spacing in spacings:
 		var best := Vector2.INF
 		var best_score := -INF
 		for k in 40:
@@ -967,7 +972,6 @@ func _on_chest_opened(chest: Chest, player: Player) -> void:
 	var pool: Array = Perks.RARE_IDS if chest.large else Perks.DATA.keys()
 	_grant_item(player, chest.global_position, pool, 3.2)
 	camera.add_shake(7.0 if chest.large else 4.0)
-	Sfx.play("levelup")
 	_update_chest_prices()
 
 

@@ -83,7 +83,7 @@ func _run() -> void:
 	var spaced := true
 	for i in chests.size():
 		for j in range(i + 1, chests.size()):
-			if chests[i].position.distance_to(chests[j].position) < 299.0:
+			if chests[i].position.distance_to(chests[j].position) < 699.0:
 				spaced = false
 	_check(spaced, "Kisten liegen weit auseinander")
 	var on_ground := true
@@ -196,14 +196,36 @@ func _run() -> void:
 	await _tap("p1_interact")
 	_check(is_equal_approx(p1.hp, p1.max_health() * 0.7) and p1.gold == 16 + 6 * main.wave, "Blutaltar: 30%% Leben gegen Gold (HP %.0f, Gold %d)" % [p1.hp, p1.gold])
 	_check(blood.uses_left == 2 and not blood.is_open, "Der Altar bleibt nutzbar (%d Nutzungen uebrig)" % blood.uses_left)
+	p1.hp = p1.max_health()
 	await _tap("p1_interact")
+	_check(blood.uses_left == 1 and not blood.is_open, "Zweite Nutzung (%d uebrig)" % blood.uses_left)
+	p1.hp = p1.max_health()
 	await _tap("p1_interact")
-	_check(blood.is_open or blood.uses_left == 0 or p1.hp < p1.max_health() * 0.5, "Nach drei Nutzungen oder bei zu wenig Leben ist Schluss (HP %.0f)" % p1.hp)
+	_check(blood.uses_left == 0 and blood.is_open, "Nach drei Nutzungen ist der Altar leer")
+	var spent_gold := p1.gold
+	await _tap("p1_interact")
+	_check(p1.gold == spent_gold, "Ein leerer Altar tut nichts mehr")
+	main._refresh_chests()
+	var again := 0
+	for altar in _altars():
+		if altar.kind == "blood":
+			again += 1
+	_check(again == 0, "Ein benutzter Altar wird nicht ersetzt")
+	# Zu wenig Leben: verweigert (neuer Altar dazu).
+	var low_gold := p1.gold
 	p1.hp = p1.max_health() * 0.35
-	var gold_low := p1.gold
-	if not blood.is_open:
+	var guarded: Altar = null
+	for altar in _altars():
+		guarded = altar if altar.kind == "chance" else guarded
+	if guarded != null:
+		guarded.kind = "blood"
+		guarded.uses_left = 3
+		p1.global_position = guarded.global_position + Vector2(0.0, -30.0)
+		await _frames(3)
 		await _tap("p1_interact")
-		_check(p1.gold == gold_low and is_equal_approx(p1.hp, p1.max_health() * 0.35), "Zu wenig Leben: der Altar verweigert (Gold %d)" % p1.gold)
+		_check(p1.gold == low_gold and is_equal_approx(p1.hp, p1.max_health() * 0.35), "Zu wenig Leben: der Altar verweigert (Gold %d)" % p1.gold)
+		guarded.kind = "chance"
+		luck = guarded
 
 	# Gluecksaltar: erzwungene Wuerfe.
 	p2.global_position = luck.global_position + Vector2(0.0, -30.0)

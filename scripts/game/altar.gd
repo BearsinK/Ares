@@ -26,7 +26,7 @@ func _try_open(player: Player) -> void:
 		Sfx.play("hurt", 0.05)
 		return
 	if kind == "blood":
-		player.hp -= player.max_health() * HP_COST
+		player.pay_health(player.max_health() * HP_COST)
 	else:
 		player.gold -= price
 	uses_left -= 1

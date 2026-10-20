@@ -509,7 +509,7 @@ func _wounded_list() -> Array[Enemy]:
 		if other.global_position.distance_to(global_position) <= 900.0:
 			found.append(other)
 	found.sort_custom(func(a: Enemy, b: Enemy) -> bool: return a.max_hp - a.hp > b.max_hp - b.hp)
-	_wounded_cache = found.duplicate()
+	_wounded_cache = found
 	return found
 
 
