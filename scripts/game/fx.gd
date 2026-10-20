@@ -30,10 +30,10 @@ func number(pos: Vector2, amount: float, color := Color(1.0, 1.0, 0.5), size := 
 
 
 ## Wie number, aber mit beliebigem Text und laengerer Lebensdauer (z.B. Perk-Wirkung).
-func number_text(pos: Vector2, text: String, color: Color, size := 22) -> void:
+func number_text(pos: Vector2, text: String, color: Color, size := 22, life := 1.6) -> void:
 	if _items.size() >= MAX_ITEMS:
 		return
-	_items.append({"type": "number", "pos": pos, "text": text, "t": 1.6, "max": 1.6, "color": color, "size": size})
+	_items.append({"type": "number", "pos": pos, "text": text, "t": life, "max": life, "color": color, "size": size})
 
 
 func spark(pos: Vector2, color: Color, count := 6, speed := 260.0) -> void:

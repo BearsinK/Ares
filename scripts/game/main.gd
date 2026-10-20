@@ -102,6 +102,11 @@ var stage_banner_time := 0.0
 var _stage_order: Array = []
 const TETHER := Vector2(3000.0, 1500.0)
 var gates: GateOverlay
+## Kisten auf der Karte (Gold gegen Item): Behaelter, Schalter und Zaehler der geoeffneten Kisten auf dieser Karte.
+var chests: Node2D
+var chests_enabled := true
+var chests_opened := 0
+var _large_chest_placed := false
 var wave_intro := 0.0
 ## Gewaehlte Team-Perks (id -> Anzahl) und das Banner nach der Wahl.
 var perks_taken := {}
@@ -126,6 +131,8 @@ func _ready() -> void:
 	add_child(enemy_projectiles)
 	pickups = Node2D.new()
 	add_child(pickups)
+	chests = Node2D.new()
+	add_child(chests)
 	fx = Fx.new()
 	fx.floor_y = _ground_fallback()
 	add_child(fx)
@@ -154,6 +161,7 @@ func _ready() -> void:
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	_apply_sandbox()
 	_begin_wave_intro()
+	_refresh_chests()
 
 
 func _physics_process(delta: float) -> void:
@@ -334,12 +342,14 @@ func _on_shop_closed() -> void:
 	phase = Phase.WAVE
 	director.enabled = director_enabled
 	_begin_wave_intro()
+	_refresh_chests()
 
 
 ## Endkampf: Die Arena wird zur Ofenhalle mit Laufband, der Boss tritt auf.
 func _start_boss() -> void:
 	phase = Phase.BOSS
 	director.enabled = false
+	_clear_chests()
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if enemy is Enemy:
 			enemy.queue_free()
@@ -468,6 +478,7 @@ func _change_stage() -> void:
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if enemy is Enemy:
 			enemy.queue_free()
+	_clear_chests()
 	_clear_arena()
 	_pick_stage(wave)
 	_build_arena()
@@ -660,6 +671,116 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	if enemy.elite:
 		hitstop(0.09)
 		camera.add_shake(12.0)
+
+
+# ---------------------------------------------------------------- Kisten
+
+func _clear_chests() -> void:
+	for chest in chests.get_children():
+		chest.queue_free()
+	chests_opened = 0
+	_large_chest_placed = false
+
+
+func chest_price(large := false) -> int:
+	var base := (10.0 + 4.0 * float(wave)) * (1.0 + 0.1 * float(chests_opened)) * (2.4 if large else 1.0)
+	return int(round(base))
+
+
+func _update_chest_prices() -> void:
+	for chest in chests.get_children():
+		if chest is Chest and not chest.is_open:
+			chest.price = chest_price(chest.large)
+
+
+## Haelt die Karte mit Kisten bestueckt: zwei bis vier ungeoeffnete, dazu einmal pro Karte eine grosse Goldkiste.
+## Nur auf den grossen Karten, in der flachen Testhalle und im Bosskampf gibt es keine.
+func _refresh_chests() -> void:
+	if not chests_enabled or stage_layout.is_empty() or phase == Phase.BOSS or stage_layout.ground.is_empty():
+		return
+	_update_chest_prices()
+	var live: Array[Vector2] = []
+	for chest in chests.get_children():
+		if chest is Chest and not chest.is_open:
+			live.append(chest.position)
+	if not _large_chest_placed:
+		var spot := _chest_spot(live, true)
+		if spot != Vector2.INF:
+			_add_chest(spot, true)
+			live.append(spot)
+			_large_chest_placed = true
+	var target := mini(4, 2 + (wave - 1) / 2)
+	var tries := 0
+	while live.size() < target + (1 if _large_chest_placed else 0) and tries < 12:
+		tries += 1
+		var spot := _chest_spot(live, false)
+		if spot == Vector2.INF:
+			continue
+		_add_chest(spot, false)
+		live.append(spot)
+
+
+## Ort fuer eine Kiste auf einer begehbaren Flaeche: weit weg von den Spielern und anderen Kisten.
+## Die grosse Kiste kommt an den entlegensten, hoechsten Punkt der Karte (Belohnung fuers Erkunden).
+func _chest_spot(taken: Array[Vector2], large: bool) -> Vector2:
+	var best := Vector2.INF
+	var best_score := -INF
+	var ground: Array = stage_layout.ground
+	for k in 40:
+		var point: Vector2 = ground[randi() % ground.size()]
+		var ok := true
+		for other in taken:
+			if other.distance_to(point) < 900.0:
+				ok = false
+		for player in players:
+			if player.global_position.distance_to(point) < 600.0:
+				ok = false
+		for start: Vector2 in stage_layout.starts:
+			if start.distance_to(point) < 500.0:
+				ok = false
+		if not ok:
+			continue
+		var score := randf() * 300.0
+		if large:
+			var start_distance := 0.0
+			for start: Vector2 in stage_layout.starts:
+				start_distance = maxf(start_distance, start.distance_to(point))
+			score += start_distance + (arena_size.y - point.y) * 0.6
+		if score > best_score:
+			best_score = score
+			best = point
+	return best
+
+
+func _add_chest(pos: Vector2, large: bool) -> void:
+	var chest := Chest.new()
+	chest.players = players
+	chest.large = large
+	chest.price = chest_price(large)
+	chest.position = pos
+	chest.opened.connect(_on_chest_opened)
+	chests.add_child(chest)
+
+
+func _on_chest_opened(chest: Chest, player: Player) -> void:
+	chests_opened += 1
+	var pool: Array = Perks.RARE_IDS if chest.large else Perks.DATA.keys()
+	# Nicht zweimal dasselbe in Folge, solange es Auswahl gibt.
+	var options: Array = pool.filter(func(id: String) -> bool: return int(player.items.get(id, 0)) == 0)
+	if options.is_empty():
+		options = pool
+	var id: String = options[randi() % options.size()]
+	player.add_item(id)
+	var color := PerkArt.color_of(id)
+	var at := chest.global_position + Vector2(0.0, -80.0)
+	if Fx.instance:
+		Fx.instance.ring(chest.global_position + Vector2(0.0, -20.0), 170.0 if chest.large else 120.0, color)
+		Fx.instance.spark(chest.global_position + Vector2(0.0, -30.0), color, 22 if chest.large else 14, 420.0)
+		Fx.instance.number_text(at, String(Perks.DATA[id].name), color, 30, 3.2)
+		Fx.instance.number_text(at + Vector2(0.0, 26.0), Perks.describe(id, player.class_id), Color(0.92, 0.94, 1.0), 17, 3.2)
+	camera.add_shake(7.0 if chest.large else 4.0)
+	Sfx.play("levelup")
+	_update_chest_prices()
 
 
 ## Kleine Kettenexplosion beim Tod eines Gegners (Perk Sprengkapsel).

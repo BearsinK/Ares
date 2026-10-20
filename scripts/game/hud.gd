@@ -64,6 +64,7 @@ func _draw_hud() -> void:
 		_canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	_draw_perk_strip(view)
 	_draw_perk_banner(view)
+	_draw_chest_markers(view)
 	_draw_xp_bar(view)
 	_draw_debug(view)
 
@@ -369,6 +370,38 @@ func _draw_perk_banner(view: Vector2) -> void:
 		PerkArt.draw(_canvas, id, panel.position + Vector2(70.0, 60.0), 70.0)
 		_text(panel.position + Vector2(130.0, 44.0), "UPGRADE: %s" % String(Perks.DATA[id].name), 34, Color(1.0, 0.95, 0.7, alpha))
 		_text(panel.position + Vector2(130.0, 82.0), "Für beide Roboter, je nach Klasse", 20, Color(0.8, 0.84, 0.95, alpha))
+
+
+## Kisten ausserhalb des Bildes: Pfeil am Bildrand mit Preis, golden wenn ein Spieler sie bezahlen kann.
+func _draw_chest_markers(view: Vector2) -> void:
+	if main.chests == null or main.phase == main.Phase.SHOP or main.levelup_menu.is_open:
+		return
+	var xf: Transform2D = main.get_viewport().get_canvas_transform()
+	var inner := Rect2(Vector2(70.0, 200.0), view - Vector2(140.0, 330.0))
+	for chest in main.chests.get_children():
+		if not (chest is Chest) or chest.is_open:
+			continue
+		var screen: Vector2 = xf * (chest.global_position + Vector2(0.0, -30.0))
+		if inner.has_point(screen):
+			continue
+		var edge := Vector2(clampf(screen.x, inner.position.x, inner.end.x), clampf(screen.y, inner.position.y, inner.end.y))
+		var dir := (screen - edge).normalized() if screen != edge else Vector2.UP
+		var affordable := false
+		for player in main.players:
+			if player.gold >= chest.price:
+				affordable = true
+		var color := Color(1.0, 0.82, 0.3) if affordable else Color(0.62, 0.64, 0.72)
+		if chest.large:
+			color = Color(1.0, 0.7, 0.2) if affordable else Color(0.75, 0.62, 0.4)
+		var pulse := 1.0 + 0.08 * sin(Time.get_ticks_msec() / 220.0)
+		var plate := Rect2(edge - Vector2(26.0, 14.0), Vector2(52.0, 28.0))
+		Art.rrect(_canvas, plate, Color(0.04, 0.05, 0.09, 0.85), 8.0)
+		Art.rrect_line(_canvas, plate, Color(color, 0.9), 8.0, 2.0)
+		_canvas.draw_circle(plate.position + Vector2(14, 14), 5.5 * pulse, color)
+		_text(plate.position + Vector2(24, 19), "%d" % chest.price, 14, color)
+		var tip := edge + dir * 30.0
+		var side := dir.orthogonal() * 9.0
+		_canvas.draw_colored_polygon(PackedVector2Array([tip + dir * 8.0, tip - dir * 4.0 + side, tip - dir * 4.0 - side]), Color(color, 0.95))
 
 
 func _draw_xp_bar(view: Vector2) -> void:

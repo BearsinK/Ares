@@ -179,6 +179,9 @@ const DATA := {
 	},
 }
 
+## Verhaltens-Items: die grosse Goldkiste enthaelt immer eines davon.
+const RARE_IDS: Array[String] = ["frenzy", "arccoil", "dashblast", "thorns", "laststand", "shieldcell", "recycler", "executioner"]
+
 const LABELS := {
 	"damage": "Schaden", "fire_rate": "Feuerrate", "speed": "Tempo",
 	"dash_cd": "Dash-Ladezeit", "pickup": "Sammelradius", "gold": "Gold",

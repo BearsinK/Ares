@@ -1,0 +1,178 @@
+extends Node
+## Test der Kisten auf den grossen Karten: Platzierung, Preis, Oeffnen mit Gold, Belohnung, Kartenwechsel.
+## Ausfuehren: godot --headless --path . res://tests/chest_test.tscn
+
+var failures := 0
+var main: Node
+var p1: Player
+var p2: Player
+
+
+func _check(condition: bool, message: String) -> void:
+	if condition:
+		print("OK    ", message)
+	else:
+		print("FEHLER ", message)
+		failures += 1
+
+
+func _frames(count: int) -> void:
+	for i in count:
+		await get_tree().physics_frame
+
+
+func _tap(action: String) -> void:
+	await get_tree().physics_frame
+	Input.action_press(action)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	Input.action_release(action)
+	await get_tree().physics_frame
+
+
+func _ready() -> void:
+	_run.call_deferred()
+
+
+func _live() -> Array[Chest]:
+	var result: Array[Chest] = []
+	for chest in main.chests.get_children():
+		if chest is Chest and not chest.is_open and not chest.is_queued_for_deletion():
+			result.append(chest)
+	return result
+
+
+func _run() -> void:
+	Engine.set_meta("classes", ["roomba", "hexapod"])
+
+	# Flache Testhalle: keine Kisten.
+	var flat: Node = load("res://scenes/main.tscn").instantiate()
+	flat.director_enabled = false
+	flat.intro_enabled = false
+	flat.stage_id = "classic"
+	add_child(flat)
+	await _frames(5)
+	_check(flat.chests.get_child_count() == 0, "Die flache Testhalle hat keine Kisten")
+	flat.queue_free()
+	await _frames(3)
+
+	main = load("res://scenes/main.tscn").instantiate()
+	main.director_enabled = false
+	main.intro_enabled = false
+	main.stage_id = "basin"
+	add_child(main)
+	await _frames(20)
+	p1 = main.players[0]
+	p2 = main.players[1]
+
+	var chests := _live()
+	_check(chests.size() >= 3 and chests.size() <= 5, "Auf der grossen Karte liegen Kisten (%d)" % chests.size())
+	var large := 0
+	for chest in chests:
+		if chest.large:
+			large += 1
+	_check(large == 1, "Genau eine grosse Goldkiste pro Karte")
+	var spaced := true
+	for i in chests.size():
+		for j in range(i + 1, chests.size()):
+			if chests[i].position.distance_to(chests[j].position) < 899.0:
+				spaced = false
+	_check(spaced, "Kisten liegen weit auseinander")
+	var on_ground := true
+	for chest in chests:
+		var found := false
+		for point: Vector2 in main.stage_layout.ground:
+			if point.distance_to(chest.position) < 1.0:
+				found = true
+		on_ground = on_ground and found
+	_check(on_ground, "Kisten stehen auf begehbaren Flaechen")
+	var small: Chest = null
+	var big: Chest = null
+	for chest in chests:
+		if chest.large:
+			big = chest
+		else:
+			small = chest
+	_check(big.price > small.price * 2 and small.price == main.chest_price(false), "Die Goldkiste kostet mehr (%d gegen %d)" % [big.price, small.price])
+
+	# Zu wenig Gold: nichts passiert.
+	p1.gold = 0
+	p1.global_position = small.global_position + Vector2(0.0, -30.0)
+	p2.global_position = small.global_position + Vector2(-1500.0, -30.0)
+	await _frames(3)
+	await _tap("p1_interact")
+	_check(not small.is_open and p1.items.is_empty(), "Ohne genug Gold bleibt die Kiste zu")
+
+	# Genug Gold: Kiste geht auf, Gold weg, Item drin.
+	p1.gold = 500
+	var price := small.price
+	await _tap("p1_interact")
+	_check(small.is_open and p1.gold == 500 - price, "Mit Gold geht sie auf und kostet den Preis (%d)" % p1.gold)
+	var count := 0
+	for id in p1.items:
+		count += int(p1.items[id])
+	_check(count == 1, "Der Oeffner bekommt genau ein Item (%s)" % str(p1.items))
+	_check(p2.items.is_empty(), "Der Partner geht leer aus")
+	_check(main.chests_opened == 1, "Der Zaehler steigt")
+	var next_price: int = main.chest_price(false)
+	_check(next_price > price or main.chest_price(false) == int(round((10.0 + 4.0 * main.wave) * 1.1)), "Jede geoeffnete Kiste macht die naechsten teurer (%d)" % next_price)
+	await _frames(10)
+	await _tap("p1_interact")
+	_check(p1.gold == 500 - price, "Eine offene Kiste lässt sich nicht noch mal oeffnen")
+
+	# Wiederbeleben hat Vorrang vor Oeffnen.
+	var other: Chest = null
+	for chest in _live():
+		if chest != big:
+			other = chest
+			break
+	if other != null:
+		p1.global_position = other.global_position + Vector2(0.0, -30.0)
+		p2.global_position = p1.global_position + Vector2(50.0, 0.0)
+		p2.hp = 0.0
+		p2.downed = true
+		var gold_before := p1.gold
+		await _tap("p1_interact")
+		_check(not other.is_open and p1.gold == gold_before, "Wiederbeleben geht vor Kiste oeffnen")
+		p2.revive(1.0)
+
+	# Die grosse Kiste enthaelt immer ein Verhaltens-Item.
+	p2.global_position = big.global_position + Vector2(0.0, -30.0)
+	p2.gold = 500
+	p1.global_position = big.global_position + Vector2(-1500.0, -30.0)
+	await _frames(3)
+	await _tap("p2_interact")
+	var rare := false
+	for id in p2.items:
+		rare = rare or Perks.RARE_IDS.has(id)
+	_check(big.is_open and rare, "Die Goldkiste enthaelt ein Verhaltens-Item (%s)" % str(p2.items))
+
+	# Naechste Welle: neue Kisten fuellen auf, Preise steigen mit der Welle.
+	await _frames(300)
+	main.wave = 3
+	main._refresh_chests()
+	var after := _live()
+	_check(after.size() >= 3, "Nach dem Auffuellen liegen wieder Kisten (%d)" % after.size())
+	_check(after[0].price == main.chest_price(after[0].large), "Preise folgen der Welle (%d)" % after[0].price)
+
+	# Kartenwechsel: alte Kisten weg, neue Karte hat neue.
+	main.wave = 4
+	main._change_stage()
+	await _frames(3)
+	main._refresh_chests()
+	await _frames(3)
+	_check(main.chests_opened == 0 and _live().size() >= 3, "Neue Karte, neue Kisten (%d)" % _live().size())
+	var larges := 0
+	for chest in _live():
+		if chest.large:
+			larges += 1
+	_check(larges == 1, "Auch die neue Karte hat eine Goldkiste")
+
+	# Boss: keine Kisten.
+	main._start_boss()
+	await _frames(5)
+	_check(_live().is_empty(), "Im Bosskampf gibt es keine Kisten")
+
+	print("Fertig, Fehler: ", failures)
+	main.queue_free()
+	get_tree().quit(1 if failures > 0 else 0)
