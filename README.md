@@ -37,7 +37,7 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Platzhalter-Klassen Roomba und Hexapod (Hexapod schießt nur im Stand)
 - Sechs Waffen: Staubkugeln, Schnellfeuer, Schrot, Rakete (Explosion), Strahl und Sniper (Treffer entlang einer Linie, durchschlägt Gegner). Jeder Spieler hat drei zum Ausprobieren, Wechsel per Dreieck
 - Rückmeldung: Mündungsfeuer, Funken, Rückstoß, Kamerawackeln, Explosionen, eigener Sound pro Waffe
-- Automat: Dosenwurf im Bogen. Feuer halten schüttelt die Dose (Ladering, gepunktete Flugbahn), loslassen wirft. Je länger geschüttelt, desto weiter, schneller und größer die Explosion. Ab 20 Prozent Schütteln explodiert die Dose beim Aufprall, kurzes Antippen wirft nur eine ungeschüttelte Dose ohne Explosion. Mit Elementmodul gibt die Dose das Element weiter
+- Automat: Dosenwurf im Bogen aus dem Ausgabefach unten. Feuer halten schüttelt die Dose (Ladering, gepunktete Flugbahn), loslassen wirft. Je länger geschüttelt, desto weiter, schneller und größer die Explosion. Ab 20 Prozent Schütteln explodiert die Dose beim Aufprall, kurzes Antippen wirft nur eine ungeschüttelte Dose ohne Explosion. Mit Elementmodul gibt die Dose das Element weiter
 - Hexapod: klettert Wände hoch (gegen die Wand drücken, hoch/runter klettern, an der Oberkante hopst er auf den Rand, von der Wand abspringen geht auch). Sein Geschütz schießt schnell (2,8 Schuss pro Sekunde, durchschlägt bis zu 3 Gegner), aber nur im Stand: am Boden oder hängend an der Wand, nach 0,2 Sekunden Aufbauzeit (Beine spreizen sich). Im Gehen, Klettern oder in der Luft schießt er nicht. Waffen aus dem Shop darf er überall nutzen
 - Vier Gegnertypen (Läufer, Schütze, Flieger, Brute) ohne Kontaktschaden: Jeder Angriff wird vorher angekündigt (Kegel, Kreis, Schusslinie)
 - Director: Gegner erscheinen nach und nach, die Menge und Stärke steigen mit der Zeit
@@ -54,7 +54,7 @@ Welche Klassen gespielt werden, steht in `scripts/game/main.gd` (`PLAYER_CLASSES
 
 ## Optik
 
-Alles wird im Code gezeichnet (kein Asset-Import). `scripts/art/` enthält die Zeichenhilfen (`art.gd`), die Roboter und Gegner (`robot_art.gd`), Level-Blöcke (`block_art.gd`), den Parallax-Hintergrund (`backdrop.gd`), Requisiten und Dampf (`props.gd`) und die Vignette. Mit der Szene `tests/art_gallery.tscn` kannst du alle Figuren nebeneinander ansehen. Die Roboter sind für die Seitenansicht gebaut: Roomba flach (64x30), Hexapod mit Beinen, Automat groß (68x108), Drucker mit Fenster und Drohnen.
+Alles wird im Code gezeichnet (kein Asset-Import). `scripts/art/` enthält die Zeichenhilfen (`art.gd`), die Roboter und Gegner (`robot_art.gd`), Level-Blöcke (`block_art.gd`), den Parallax-Hintergrund (`backdrop.gd`), Requisiten und Dampf (`props.gd`) und die Vignette. Mit der Szene `tests/art_gallery.tscn` kannst du alle Figuren nebeneinander ansehen. Die Roboter sind für die Seitenansicht gebaut: Roomba flach (68x26, dunkle Scheibe mit Silberring, Knopf, Stoßstange und Arm), Hexapod mit Beinen, Automat groß (68x108, die Dosen kommen aus dem Ausgabefach unten), Drucker auf zwei selbst gedruckten Beinen mit Fenster und Drohnen.
 
 ## Struktur
 

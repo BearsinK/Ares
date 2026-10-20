@@ -19,9 +19,9 @@ func _draw() -> void:
 	# Zustaende: gehend, aufgebaut/klettern, schuettelnd, feuernd, in der Luft
 	var variants := [
 		{"class": "roomba", "vx": 300.0, "firing": 1.0, "aim": Vector2(0.8, -0.6)},
-		{"class": "hexapod", "vx": 0.0, "planted": true, "firing": 1.0, "aim": Vector2(1, -0.2)},
+		{"class": "printer", "vx": 300.0, "aim": Vector2(1, -0.2)},
 		{"class": "vending", "charge": 0.8, "aim": Vector2(0.7, -0.7)},
-		{"class": "hexapod", "clinging": true, "cling_dir": 1.0, "aim": Vector2(1, 0)},
+		{"class": "vending", "firing": 1.0, "aim": Vector2(1, 0.3)},
 	]
 	for i in 4:
 		var s := _state("normal")

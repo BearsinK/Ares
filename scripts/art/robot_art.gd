@@ -44,47 +44,53 @@ static func _nozzle(c: CanvasItem, from: Vector2, direction: Vector2, length: fl
 
 static func _roomba(c: CanvasItem, s: Dictionary) -> void:
 	var t: float = s.t
-	var bob := sin(t * 3.0) * 0.5
+	var bob := sin(t * 3.0) * 0.4
 	var accent: Color = s.accent
-	Art.shadow(c, Vector2(0, 15), 30.0, 3.5)
+	var silver := Color(0.78, 0.81, 0.9)
+	Art.shadow(c, Vector2(0, 13), 34.0, 3.2)
 
-	# Raeder: grosses Antriebsrad hinten, kleine Stuetzrolle vorn, Seitenbuerste.
+	# Antriebsrad, zur Haelfte unter der Schuerze verborgen.
 	var spin := float(s.walk) * 0.9
-	Art.disc(c, Vector2(-14, 9), 7.0, Color(0.12, 0.13, 0.17))
-	for i in 4:
-		var a := spin + i * PI / 2.0
-		c.draw_line(Vector2(-14, 9), Vector2(-14, 9) + Vector2(cos(a), sin(a)) * 6.0, Color(0.5, 0.52, 0.6), 1.5, true)
-	Art.disc(c, Vector2(-14, 9), 2.2, Color(0.75, 0.78, 0.85))
-	Art.disc(c, Vector2(22, 11), 4.0, Color(0.12, 0.13, 0.17))
+	Art.disc(c, Vector2(-18, 7), 6.5, Color(0.1, 0.1, 0.13))
 	for i in 3:
-		var a := -spin * 1.6 + i * TAU / 3.0
-		c.draw_line(Vector2(30, 12), Vector2(30, 12) + Vector2(cos(a), sin(a) * 0.4) * 5.0, Color(0.9, 0.85, 0.4), 1.5, true)
+		var a := spin + i * TAU / 3.0
+		c.draw_line(Vector2(-18, 7), Vector2(-18, 7) + Vector2(cos(a), sin(a)) * 5.0, Color(0.4, 0.42, 0.5), 1.5, true)
 
-	# Chassis.
-	Art.rrect(c, Rect2(-30, 6 + bob, 60, 7), Color(0.14, 0.16, 0.21), 3.0)
-	Art.panel(c, Rect2(-32, -9 + bob, 64, 21), Color(0.94, 0.96, 0.99), 9.0)
-	Art.rrect(c, Rect2(-28, 3 + bob, 54, 3), accent, 1.5)
-	Art.rrect(c, Rect2(27, -6 + bob, 5, 15), Color(0.2, 0.22, 0.28), 2.5)
+	# Flache Scheibe: dunkle Schuerze, Gehaeuse mit Silberring, Deckel, grosser Knopf.
+	Art.rrect(c, Rect2(-33, 4 + bob, 66, 8), Color(0.08, 0.09, 0.12), 4.0)
+	Art.panel(c, Rect2(-34, -7 + bob, 68, 17), Color(0.4, 0.42, 0.52), 8.5)
+	c.draw_line(Vector2(-29, 2.5 + bob), Vector2(29, 2.5 + bob), silver, 2.0, true)
+	c.draw_line(Vector2(-29, 4.0 + bob), Vector2(29, 4.0 + bob), Color(0, 0, 0, 0.4), 1.0, true)
+	Art.rrect(c, Rect2(-29, 8 + bob, 58, 2), accent, 1.0)
+	Art.panel(c, Rect2(-28, -11 + bob, 56, 7), Color(0.5, 0.52, 0.62), 3.5)
+	# Der typische runde Knopf auf dem Deckel.
+	Art.ellipse(c, Vector2(-4, -11.5 + bob), 9.0, 3.2, Color(0.12, 0.13, 0.17))
+	Art.ellipse(c, Vector2(-4, -11.8 + bob), 7.0, 2.3, s.eye_color.darkened(0.15))
+	Art.glow(c, Vector2(-4, -12 + bob), 9.0, s.eye_color)
+	# LiDAR-Turm und Statusleuchte.
+	Art.rrect(c, Rect2(-26, -15 + bob, 10, 5), Color(0.12, 0.13, 0.17), 2.0)
+	Art.led(c, Vector2(-21, -12.5 + bob), 1.4, Color(1.0, 0.35, 0.3), fmod(t, 1.2) < 0.6)
+	# Griffmulde und Lueftung am Heck.
 	for i in 3:
-		c.draw_line(Vector2(-29 + i * 4, -3 + bob), Vector2(-29 + i * 4, 1 + bob), Color(0.55, 0.58, 0.66), 1.5, true)
-	Art.rivet(c, Vector2(-26, -5 + bob))
-	Art.rivet(c, Vector2(1, 9 + bob))
+		c.draw_line(Vector2(-30 + i * 3.5, -4 + bob), Vector2(-30 + i * 3.5, 0 + bob), Color(0, 0, 0, 0.5), 1.5, true)
+	Art.rivet(c, Vector2(2, 7 + bob))
 
-	# LiDAR-Kuppel und Statusleuchte.
-	Art.ellipse(c, Vector2(-17, -9 + bob), 9.0, 4.5, Color(0.18, 0.2, 0.28))
-	c.draw_line(Vector2(-23, -10 + bob), Vector2(-12, -10 + bob), Color(1, 1, 1, 0.4), 1.5, true)
-	Art.led(c, Vector2(-17, -12 + bob), 1.6, Color(1.0, 0.35, 0.3), fmod(t, 1.2) < 0.6)
-
+	# Stossstange vorn mit Display, Klippensensor und Seitenbuerste.
+	Art.panel(c, Rect2(25, -6 + bob, 9, 15), Color(0.62, 0.65, 0.74), 4.0)
+	c.draw_line(Vector2(25, -3 + bob), Vector2(25, 7 + bob), Color(0, 0, 0, 0.5), 1.5)
 	var la := _local_aim(s)
-	Art.face(c, Vector2(15, -0.5 + bob), Vector2(22, 12), s.eye_color, la, s.mood, t)
+	Art.face(c, Vector2(13, -1.5 + bob), Vector2(20, 9), s.eye_color, la, s.mood, t)
+	Art.led(c, Vector2(31, 1.5 + bob), 1.1, Color(0.4, 1.0, 0.5))
+	for i in 3:
+		var a := -spin * 1.7 + i * TAU / 3.0
+		c.draw_line(Vector2(32, 11), Vector2(32, 11) + Vector2(cos(a) * 5.0, sin(a) * 2.0), Color(0.9, 0.85, 0.4), 1.5, true)
 
-	# Arm mit Absaugduese, zeigt in Zielrichtung.
-	var shoulder := Vector2(-5, -12 + bob)
-	Art.panel(c, Rect2(-11, -15 + bob, 12, 6), Color(0.28, 0.3, 0.38), 2.5)
-	Art.disc(c, shoulder, 4.0, Color(0.62, 0.65, 0.75))
-	var reach := 24.0
-	var wrist := Art.limb(c, shoulder, shoulder + la * reach, 14.0, 14.0, 5.0, Color(0.32, 0.36, 0.5), -1.0 if la.x >= 0.0 else 1.0, Color(0.9, 0.92, 1.0))
-	_nozzle(c, wrist, la, 11.0, 10.0, Color(0.85, 0.87, 0.95), s.weapon_color, float(s.firing))
+	# Roboterarm vom Heck, zeigt in Zielrichtung, mit Absaugduese.
+	var shoulder := Vector2(-25, -14 + bob)
+	Art.panel(c, Rect2(-31, -18 + bob, 12, 6), Color(0.55, 0.58, 0.68), 2.5)
+	Art.disc(c, shoulder, 4.2, silver)
+	var wrist := Art.limb(c, shoulder, shoulder + la * 25.0, 14.0, 14.0, 5.0, Color(0.5, 0.54, 0.66), -1.0 if la.x >= 0.0 else 1.0, Color(0.95, 0.97, 1.0))
+	_nozzle(c, wrist, la, 11.0, 11.0, Color(0.14, 0.15, 0.2), s.weapon_color, float(s.firing))
 	Art.rivet(c, wrist, 1.6)
 
 
@@ -159,6 +165,7 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 	var t: float = s.t
 	var accent: Color = s.accent
 	var charge: float = s.charge
+	var firing: float = s.firing
 	Art.shadow(c, Vector2(0, 54), 38.0, 4.0)
 
 	# Raupenketten.
@@ -186,15 +193,17 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 	Art.led(c, Vector2(22, -48), 2.0, accent)
 	Art.led(c, Vector2(-24, -48), 2.0, Color(0.95, 0.3, 0.3), fmod(t, 1.6) < 0.8)
 
-	# Glasfront mit Dosen.
+	# Glasfront mit Dosen, beim Schuetteln wackeln sie.
 	var glass := Rect2(-25, -37, 34, 56)
 	Art.rrect(c, glass, Color(0.05, 0.12, 0.16), 3.0)
 	var can_colors := [Color(0.9, 0.3, 0.25), Color(0.3, 0.8, 0.4), Color(0.95, 0.7, 0.2), Color(0.3, 0.55, 0.95)]
 	for row in 5:
 		for col in 3:
 			var can_color: Color = can_colors[(row + col * 2) % 4]
-			Art.rrect(c, Rect2(-22.0 + col * 10.5, -34.0 + row * 10.5, 8, 9), can_color, 2.0)
-			c.draw_line(Vector2(-22.0 + col * 10.5, -32.0 + row * 10.5), Vector2(-14.0 + col * 10.5, -32.0 + row * 10.5), Color(1, 1, 1, 0.5), 1.0)
+			var wobble := Vector2(sin(t * 70.0 + row * 2.0 + col), cos(t * 63.0 + col)) * charge * 1.4
+			var pos := Vector2(-22.0 + col * 10.5, -34.0 + row * 10.5) + wobble
+			Art.rrect(c, Rect2(pos, Vector2(8, 9)), can_color, 2.0)
+			c.draw_line(pos + Vector2(0, 2), pos + Vector2(8, 2), Color(1, 1, 1, 0.5), 1.0)
 	c.draw_colored_polygon(PackedVector2Array([Vector2(-25, -37), Vector2(-10, -37), Vector2(-25, -12)]), Color(1, 1, 1, 0.1))
 	Art.rrect_line(c, glass, Color(0.6, 0.65, 0.75), 3.0, 2.0)
 
@@ -205,29 +214,32 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 		for col in 2:
 			Art.disc(c, Vector2(16.0 + col * 7.0, -16.0 + row * 7.0), 2.1, Color(0.9, 0.9, 0.95) if (row + col) % 2 == 0 else Color(0.95, 0.7, 0.2))
 	Art.rrect(c, Rect2(15, 8, 10, 3), Color(0.05, 0.08, 0.1), 1.5)
-	Art.rrect(c, Rect2(-25, 24, 34, 11), Color(0.04, 0.07, 0.09), 3.0)
-	c.draw_line(Vector2(-23, 26), Vector2(7, 26), Color(1, 1, 1, 0.25), 1.5)
 	Art.rivet(c, Vector2(-28, -38))
 	Art.rivet(c, Vector2(28, -38))
 	Art.rivet(c, Vector2(-28, 33))
 	Art.rivet(c, Vector2(28, 33))
 
-	# Dosenwerfer oben: Rohr zeigt in Zielrichtung, geschuettelte Dose schaeumt.
-	var pivot := Vector2(6, -56)
-	var shake := Vector2.ZERO
-	if charge > 0.0:
-		shake = Vector2(sin(t * 90.0), cos(t * 77.0)) * charge * 2.0
-	Art.disc(c, pivot, 7.0, Color(0.3, 0.32, 0.4))
-	var tube_end := pivot + la * 22.0 + shake
-	Art.bar(c, pivot, tube_end, 11.0, Color(0.55, 0.58, 0.66))
+	# Ausgabefach unten: hier kommen die Dosen heraus. Die Klappe schwingt beim Wurf auf.
+	var slot := Rect2(-25, 24, 34, 11)
+	Art.rrect(c, slot, Color(0.03, 0.05, 0.07), 3.0)
 	var can_color: Color = s.weapon_color
-	var can_pos := tube_end + la * 4.0
-	Art.rrect(c, Rect2(can_pos - Vector2(5, 6), Vector2(10, 12)), can_color.lerp(Color.WHITE, charge * 0.5), 2.0)
 	if charge > 0.0:
-		Art.glow(c, can_pos, 9.0 + 10.0 * charge, Color(1, 1, 1))
-		for i in 4:
-			var a := t * 12.0 + i * 1.7
-			c.draw_circle(can_pos + Vector2(cos(a), -absf(sin(a)) - 0.6) * (6.0 + 5.0 * charge), 1.6 + charge, Color(1, 1, 1, 0.8))
+		# Die Dose steckt halb im Fach und schaeumt.
+		var shake := Vector2(sin(t * 90.0), cos(t * 77.0)) * charge * 1.2
+		Art.rrect(c, Rect2(Vector2(-14, 25) + shake, Vector2(12, 9)), can_color.lerp(Color.WHITE, charge * 0.5), 2.0)
+		Art.glow(c, Vector2(-8, 30), 10.0 + 12.0 * charge, Color(1, 1, 1))
+		for i in 5:
+			var a := t * 11.0 + i * 1.3
+			c.draw_circle(Vector2(-8, 28) + Vector2(cos(a) * (4.0 + 6.0 * charge), -absf(sin(a)) * (3.0 + 8.0 * charge)), 1.4 + charge * 1.2, Color(1, 1, 1, 0.8))
+	# Klappe: geschlossen deckt sie das Fach, beim Wurf klappt sie nach oben weg (von vorn gesehen
+	# wird sie dabei flach) und gibt den Blick auf die Dose frei.
+	var open := clampf(maxf(firing * 1.4, charge * 0.7), 0.0, 1.0)
+	var flap_height := lerpf(11.0, 2.5, open)
+	var flap_rect := Rect2(Vector2(-25, 24), Vector2(34, flap_height))
+	Art.panel(c, flap_rect, Color(0.66, 0.7, 0.8), 2.0)
+	c.draw_line(Vector2(-23, 25.5), Vector2(7, 25.5), Color(1, 1, 1, 0.45), 1.5)
+	if firing > 0.3:
+		Art.glow(c, Vector2(-8, 30), 14.0 * firing, can_color)
 
 
 # ---------------------------------------------------------------- Drucker
@@ -235,49 +247,70 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 static func _printer(c: CanvasItem, s: Dictionary) -> void:
 	var t: float = s.t
 	var accent: Color = s.accent
-	Art.shadow(c, Vector2(0, 29), 30.0, 3.5)
-	# Fuesse.
-	Art.panel(c, Rect2(-25, 24, 14, 6), Color(0.1, 0.1, 0.13), 2.0)
-	Art.panel(c, Rect2(11, 24, 14, 6), Color(0.1, 0.1, 0.13), 2.0)
+	# Alles liegt um zehn Pixel nach oben verschoben, darunter laufen die gedruckten Beine.
+	var shift := Vector2(0, -10)
+	var speed_factor := clampf(absf(float(s.vx)) / 300.0, 0.0, 1.0)
+	Art.shadow(c, Vector2(0, 37), 26.0, 3.5)
+
+	# Zwei selbst gedruckte Beine: sichtbare Schichtlinien, verschiedene Filamentfarben, plumpe Fuesse.
+	for i in 2:
+		var hip := Vector2(-14.0 + i * 28.0, 12.0)
+		var phase := float(s.walk) * 0.5 + (PI if i == 1 else 0.0)
+		var foot := Vector2(hip.x + sin(phase) * 11.0 * speed_factor, 37.0 - maxf(0.0, cos(phase)) * 8.0 * speed_factor)
+		if not bool(s.grounded):
+			foot = Vector2(hip.x, 28.0)
+		var leg_color := Color(0.95, 0.5, 0.12) if i == 0 else Color(0.9, 0.92, 0.97)
+		var joint := Art.limb(c, hip, foot, 13.0, 13.0, 7.0, leg_color, 1.0, leg_color.darkened(0.15))
+		# Schichtlinien quer zu den Segmenten (so sieht man, dass die Beine gedruckt sind).
+		var knee := hip + (foot - hip) * 0.5
+		for k in 5:
+			var f := float(k + 1) / 6.0
+			var p1 := hip.lerp(knee, f)
+			c.draw_line(p1 + Vector2(-3.5, 0), p1 + Vector2(3.5, 0), Color(0, 0, 0, 0.18), 1.0)
+			var p2 := knee.lerp(foot, f)
+			c.draw_line(p2 + Vector2(-3.0, 0), p2 + Vector2(3.0, 0), Color(0, 0, 0, 0.18), 1.0)
+		Art.panel(c, Rect2(joint + Vector2(-6, -2), Vector2(13, 5)), leg_color.darkened(0.1), 2.5)
+
 	# Gehaeuse.
-	Art.panel(c, Rect2(-29, -27, 58, 53), Color(0.2, 0.21, 0.27), 7.0)
-	Art.rrect(c, Rect2(15, -23, 12, 45), Color(0.95, 0.5, 0.12), 5.0)
-	Art.rrect_line(c, Rect2(15, -23, 12, 45), Art.OUTLINE, 5.0, 1.5)
-	Art.disc(c, Vector2(21, 14), 3.0, Color(0.15, 0.15, 0.2))
-	Art.rrect(c, Rect2(-29, -27, 58, 5), Color(0.1, 0.1, 0.14), 3.0)
-	Art.rrect(c, Rect2(-25, 20, 36, 2.5), accent, 1.0)
+	Art.panel(c, Rect2(-29 + shift.x, -27 + shift.y, 58, 52), Color(0.2, 0.21, 0.27), 7.0)
+	Art.rrect(c, Rect2(15, -23 + shift.y, 12, 44), Color(0.95, 0.5, 0.12), 5.0)
+	Art.rrect_line(c, Rect2(15, -23 + shift.y, 12, 44), Art.OUTLINE, 5.0, 1.5)
+	Art.disc(c, Vector2(21, 14 + shift.y), 3.0, Color(0.15, 0.15, 0.2))
+	Art.rrect(c, Rect2(-29, -27 + shift.y, 58, 5), Color(0.1, 0.1, 0.14), 3.0)
+	Art.rrect(c, Rect2(-25, 20 + shift.y, 36, 2.5), accent, 1.0)
 	# Filamentspule an der Rueckseite.
-	Art.disc(c, Vector2(-30, -8), 9.0, Color(0.95, 0.5, 0.12))
-	Art.disc(c, Vector2(-30, -8), 3.5, Color(0.15, 0.15, 0.2))
-	c.draw_arc(Vector2(-30, -8), 6.5, 0.0, TAU, 16, Color(1, 1, 1, 0.3), 1.0, true)
+	Art.disc(c, Vector2(-30, -8 + shift.y), 9.0, Color(0.95, 0.5, 0.12))
+	Art.disc(c, Vector2(-30, -8 + shift.y), 3.5, Color(0.15, 0.15, 0.2))
+	c.draw_arc(Vector2(-30, -8 + shift.y), 6.5, 0.0, TAU, 16, Color(1, 1, 1, 0.3), 1.0, true)
 	# Sichtfenster: Druckbett, Portal mit Duese und das entstehende Objekt.
-	var window := Rect2(-24, -17, 36, 33)
+	var window := Rect2(-24, -17 + shift.y, 36, 33)
 	Art.rrect(c, window, Color(0.04, 0.07, 0.1), 3.0)
-	Art.rrect(c, Rect2(-21, 12, 30, 3), Color(0.6, 0.63, 0.72), 1.0)
+	Art.rrect(c, Rect2(-21, 12 + shift.y, 30, 3), Color(0.6, 0.63, 0.72), 1.0)
 	var progress := sin(t * 0.7) * 0.5 + 0.5
 	var height := 5.0 + 20.0 * progress
-	var top_y := 12.0 - height
-	var layer := PackedVector2Array([Vector2(-14, 12), Vector2(-9, top_y + 4.0), Vector2(-7, top_y), Vector2(1, top_y), Vector2(3, top_y + 4.0), Vector2(8, 12)])
+	var base_y := 12.0 + shift.y
+	var top_y := base_y - height
+	var layer := PackedVector2Array([Vector2(-14, base_y), Vector2(-9, top_y + 4.0), Vector2(-7, top_y), Vector2(1, top_y), Vector2(3, top_y + 4.0), Vector2(8, base_y)])
 	c.draw_colored_polygon(layer, Color(0.92, 0.95, 1.0, 0.92))
 	for i in int(height / 3.0):
-		c.draw_line(Vector2(-12, 11.0 - i * 3.0), Vector2(6, 11.0 - i * 3.0), Color(0.6, 0.65, 0.8, 0.45), 1.0)
+		c.draw_line(Vector2(-12, base_y - 1.0 - i * 3.0), Vector2(6, base_y - 1.0 - i * 3.0), Color(0.6, 0.65, 0.8, 0.45), 1.0)
 	var head_x := -3.0 + sin(t * 3.0) * 9.0
 	c.draw_line(Vector2(-22, top_y - 5.0), Vector2(10, top_y - 5.0), Color(0.55, 0.58, 0.68), 2.0)
 	Art.rrect(c, Rect2(head_x - 4, top_y - 9.0, 8, 7), Color(0.85, 0.87, 0.95), 1.5)
 	c.draw_line(Vector2(head_x, top_y - 2.0), Vector2(head_x, top_y - 0.5), Color(1.0, 0.55, 0.15), 1.5)
 	Art.glow(c, Vector2(head_x, top_y), 4.0, Color(1.0, 0.55, 0.15))
-	c.draw_colored_polygon(PackedVector2Array([Vector2(-24, -17), Vector2(-8, -17), Vector2(-24, 0)]), Color(1, 1, 1, 0.1))
+	c.draw_colored_polygon(PackedVector2Array([Vector2(-24, -17 + shift.y), Vector2(-8, -17 + shift.y), Vector2(-24, 0 + shift.y)]), Color(1, 1, 1, 0.1))
 	Art.rrect_line(c, window, Color(0.6, 0.65, 0.75), 3.0, 2.0)
 	var la := _local_aim(s)
-	Art.face(c, Vector2(21, -13), Vector2(11, 11), s.eye_color, la, s.mood, t)
+	Art.face(c, Vector2(21, -13 + shift.y), Vector2(11, 11), s.eye_color, la, s.mood, t)
 	# Zwei Drohnen schweben ueber dem Gehaeuse (Platzhalter fuer die spaetere Drohnenmechanik).
 	for i in 2:
-		var base := Vector2(-13.0 + i * 27.0, -38.0 + sin(t * 3.0 + i * 2.0) * 2.0)
+		var base := Vector2(-13.0 + i * 27.0, -38.0 + shift.y + sin(t * 3.0 + i * 2.0) * 2.0)
 		Art.ellipse(c, base, 7.0, 3.5, Color(0.3, 0.32, 0.4))
 		Art.ellipse(c, base + Vector2(0, -1), 4.5, 2.0, Color(0.55, 0.57, 0.66))
 		c.draw_line(base + Vector2(-9, -4), base + Vector2(9, -4), Color(1, 1, 1, 0.55), 1.5)
 		Art.led(c, base + Vector2(0, 2), 1.3, Color(1.0, 0.55, 0.2))
-	var pivot := Vector2(0, -30)
+	var pivot := Vector2(0, -40)
 	var wrist := pivot + la * 10.0
 	Art.bar(c, pivot, wrist, 5.0, Color(0.5, 0.53, 0.62))
 	if float(s.firing) > 0.0:

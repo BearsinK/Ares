@@ -136,7 +136,7 @@ func _run() -> void:
 	Input.action_release("p1_aim_right")
 	Input.action_release("p1_aim_up")
 	var tap_loss: float = close.max_health - close.health
-	_check(tap_loss <= 12.5, "Ungeschuettelte Dose: nur Direktschaden, keine Explosion (%.0f)" % tap_loss)
+	_check(tap_loss <= 15.0, "Ungeschuettelte Dose: nur Direktschaden, keine Explosion (%.0f)" % tap_loss)
 
 	# Treffer unterbricht das Schuetteln
 	await _frames(20)

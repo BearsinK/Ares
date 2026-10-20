@@ -620,10 +620,10 @@ func _draw() -> void:
 	var blink := iframes > 0.0 and _dash_time_left <= 0.0 and not downed and fmod(iframes, 0.12) < 0.06
 	modulate = Color(1, 1, 1, 0.45) if blink else (Color(0.6, 0.6, 0.66) if downed else Color.WHITE)
 
+	var jitter := Vector2.ZERO
 	if shake_charge > 0.0:
-		draw_set_transform(Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * shake_charge * 3.0)
-	RobotArt.draw_player(self, class_id, _art_state())
-	draw_set_transform(Vector2.ZERO)
+		jitter = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * shake_charge * 3.0
+	RobotArt.draw_player(self, class_id, _art_state(), jitter)
 
 	if downed:
 		_draw_downed(size)
