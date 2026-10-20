@@ -9,38 +9,38 @@ const ALL_IDS: Array[String] = ["dust", "rapid", "shotgun", "rocket", "beam", "s
 
 const DATA := {
 	"dust": {
-		"name": "Staubkugeln", "kind": "projectile", "color": Color(0.8, 0.92, 1.0),
+		"name": "Dustgun", "kind": "projectile", "color": Color(0.8, 0.92, 1.0),
 		"fire_rate": 6.0, "damage": 8.0, "pellets": 1, "spread": 0.04,
 		"speed": 950.0, "lifetime": 0.9, "pierce": 0, "size": 4.0,
 		"recoil": 40.0, "shake": 1.0, "sound": "shoot", "barrel": 14.0,
 	},
 	"rapid": {
-		"name": "Schnellfeuer", "kind": "projectile", "color": Color(1.0, 0.9, 0.4),
+		"name": "Rapid", "kind": "projectile", "color": Color(1.0, 0.9, 0.4),
 		"fire_rate": 14.0, "damage": 4.0, "pellets": 1, "spread": 0.1,
 		"speed": 1100.0, "lifetime": 0.8, "pierce": 0, "size": 3.0,
 		"recoil": 25.0, "shake": 0.6, "sound": "shoot", "barrel": 16.0,
 	},
 	"shotgun": {
-		"name": "Schrot", "kind": "projectile", "color": Color(1.0, 0.7, 0.3),
+		"name": "Scatter", "kind": "projectile", "color": Color(1.0, 0.7, 0.3),
 		"fire_rate": 1.3, "damage": 6.0, "pellets": 9, "spread": 0.3,
 		"speed": 900.0, "lifetime": 0.32, "pierce": 0, "size": 3.0,
 		"recoil": 320.0, "shake": 6.0, "sound": "shotgun", "barrel": 12.0,
 	},
 	"rocket": {
-		"name": "Rakete", "kind": "projectile", "color": Color(1.0, 0.45, 0.2),
+		"name": "Rocket", "kind": "projectile", "color": Color(1.0, 0.45, 0.2),
 		"fire_rate": 1.0, "damage": 20.0, "pellets": 1, "spread": 0.0,
 		"speed": 650.0, "lifetime": 1.6, "pierce": 0, "size": 7.0,
 		"explosion_radius": 120.0, "explosion_damage": 45.0,
 		"recoil": 260.0, "shake": 7.0, "sound": "rocket", "barrel": 18.0,
 	},
 	"beam": {
-		"name": "Strahl", "kind": "hitscan", "color": Color(0.4, 1.0, 1.0),
+		"name": "Beam", "kind": "hitscan", "color": Color(0.4, 1.0, 1.0),
 		"fire_rate": 20.0, "damage": 3.5, "range": 650.0, "pierce": 99,
 		"width": 5.0, "tracer_life": 0.06,
 		"recoil": 15.0, "shake": 0.6, "sound": "beam", "barrel": 16.0,
 	},
 	"can": {
-		"name": "Dose", "kind": "lob", "color": Color(0.72, 0.86, 0.8),
+		"name": "Soda Bomb", "kind": "lob", "color": Color(0.72, 0.86, 0.8),
 		"fire_rate": 2.8, "damage": 12.0, "pellets": 1, "spread": 0.0,
 		"speed": 700.0, "speed_max": 1000.0, "gravity": 1400.0, "lifetime": 4.0,
 		"pierce": 0, "size": 9.0,
@@ -51,7 +51,7 @@ const DATA := {
 		"recoil": 60.0, "shake": 2.0, "sound": "can_throw", "barrel": 16.0,
 	},
 	"turret": {
-		"name": "Geschütz", "kind": "hitscan", "color": Color(0.75, 0.9, 1.0),
+		"name": "Turret", "kind": "hitscan", "color": Color(0.75, 0.9, 1.0),
 		"fire_rate": 2.8, "damage": 34.0, "range": 1500.0, "pierce": 3,
 		"width": 3.0, "tracer_life": 0.12,
 		"recoil": 0.0, "shake": 3.0, "sound": "turret", "barrel": 26.0,

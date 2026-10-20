@@ -51,7 +51,7 @@ var hp := MAX_HP
 var phase := 1
 var open := false
 var dying := false
-var boss_name := "DER SCHMELZER"
+var boss_name := "SMELTER"
 var banner := ""
 var banner_time := 0.0
 var statuses: StatusEffects
@@ -84,7 +84,7 @@ func _ready() -> void:
 	shape.shape = rect
 	shape.position = Vector2(0.0, -310.0)
 	add_child(shape)
-	_say("ENDBOSS: DER SCHMELZER", 3.2)
+	_say("ENDBOSS: SMELTER", 3.2)
 	if arena != null:
 		arena.belt_speed = BELT_SPEEDS[0]
 

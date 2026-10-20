@@ -172,7 +172,7 @@ func _draw_result(view: Vector2) -> void:
 	var color := Color(0.5, 1.0, 0.6) if victory else Color(1.0, 0.4, 0.4)
 	UiKit.text(_canvas, Vector2(0, 190), title, 84, color, HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	if victory:
-		UiKit.text(_canvas, Vector2(0, 232), "Der Schmelzer ist besiegt. Die Fabrik steht still.", 22, Color(0.85, 0.9, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		UiKit.text(_canvas, Vector2(0, 232), "Der Smelter ist erledigt. Die Fabrik steht still.", 22, Color(0.85, 0.9, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var seconds := int(main.director.time)
 	var panel := Rect2(Vector2(view.x * 0.5 - 420.0, 270.0), Vector2(840, 250))
 	Art.panel(_canvas, panel, Color(0.09, 0.11, 0.18), 18.0, Color(1, 1, 1, 0.25))

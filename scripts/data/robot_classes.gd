@@ -23,7 +23,7 @@ const DATA := {
 		"weapons": ["dust"],
 		"pickup_bonus": 0.5,
 		"damage_mult": 1.0,
-		"ability": {"id": "suck", "name": "Sog", "cooldown": 9.0, "duration": 1.4},
+		"ability": {"id": "suck", "name": "Vortex", "cooldown": 9.0, "duration": 1.4},
 	},
 	"hexapod": {
 		"name": "Hexapod",
@@ -48,7 +48,7 @@ const DATA := {
 		"ability": {"id": "overwatch", "name": "Overwatch", "cooldown": 14.0, "duration": 4.0},
 	},
 	"vending": {
-		"name": "Automat",
+		"name": "Vendor",
 		"color": Color(0.35, 0.75, 0.4),
 		"eye_color": Color(1.0, 0.9, 0.4),
 		"radius": 34.0,
@@ -64,10 +64,10 @@ const DATA := {
 		"stationary_fire": false,
 		"weapons": ["can"],
 		"damage_mult": 1.2,
-		"ability": {"id": "roll", "name": "Walze", "cooldown": 12.0, "duration": 3.0},
+		"ability": {"id": "roll", "name": "Steamroller", "cooldown": 12.0, "duration": 3.0},
 	},
 	"printer": {
-		"name": "Drucker",
+		"name": "Printbot",
 		"color": Color(0.2, 0.2, 0.25),
 		"eye_color": Color(1.0, 0.55, 0.2),
 		"radius": 29.0,
@@ -83,7 +83,7 @@ const DATA := {
 		"stationary_fire": false,
 		"weapons": ["rapid"],
 		"damage_mult": 1.0,
-		"ability": {"id": "print", "name": "Druck", "cooldown": 15.0, "duration": 9.0},
+		"ability": {"id": "print", "name": "Drone Drop", "cooldown": 15.0, "duration": 9.0},
 	},
 }
 

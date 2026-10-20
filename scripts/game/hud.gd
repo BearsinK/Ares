@@ -80,7 +80,7 @@ func _draw_hints(view: Vector2) -> void:
 	_text(panel.position + Vector2(0, 28), "STEUERUNG", 16, Color(1.0, 0.85, 0.4, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 	_text(panel.position + Vector2(0, 56), "Controller: R2 schießen   R1 Dash   L1 Sprung   L2 Fähigkeit   Dreieck Waffe   Kreis Partner beleben", 15, Color(0.9, 0.92, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 	_text(panel.position + Vector2(0, 80), "Tastatur P1: WASD, Maus, Leertaste, Shift, E     P2: Pfeile, Punkt, Strich, Komma     F11 Vollbild", 15, Color(0.7, 0.74, 0.9, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
-	_text(panel.position + Vector2(0, 102), "Je weiter ihr kommt, desto mehr Chips gibt es für die Werkstatt.", 13, Color(0.6, 0.95, 1.0, alpha * 0.9), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+	_text(panel.position + Vector2(0, 102), "Je weiter ihr kommt, desto mehr Chips gibt es für die Garage.", 13, Color(0.6, 0.95, 1.0, alpha * 0.9), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 
 
 func _draw_flash(view: Vector2) -> void:
@@ -208,7 +208,7 @@ func _draw_boss_bar(view: Vector2, boss: Boss) -> void:
 	var status := "PANZER GESCHLOSSEN: nur 25 Prozent Schaden" if not boss.open else "KERN OFFEN: voller Schaden"
 	if boss.is_invulnerable() and not boss.dying:
 		status = "unverwundbar"
-	_text(Vector2(0, 78), "%s     Schwach gegen Wasser und Eis" % status, 14, Color(0.85, 0.87, 0.95), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	_text(Vector2(0, 78), "%s     Schwach gegen Hydro und Cryo" % status, 14, Color(0.85, 0.87, 0.95), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	if boss.banner_time > 0.0:
 		var alpha := clampf(boss.banner_time / 0.4, 0.0, 1.0)
 		_text(Vector2(0, view.y * 0.3), boss.banner, 46, Color(1.0, 0.8, 0.3, alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)

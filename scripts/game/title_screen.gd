@@ -4,7 +4,7 @@ extends Node2D
 
 enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING }
 
-const MENU_ITEMS: Array[String] = ["Spielen", "Werkstatt", "Steuerung", "Musik", "Beenden"]
+const MENU_ITEMS: Array[String] = ["Spielen", "Garage", "Steuerung", "Musik", "Beenden"]
 const COUNTDOWN := 1.1
 
 var state := State.MAIN
@@ -218,7 +218,7 @@ func _item_label(index: int) -> String:
 func _draw_main(view: Vector2) -> void:
 	# Logo.
 	var pulse := 0.5 + 0.5 * sin(_time * 2.0)
-	UiKit.text(_ui, Vector2(0, 190), "ROBO-RABATZ", 118, Color(1.0, 0.85, 0.3).lerp(Color(1.0, 0.6, 0.2), pulse), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(0, 190), "ROBROS", 118, Color(1.0, 0.85, 0.3).lerp(Color(1.0, 0.6, 0.2), pulse), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	UiKit.text(_ui, Vector2(0, 240), "Der Aufstand der Apparate", 28, Color(0.8, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	Art.glow(_ui, Vector2(view.x * 0.5, 150), 160.0, Color(1.0, 0.6, 0.2))
 	for i in MENU_ITEMS.size():
@@ -229,7 +229,7 @@ func _draw_main(view: Vector2) -> void:
 
 func _draw_workshop(view: Vector2) -> void:
 	_ui.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.72))
-	UiKit.text(_ui, Vector2(0, 80), "WERKSTATT", 52, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(0, 80), "GARAGE", 52, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var stats := SaveData.stats()
 	UiKit.text(_ui, Vector2(0, 112), "Läufe %d    Beste Welle %d    Boss besiegt %d" % [int(stats.runs), int(stats.best_wave), int(stats.boss_kills)], 17, Color(0.7, 0.74, 0.88), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var chips_rect := Rect2(Vector2(view.x * 0.5 - 130.0, 128.0), Vector2(260, 44))
@@ -308,7 +308,7 @@ func _draw_player_select(i: int, panel: Rect2) -> void:
 	if not available:
 		_ui.draw_rect(Rect2(panel.position + Vector2(20, 150), Vector2(panel.size.x - 40.0, 195)), Color(0.04, 0.05, 0.09, 0.78))
 		UiKit.text(_ui, panel.position + Vector2(0, 240), "GESPERRT", 36, Color(1.0, 0.6, 0.45), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
-		UiKit.text(_ui, panel.position + Vector2(0, 275), "Freischalten in der Werkstatt: %d Chips" % int(Meta.CLASS_UNLOCKS[class_id]), 19, Color(0.85, 0.88, 0.97), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+		UiKit.text(_ui, panel.position + Vector2(0, 275), "Freischalten in der Garage: %d Chips" % int(Meta.CLASS_UNLOCKS[class_id]), 19, Color(0.85, 0.88, 0.97), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 	# Tags, Beschreibung, Werte.
 	var tag_x := panel.position.x + 40.0
 	for tag in info.tags:

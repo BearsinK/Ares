@@ -5,27 +5,27 @@ extends RefCounted
 
 const UPGRADES := {
 	"vitality": {
-		"name": "Verstärkter Rahmen", "text": "+8 Leben pro Stufe", "max": 5,
+		"name": "Heavy Frame", "text": "+8 Leben pro Stufe", "max": 5,
 		"costs": [20, 30, 45, 65, 90],
 	},
 	"firepower": {
-		"name": "Übertaktete Ladung", "text": "+4% Schaden pro Stufe", "max": 5,
+		"name": "Overcharge", "text": "+4% Schaden pro Stufe", "max": 5,
 		"costs": [25, 35, 50, 70, 95],
 	},
 	"capital": {
-		"name": "Startkapital", "text": "+12 Gold zu Beginn pro Stufe", "max": 5,
+		"name": "Starter Cash", "text": "+12 Gold zu Beginn pro Stufe", "max": 5,
 		"costs": [15, 25, 35, 50, 70],
 	},
 	"scholar": {
-		"name": "Lernchip", "text": "+8% Erfahrung pro Stufe", "max": 4,
+		"name": "Brain Chip", "text": "+8% Erfahrung pro Stufe", "max": 4,
 		"costs": [20, 35, 55, 80],
 	},
 	"joints": {
-		"name": "Turbo-Gelenke", "text": "+3% Tempo pro Stufe", "max": 3,
+		"name": "Turbo Joints", "text": "+3% Tempo pro Stufe", "max": 3,
 		"costs": [25, 45, 70],
 	},
 	"dealer": {
-		"name": "Händlerkontakt", "text": "Erster Reroll im Shop ist gratis", "max": 1,
+		"name": "Black Market", "text": "Erster Reroll im Shop ist gratis", "max": 1,
 		"costs": [60],
 	},
 }

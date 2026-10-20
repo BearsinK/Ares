@@ -17,7 +17,7 @@ const DATA := {
 		},
 	},
 	"oilchange": {
-		"name": "Ölwechsel",
+		"name": "Oil Change",
 		"mods": {
 			"default": {"max_hp": 25.0},
 			"hexapod": {"max_hp": 15.0, "speed": 0.1},
@@ -25,7 +25,7 @@ const DATA := {
 		},
 	},
 	"grease": {
-		"name": "Fettspray",
+		"name": "Nitro Spray",
 		"mods": {
 			"default": {"speed": 0.1},
 			"hexapod": {"speed": 0.15},
@@ -33,7 +33,7 @@ const DATA := {
 		},
 	},
 	"coolant": {
-		"name": "Kühlmittel",
+		"name": "Coolant",
 		"mods": {
 			"default": {"dash_cd": 0.2},
 			"hexapod": {"dash_cd": 0.3},
@@ -47,62 +47,62 @@ const DATA := {
 		},
 	},
 	"piggy": {
-		"name": "Sparschwein",
+		"name": "Piggy Bank",
 		"mods": {
 			"default": {"gold": 0.25},
 			"roomba": {"gold": 0.4},
 		},
 	},
 	"plating": {
-		"name": "Panzerplatte",
+		"name": "Armor Plate",
 		"mods": {
 			"default": {"dmg_taken": 0.1},
 			"vending": {"dmg_taken": 0.2},
 		},
 	},
 	"chillloop": {
-		"name": "Kühlkreislauf",
+		"name": "Heatsink",
 		"mods": {
 			"default": {"ability_cd": 0.2},
 			"hexapod": {"ability_cd": 0.25},
 		},
 	},
 	"luckychip": {
-		"name": "Glückschip",
+		"name": "Lucky Chip",
 		"mods": {
 			"default": {"crit": 0.12},
 			"hexapod": {"crit": 0.2},
 		},
 	},
 	"scavenger": {
-		"name": "Notstrom",
+		"name": "Backup Power",
 		"mods": {
 			"default": {"kill_heal": 1.0},
 			"vending": {"kill_heal": 1.5},
 		},
 	},
 	"piercer": {
-		"name": "Durchschlag",
+		"name": "Piercer",
 		"mods": {
 			"default": {"pierce": 1.0},
 			"hexapod": {"pierce": 2.0},
 		},
 	},
 	"boomchip": {
-		"name": "Sprengkapsel",
+		"name": "Blast Cap",
 		"mods": {
 			"default": {"death_blast": 10.0},
 			"printer": {"death_blast": 14.0},
 		},
 	},
 	"cablelink": {
-		"name": "Kabelbaum",
+		"name": "Cable Link",
 		"mods": {
 			"default": {"link": 1.0},
 		},
 	},
 	"sharpchip": {
-		"name": "Scharfer Chip",
+		"name": "Sharp Chip",
 		"mods": {
 			"default": {"damage": 0.15},
 			"roomba": {"damage": 0.25, "fire_rate": 0.1},
@@ -115,7 +115,7 @@ const LABELS := {
 	"dash_cd": "Dash-Ladezeit", "pickup": "Sammelradius", "gold": "Gold",
 	"dmg_taken": "weniger Schaden", "max_hp": "Leben",
 	"ability_cd": "Fähigkeits-Ladezeit", "crit": "Crit-Chance", "kill_heal": "Leben pro Kill",
-	"pierce": "Durchschlag", "death_blast": "Explosionsschaden", "link": "Kabelbaum",
+	"pierce": "Durchschlag", "death_blast": "Explosionsschaden", "link": "Cable Link",
 }
 
 

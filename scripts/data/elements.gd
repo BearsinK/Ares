@@ -5,7 +5,7 @@ extends RefCounted
 const IDS: Array[String] = ["fire", "water", "ice", "lightning"]
 
 const NAMES := {
-	"fire": "Feuer", "water": "Wasser", "ice": "Eis", "lightning": "Blitz",
+	"fire": "Pyro", "water": "Hydro", "ice": "Cryo", "lightning": "Volt",
 }
 
 const COLORS := {

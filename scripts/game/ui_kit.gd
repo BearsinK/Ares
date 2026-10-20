@@ -6,27 +6,27 @@ const CLASS_ORDER: Array[String] = ["roomba", "hexapod", "vending", "printer"]
 
 const CLASS_INFO := {
 	"roomba": {
-		"tags": ["Sauger", "Support", "Wendig"],
+		"tags": ["Vacuum", "Support", "Agile"],
 		"blurb": "Flache Scheibe mit Roboterarm. Schwacher Dauerbeschuss, großer Sammelradius, saugt Beute und Gegner heran.",
-		"ability": "Sog: zieht Gegner und Beute heran",
+		"ability": "Vortex: zieht Gegner und Beute heran",
 		"damage": 3, "difficulty": 2,
 	},
 	"hexapod": {
-		"tags": ["Sniper", "Mobil", "Stellung"],
+		"tags": ["Sniper", "Climber", "Turret"],
 		"blurb": "Klettert Wände und schießt schnell, aber nur im Stand. Positionierung ist alles.",
 		"ability": "Overwatch: kurz doppelte Feuerrate ohne Aufbauzeit",
 		"damage": 4, "difficulty": 4,
 	},
 	"vending": {
-		"tags": ["Tank", "Fläche", "Langsam"],
+		"tags": ["Tank", "AoE", "Heavy"],
 		"blurb": "Groß und robust. Wirft geschüttelte Dosen, die beim Aufprall explodieren.",
-		"ability": "Walze: rollt durch Gegner, macht Schaden und nimmt weniger",
+		"ability": "Steamroller: rollt durch Gegner, macht Schaden und nimmt weniger",
 		"damage": 4, "difficulty": 2,
 	},
 	"printer": {
-		"tags": ["Schwarm", "Utility", "Vielseitig"],
+		"tags": ["Swarm", "Utility", "Flex"],
 		"blurb": "Läuft auf gedruckten Beinen, druckt Drohnen als zusätzliche Waffen.",
-		"ability": "Druck: zwei explosive Drohnen jagen Gegner",
+		"ability": "Drone Drop: zwei explosive Drohnen jagen Gegner",
 		"damage": 2, "difficulty": 3,
 	},
 }

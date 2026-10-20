@@ -7,11 +7,11 @@ extends RefCounted
 
 const DATA := {
 	"normal": {"name": "", "text": ""},
-	"swarm": {"name": "SCHWARM", "text": "Viel mehr Gegner, dafür schwächer", "credits": 1.7, "cap": 1.5, "hp": 0.6},
-	"elites": {"name": "ELITE-WELLE", "text": "Viele Elites mit besonderen Fähigkeiten", "elite": 3.5, "credits": 0.8},
-	"armor": {"name": "PANZERWELLE", "text": "Gegner sind zäher, lassen aber doppelt Gold fallen", "hp": 1.5, "gold": 2.0, "credits": 0.85},
-	"air": {"name": "LUFTALARM", "text": "Flieger, Schützen und Mörser greifen an", "kinds": ["flyer", "shooter", "mortar"]},
-	"rush": {"name": "STURM", "text": "Alle Gegner sind schneller", "speed": 1.4, "credits": 0.9},
+	"swarm": {"name": "SWARM", "text": "Viel mehr Gegner, dafür schwächer", "credits": 1.7, "cap": 1.5, "hp": 0.6},
+	"elites": {"name": "ELITE RUSH", "text": "Viele Elites mit besonderen Fähigkeiten", "elite": 3.5, "credits": 0.8},
+	"armor": {"name": "HEAVY METAL", "text": "Gegner sind zäher, lassen aber doppelt Gold fallen", "hp": 1.5, "gold": 2.0, "credits": 0.85},
+	"air": {"name": "AIR RAID", "text": "Buzzer, Gunner und Mortar greifen an", "kinds": ["flyer", "shooter", "mortar"]},
+	"rush": {"name": "OVERDRIVE", "text": "Alle Gegner sind schneller", "speed": 1.4, "credits": 0.9},
 }
 
 const POOL := ["swarm", "elites", "armor", "air", "rush"]

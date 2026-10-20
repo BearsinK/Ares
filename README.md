@@ -1,4 +1,4 @@
-# Robo-Rabatz
+# Robros
 
 2D-Coop-Roguelike für zwei Spieler an einem PC, gebaut mit Godot 4.7.
 Design-Zusammenfassung: [docs/DESIGN.md](docs/DESIGN.md)
@@ -36,7 +36,7 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Testarena mit Plattformen und Schacht, Kamera hält beide Spieler im Bild
 - Laufen mit Beschleunigung, Sprung (variable Höhe, Coyote-Time, Eingabepuffer), Dash mit Aufladungen, Iframes und Momentum
 - Platzhalter-Klassen Roomba und Hexapod (Hexapod schießt nur im Stand)
-- Sechs Waffen: Staubkugeln, Schnellfeuer, Schrot, Rakete (Explosion), Strahl und Sniper (Treffer entlang einer Linie, durchschlägt Gegner). Jeder Spieler hat drei zum Ausprobieren, Wechsel per Dreieck
+- Sechs Waffen: Dustgun, Rapid, Scatter, Rocket (Explosion), Beam und Sniper (Treffer entlang einer Linie, durchschlägt Gegner). Jeder Spieler hat drei zum Ausprobieren, Wechsel per Dreieck
 - Rückmeldung: Mündungsfeuer, Funken, Rückstoß, Kamerawackeln, Explosionen, eigener Sound pro Waffe
 - Automat: Dosenwurf im Bogen aus dem Ausgabefach unten. Feuer halten schüttelt die Dose (Ladering, gepunktete Flugbahn), loslassen wirft. Je länger geschüttelt, desto weiter, schneller und größer die Explosion. Ab 20 Prozent Schütteln explodiert die Dose beim Aufprall, kurzes Antippen wirft nur eine ungeschüttelte Dose ohne Explosion. Mit Elementmodul gibt die Dose das Element weiter
 - Hexapod: klettert Wände hoch (gegen die Wand drücken, hoch/runter klettern, an der Oberkante hopst er auf den Rand, von der Wand abspringen geht auch). Sein Geschütz schießt schnell (2,8 Schuss pro Sekunde, durchschlägt bis zu 3 Gegner), aber nur im Stand: am Boden oder hängend an der Wand, nach 0,2 Sekunden Aufbauzeit (Beine spreizen sich). Im Gehen, Klettern oder in der Luft schießt er nicht. Waffen aus dem Shop darf er überall nutzen
@@ -48,14 +48,14 @@ Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die näc
 - Wellen mit Zeitlimit (Standard 120 s, 10 Wellen), danach räumt sich das Feld, alle stehen auf und der Shop öffnet. Jeder kauft persönlich ein: Buffs, Elementmodule, Waffen, Bewegungs-Firmware, Reroll. Nach der letzten Welle erscheint ein Sieg-Bildschirm (der Endboss fehlt noch)
 - Bewegungs-Firmware: Doppelsprung, Wandsprung (rutschen und abspringen), Gleitschirm, Bodenstoß, Greifhaken, mehr Dash-Ladungen. Plattformen sind von unten durchlässig, mit nach unten + Sprung fällt man durch
 - Klassenfähigkeiten auf L2: Roomba Sog (zieht Gegner und Beute heran und kaut sie an), Hexapod Overwatch (4 s doppelte Feuerrate, auch in Bewegung), Automat Walze (3 s schneller, halber Schaden, rammt Gegner), Drucker Druck (zwei Drohnen mit Explosivschüssen)
-- Sechs Gegnertypen: dazu Rammbock (kündigt einen Ansturm an, der Schaden macht, wenn man im Weg steht) und Mörser (Warnkreis am Boden, dann Einschlag). Ab etwa einer Minute erscheinen Elites: größer, zäher, goldene Aura, viel Beute und ein Reparaturkit
+- Sechs Gegnertypen (Grunt, Gunner, Buzzer, Brute, Ramtank, Mortar): dazu Ramtank (kündigt einen Ansturm an, der Schaden macht, wenn man im Weg steht) und Mortar (Warnkreis am Boden, dann Einschlag). Ab etwa einer Minute erscheinen Elites: größer, zäher, goldene Aura, viel Beute und ein Reparaturkit
 - Reparaturkits (grünes Kreuz) heilen den Spieler, der sie braucht. Treffer erzeugen Kamerawackeln, roten Bildschirmrand und einen kurzen Hitstop
 - Dreizehn Perks mit Symbolen, darunter Glückschip (Crit), Notstrom (Heilung pro Kill), Durchschlag, Sprengkapsel (Kettenexplosionen) und Kühlkreislauf (Fähigkeit lädt schneller)
-- Endboss "Der Schmelzer" nach Welle 10 (nach einem letzten Shop): Die Halle wird zum Laufband-Ofen. Das Band zieht alles am Boden nach links in den Verbrennungsofen (Feuer, 30 Schaden). Der Boss rechts schickt Hindernisse aufs Band: Kisten und Stapel (springen, mit Anlauf), rollende Sägen (springen) und hängende Träger (drunter durchlaufen). Plattformen über dem Band sind sicher. Dazu Feuersalven mit Zielstrahl, Ascheregen mit Warnkreisen und ab Phase 3 Schweißdrohnen. Sein Panzer nimmt nur 25 Prozent Schaden, nur im Vent (Kern offen) volle. Wasser +50 Prozent, Eis +25 Prozent, Feuer -40 Prozent. Bei 66 und 33 Prozent Leben wechselt die Phase, das Band wird schneller
-- Werkstatt im Hauptmenü: Am Ende jedes Laufs gibt es Chips (mehr für Wellen, Kills, Stufe und den Boss). Damit kauft man dauerhafte Upgrades (Leben, Schaden, Startgold, Erfahrung, Tempo, gratis Reroll) und schaltet Automat, Drucker und weitere Waffen frei. Der Spielstand liegt in `user://ares_save.json`
-- Elites haben eine Art mit eigener Mechanik: Brandherd (legt Feuerstellen), Schildträger, Sturmbot (Blitzfächer), Frostwache (bremst in der Nähe)
-- Wellen-Modifikatoren ab Welle 2: Schwarm, Elite-Welle, Panzerwelle, Luftalarm, Sturm. Der Shop bietet auch Reparaturen, und jeder Kauf macht weitere teurer
-- Perk Kabelbaum: nah beim Partner mehr Schaden und Regeneration
+- Endboss "Smelter" nach Welle 10 (nach einem letzten Shop): Die Halle wird zum Laufband-Ofen. Das Band zieht alles am Boden nach links in den Verbrennungsofen (Feuer, 30 Schaden). Der Boss rechts schickt Hindernisse aufs Band: Kisten und Stapel (springen, mit Anlauf), rollende Sägen (springen) und hängende Träger (drunter durchlaufen). Plattformen über dem Band sind sicher. Dazu Feuersalven mit Zielstrahl, Ascheregen mit Warnkreisen und ab Phase 3 Schweißdrohnen. Sein Panzer nimmt nur 25 Prozent Schaden, nur im Vent (Kern offen) volle. Hydro +50 Prozent, Cryo +25 Prozent, Pyro -40 Prozent. Bei 66 und 33 Prozent Leben wechselt die Phase, das Band wird schneller
+- Garage im Hauptmenü: Am Ende jedes Laufs gibt es Chips (mehr für Wellen, Kills, Stufe und den Boss). Damit kauft man dauerhafte Upgrades (Leben, Schaden, Startgold, Erfahrung, Tempo, gratis Reroll) und schaltet Automat, Drucker und weitere Waffen frei. Der Spielstand liegt in `user://ares_save.json`
+- Elites haben eine Art mit eigener Mechanik: Inferno (legt Feuerherde), Bulwark (Schild), Stormer (Blitzfächer), Frostbite (bremst in der Nähe)
+- Wellen-Modifikatoren ab Welle 2: Swarm, Elite Rush, Heavy Metal, Air Raid, Overdrive. Der Shop bietet auch Reparaturen, und jeder Kauf macht weitere teurer
+- Perk Cable Link: nah beim Partner mehr Schaden und Regeneration
 - Musik wird im Code erzeugt und lässt sich im Menü abschalten, F11 schaltet Vollbild um
 - Pausemenü (Weiter, Steuerung, Neustart, Hauptmenü mit Rückfrage) und Ergebnisbildschirm nach Game Over oder Sieg
 - Spieler-Leben mit Unverwundbarkeit nach Treffer, Wiederbeleben durch Halten von Interagieren (Kreis), Game Over wenn beide am Boden liegen

@@ -1,4 +1,4 @@
-# Robo-Rabatz: Design-Zusammenfassung
+# Robros: Design-Zusammenfassung
 
 Stand: Prototyp läuft (siehe Abschnitt Umsetzungsstand am Ende). Alles hier ist ein Entwurf und kann sich ändern.
 Markiert mit (Vorschlag) ist, was noch nicht bestätigt wurde.
@@ -262,7 +262,7 @@ Umgesetzt und automatisch getestet:
 - Gegner: Rammbock (Ansturm) und Mörser (Flächenschlag) zusätzlich, Elites (größer, zäher, mehr Beute), Reparaturkits
 - Perks mit Procs: Crit, Heilung pro Kill, Durchschlag, Kettenexplosion, Fähigkeits-Ladezeit
 - Treffer-Rückmeldung: Wackeln, roter Rand, Hitstop
-- Endboss "Der Schmelzer" mit Laufband-Ofen, Hindernissen (Kiste, Stapel, Säge, Träger), Panzer/Kern-Mechanik, drei Phasen, Elementschwäche (Wasser, Eis)
+- Endboss "Smelter" mit Laufband-Ofen, Hindernissen (Kiste, Stapel, Säge, Träger), Panzer/Kern-Mechanik, drei Phasen, Elementschwäche (Wasser, Eis)
 
 Noch offen:
 - Roomba saugt noch keine Beute-Kategorien (Müll als Munition), Drucker druckt noch keine Zusatzwaffen
