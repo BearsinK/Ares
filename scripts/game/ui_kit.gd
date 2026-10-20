@@ -7,7 +7,7 @@ const CLASS_ORDER: Array[String] = ["roomba", "hexapod", "vending", "printer"]
 const CLASS_INFO := {
 	"roomba": {
 		"tags": ["Sauger", "Support", "Wendig"],
-		"blurb": "Flache Scheibe mit Roboterarm. Schwacher Dauerbeschuss, saugt Beute und Gegner heran.",
+		"blurb": "Flache Scheibe mit Roboterarm. Schwacher Dauerbeschuss, grosser Sammelradius, saugt Beute und Gegner heran.",
 		"ability": "Sog: zieht Gegner und Beute heran",
 		"damage": 3, "difficulty": 2,
 	},

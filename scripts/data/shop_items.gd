@@ -11,7 +11,10 @@ extends RefCounted
 const OFFER_COUNT := 4
 const MAX_WEAPONS := 3
 
-const BASE_PRICE := {"perk": 12, "module": 25, "weapon": 30, "firmware": 35}
+const BASE_PRICE := {"perk": 12, "module": 25, "weapon": 30, "firmware": 35, "repair": 20}
+## Jeder Kauf macht alle weiteren im Lauf um diesen Anteil teurer (Gold-Senke fuer spaete Wellen).
+const INFLATION := 0.04
+const REPAIR_HEAL := 0.6
 
 
 static func make_offers(player: Player, wave: int) -> Array[Dictionary]:
@@ -26,8 +29,8 @@ static func make_offers(player: Player, wave: int) -> Array[Dictionary]:
 	return offers
 
 
-static func price_for(type: String, wave: int) -> int:
-	return int(round(float(BASE_PRICE[type]) * (1.0 + 0.25 * float(wave - 1))))
+static func price_for(type: String, wave: int, purchases := 0) -> int:
+	return int(round(float(BASE_PRICE[type]) * (1.0 + 0.25 * float(wave - 1)) * (1.0 + INFLATION * float(purchases))))
 
 
 static func reroll_price(rerolls: int) -> int:
@@ -52,8 +55,13 @@ static func _random_offer(player: Player, wave: int) -> Dictionary:
 		type = "weapon"
 	elif roll > 0.5:
 		type = "module"
+	if randf() < 0.12:
+		type = "repair"
 
 	match type:
+		"repair":
+			return {"type": "repair", "id": "repair", "name": "Reparatur", "text": "stellt %d%% Leben wieder her" % int(REPAIR_HEAL * 100.0),
+				"price": price_for("repair", wave, player.purchases), "bought": false, "color": Color(0.5, 1.0, 0.6)}
 		"firmware":
 			var available: Array[String] = []
 			for firmware_id in Firmware.DATA:
@@ -63,35 +71,39 @@ static func _random_offer(player: Player, wave: int) -> Dictionary:
 				return {}
 			var chosen: String = available[randi() % available.size()]
 			return {"type": "firmware", "id": chosen, "name": Firmware.DATA[chosen].name,
-				"text": Firmware.DATA[chosen].text, "price": price_for("firmware", wave), "bought": false,
+				"text": Firmware.DATA[chosen].text, "price": price_for("firmware", wave, player.purchases), "bought": false,
 				"color": Color(0.5, 0.95, 0.65)}
 		"module":
 			var element: String = Elements.IDS[randi() % Elements.IDS.size()]
 			return {"type": "module", "id": element, "name": "%s-Modul" % Elements.NAMES[element],
-				"text": "in die aktive Waffe", "price": price_for("module", wave), "bought": false,
+				"text": "in die aktive Waffe", "price": price_for("module", wave, player.purchases), "bought": false,
 				"color": Elements.COLORS[element]}
 		"weapon":
 			var candidates: Array[String] = []
 			for weapon_id in Weapons.ALL_IDS:
-				if not player.weapons.has(weapon_id):
+				if not player.weapons.has(weapon_id) and SaveData.weapon_unlocked(weapon_id):
 					candidates.append(weapon_id)
 			if candidates.is_empty():
 				return {}
 			var weapon_id: String = candidates[randi() % candidates.size()]
 			var slot_text := "neuer Slot" if player.weapons.size() < MAX_WEAPONS else "ersetzt aktive Waffe"
 			return {"type": "weapon", "id": weapon_id, "name": Weapons.get_weapon(weapon_id).name,
-				"text": "%s\n%s" % [Weapons.summary(weapon_id), slot_text], "price": price_for("weapon", wave), "bought": false,
+				"text": "%s\n%s" % [Weapons.summary(weapon_id), slot_text], "price": price_for("weapon", wave, player.purchases), "bought": false,
 				"color": Weapons.get_weapon(weapon_id).color}
 		_:
 			var perk_id: String = Perks.DATA.keys()[randi() % Perks.DATA.size()]
 			return {"type": "perk", "id": perk_id, "name": Perks.DATA[perk_id].name,
-				"text": Perks.describe(perk_id, player.class_id), "price": price_for("perk", wave),
+				"text": Perks.describe(perk_id, player.class_id), "price": price_for("perk", wave, player.purchases),
 				"bought": false, "color": Color(0.8, 0.8, 0.9)}
 
 
 ## Fuehrt den Kauf aus (Gold wurde schon abgezogen).
 static func apply(player: Player, offer: Dictionary) -> void:
+	if offer.type != "repair":
+		player.purchases += 1
 	match offer.type:
+		"repair":
+			player.hp = minf(player.max_health(), player.hp + player.max_health() * REPAIR_HEAL)
 		"perk":
 			player.add_mods(Perks.mods_for(offer.id, player.class_id))
 		"module":

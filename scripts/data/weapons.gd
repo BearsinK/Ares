@@ -40,7 +40,7 @@ const DATA := {
 		"recoil": 15.0, "shake": 0.6, "sound": "beam", "barrel": 16.0,
 	},
 	"can": {
-		"name": "Dose", "kind": "lob", "color": Color(0.4, 0.95, 0.55),
+		"name": "Dose", "kind": "lob", "color": Color(0.72, 0.86, 0.8),
 		"fire_rate": 2.8, "damage": 12.0, "pellets": 1, "spread": 0.0,
 		"speed": 700.0, "speed_max": 1000.0, "gravity": 1400.0, "lifetime": 4.0,
 		"pierce": 0, "size": 9.0,

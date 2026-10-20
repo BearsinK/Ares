@@ -93,7 +93,7 @@ func _activate(i: int) -> void:
 		_ready_flags[i] = true
 		Sfx.play("pickup")
 	elif slot == REROLL_SLOT:
-		var price := ShopItems.reroll_price(_rerolls[i])
+		var price := _reroll_price(i)
 		if player.gold < price:
 			_say(i, "Zu wenig Gold")
 			return
@@ -115,6 +115,12 @@ func _activate(i: int) -> void:
 		offer.bought = true
 		ShopItems.apply(player, offer)
 		Sfx.play("coin")
+
+
+func _reroll_price(i: int) -> int:
+	if _rerolls[i] == 0 and SaveData.level("dealer") > 0:
+		return 0
+	return ShopItems.reroll_price(_rerolls[i])
 
 
 func _say(i: int, text: String) -> void:
@@ -161,7 +167,7 @@ func _draw_player_column(i: int, origin: Vector2, width: float, font: Font) -> v
 	var button_y := origin.y + 80.0 + CARD_HEIGHT + 24.0
 	var reroll_pos := Vector2(origin.x, button_y)
 	var ready_pos := Vector2(origin.x + 300.0, button_y)
-	_draw_button(i, REROLL_SLOT, reroll_pos, Vector2(280.0, 50.0), "Reroll  (%d Gold)" % ShopItems.reroll_price(_rerolls[i]), font)
+	_draw_button(i, REROLL_SLOT, reroll_pos, Vector2(280.0, 50.0), "Reroll  (%s)" % (("gratis" if _reroll_price(i) == 0 else "%d Gold" % _reroll_price(i))), font)
 	_draw_button(i, READY_SLOT, ready_pos, Vector2(280.0, 50.0), "FERTIG" if not _ready_flags[i] else "BEREIT", font)
 	if _message_time[i] > 0.0:
 		_canvas.draw_string(font, Vector2(origin.x, button_y + 80.0), _messages[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(1.0, 0.5, 0.4))
@@ -177,7 +183,7 @@ func _draw_offer(i: int, slot: int, pos: Vector2, offer: Dictionary, font: Font)
 	if offer.bought:
 		_canvas.draw_string(font, pos + Vector2(0, 120), "GEKAUFT", HORIZONTAL_ALIGNMENT_CENTER, CARD_WIDTH, 22, Color(0.5, 1.0, 0.5))
 		return
-	var type_labels := {"perk": "BUFF", "module": "MODUL", "weapon": "WAFFE", "firmware": "FIRMWARE"}
+	var type_labels := {"perk": "BUFF", "module": "MODUL", "weapon": "WAFFE", "firmware": "FIRMWARE", "repair": "SERVICE"}
 	var accent: Color = PerkArt.color_of(offer.id) if offer.type == "perk" else offer.color
 	_canvas.draw_rect(Rect2(pos + Vector2(12, 0), Vector2(48, 4)), accent)
 	UiKit.text(_canvas, pos + Vector2(12, 24), type_labels[offer.type], 13, accent)
@@ -202,6 +208,11 @@ func _draw_offer_icon(offer: Dictionary, center: Vector2, accent: Color) -> void
 			Art.rrect(_canvas, Rect2(center + Vector2(-24, -8), Vector2(48, 16)), Color(0.35, 0.38, 0.48), 5.0)
 			Art.rrect(_canvas, Rect2(center + Vector2(10, -5), Vector2(22, 10)), accent, 4.0)
 			Art.rrect(_canvas, Rect2(center + Vector2(-20, 6), Vector2(12, 14)), Color(0.28, 0.3, 0.4), 4.0)
+		"repair":
+			Art.glow(_canvas, center, 40.0, accent)
+			Art.disc(_canvas, center, 22.0, Color(0.9, 0.97, 0.92), Color(0.2, 0.6, 0.35))
+			_canvas.draw_rect(Rect2(center + Vector2(-11, -3.5), Vector2(22, 7)), Color(0.2, 0.75, 0.35))
+			_canvas.draw_rect(Rect2(center + Vector2(-3.5, -11), Vector2(7, 22)), Color(0.2, 0.75, 0.35))
 		_:
 			Art.glow(_canvas, center, 40.0, accent)
 			PerkArt.draw_firmware(_canvas, offer.id, center, 54.0, accent)

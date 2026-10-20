@@ -15,6 +15,7 @@ const MAX_FALL_SPEED := 1400.0
 const SEPARATION_DISTANCE := 30.0
 const ELITE_HP_MULT := 3.5
 const ELITE_SCALE := 1.35
+const FROST_RADIUS := 230.0
 
 var kind := "walker"
 var data: Dictionary = {}
@@ -23,6 +24,10 @@ var max_hp := 1.0
 var damage_scale := 1.0
 ## Elite: groesser, zaeher, gefaehrlicher, laesst mehr Beute und ein Reparaturkit fallen.
 var elite := false
+## Art der Elite (fire, shield, storm, frost), siehe EnemyTypes.ELITE_KINDS.
+var elite_kind := ""
+var shield := 0.0
+var max_shield := 0.0
 var body_scale := 1.0
 var players: Array[Player] = []
 var siblings: Array[Enemy] = []
@@ -41,16 +46,22 @@ var statuses: StatusEffects
 var _facing := 1.0
 var _walk_phase := 0.0
 var _charge_dir := 1.0
+var _elite_timer := 2.0
+var _elite_warn := 0.0
 var _charge_hit: Array[Player] = []
 
 
-func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_players: Array[Player], new_elite := false) -> void:
+func setup(new_kind: String, hp_scale: float, new_damage_scale: float, new_players: Array[Player], new_elite := false, new_elite_kind := "") -> void:
 	kind = new_kind
 	data = EnemyTypes.get_type(kind)
 	elite = new_elite
+	elite_kind = (new_elite_kind if new_elite_kind != "" else EnemyTypes.random_elite_kind()) if elite else ""
 	body_scale = ELITE_SCALE if elite else 1.0
 	max_hp = float(data.hp) * hp_scale * (ELITE_HP_MULT if elite else 1.0)
 	hp = max_hp
+	if elite_kind == "shield":
+		max_shield = max_hp * 0.6
+		shield = max_shield
 	damage_scale = new_damage_scale * (1.25 if elite else 1.0)
 	players = new_players
 	_phase = randf() * TAU
@@ -89,6 +100,16 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 		amount = statuses.process_hit(element, source, amount)
 		if _dead:
 			return
+	# Schild schluckt Schaden, bis er gebrochen ist.
+	if shield > 0.0:
+		shield -= amount
+		amount = 0.0
+		if shield <= 0.0:
+			amount = -shield
+			shield = 0.0
+			if Fx.instance:
+				Fx.instance.ring(global_position, radius() + 20.0, Color(0.5, 0.85, 1.0))
+			Sfx.play("freeze")
 	hp -= amount
 	_flash = 0.08
 	velocity += direction * 140.0 * float(data.knockback)
@@ -144,6 +165,7 @@ func _physics_process(delta: float) -> void:
 		_ground_movement(delta)
 	_apply_separation(delta)
 	_update_attack(delta)
+	_update_elite(delta)
 	move_and_slide()
 	queue_redraw()
 
@@ -260,6 +282,35 @@ func _update_attack(delta: float) -> void:
 				_state = State.CHASE
 
 
+## Eigene Mechanik der Elite-Art.
+func _update_elite(delta: float) -> void:
+	if not elite or _target == null:
+		return
+	match elite_kind:
+		"fire":
+			_elite_timer -= delta
+			if _elite_timer <= 0.0:
+				_elite_timer = 3.5
+				strike_requested.emit(self, global_position + Vector2(0.0, radius() * 0.6), 70.0, 0.9, 12.0 * damage_scale)
+		"storm":
+			_elite_timer -= delta
+			if _elite_timer <= 0.0 and _state != State.WINDUP:
+				_elite_timer = 4.2
+				_elite_warn = 0.7
+			if _elite_warn > 0.0:
+				_elite_warn -= delta
+				if _elite_warn <= 0.0:
+					var base := (_target.global_position - global_position).normalized()
+					for k in 3:
+						var dir := base.rotated((k - 1) * 0.28)
+						fire_projectile.emit(self, global_position + dir * (radius() + 8.0), dir, 420.0, 7.0 * damage_scale)
+					Sfx.play("zap")
+		"frost":
+			for player in players:
+				if not player.downed and player.global_position.distance_to(global_position) <= FROST_RADIUS:
+					player.slow_time = 0.25
+
+
 func _in_attack_range() -> bool:
 	var distance := global_position.distance_to(_target.global_position)
 	if data.attack == "melee":
@@ -343,23 +394,42 @@ func _draw() -> void:
 	}, Vector2.ZERO, body_scale)
 	if elite:
 		_draw_crown(r)
-	if hp < max_hp and (elite or kind == "brute" or hp < max_hp * 0.99):
+	if elite or (hp < max_hp and (kind == "brute" or hp < max_hp * 0.99)):
 		var width := maxf(r * 2.0, 30.0)
 		var top := -r - (22.0 if kind == "brute" or elite else 14.0) - (10.0 if elite else 0.0)
 		draw_rect(Rect2(-width * 0.5, top, width, 5.0), Color(0.08, 0.08, 0.1, 0.85))
 		draw_rect(Rect2(-width * 0.5, top, width * clampf(hp / max_hp, 0.0, 1.0), 5.0), Color(0.9, 0.3, 0.3))
+		if shield > 0.0:
+			draw_rect(Rect2(-width * 0.5, top, width * clampf(shield / max_shield, 0.0, 1.0), 5.0), Color(0.45, 0.8, 1.0))
 		draw_rect(Rect2(-width * 0.5, top, width, 5.0), Color(1, 1, 1, 0.3), false, 1.0)
+		if elite and elite_kind != "":
+			draw_string(ThemeDB.fallback_font, Vector2(-60.0, top - 4.0), EnemyTypes.ELITE_KINDS[elite_kind].name, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 11, Color(_elite_color(), 0.95))
+
+
+func _elite_color() -> Color:
+	return EnemyTypes.ELITE_KINDS[elite_kind].color if elite_kind != "" else Color(1.0, 0.8, 0.25)
 
 
 func _draw_elite_aura(r: float) -> void:
 	var pulse := 0.5 + 0.5 * sin(_time * 4.0)
-	Art.glow(self, Vector2.ZERO, r * 2.2, Color(1.0, 0.8, 0.25))
-	draw_arc(Vector2.ZERO, r + 8.0 + pulse * 3.0, 0.0, TAU, 36, Color(1.0, 0.85, 0.3, 0.55 + 0.3 * pulse), 2.5, true)
+	var color := _elite_color()
+	Art.glow(self, Vector2.ZERO, r * 2.2, color)
+	draw_arc(Vector2.ZERO, r + 8.0 + pulse * 3.0, 0.0, TAU, 36, Color(color, 0.55 + 0.3 * pulse), 2.5, true)
+	if elite_kind == "frost":
+		draw_arc(Vector2.ZERO, FROST_RADIUS, 0.0, TAU, 64, Color(color, 0.3), 2.0, true)
+		draw_circle(Vector2.ZERO, FROST_RADIUS, Color(color, 0.05))
+	elif elite_kind == "storm" and _elite_warn > 0.0:
+		var k := 1.0 - _elite_warn / 0.7
+		draw_arc(Vector2.ZERO, r + 10.0 + 40.0 * k, 0.0, TAU, 32, Color(color, 0.9 * (1.0 - k)), 3.0, true)
+	elif elite_kind == "shield" and shield > 0.0:
+		var alpha := 0.18 + 0.3 * (shield / max_shield)
+		draw_circle(Vector2.ZERO, r + 12.0, Color(color, alpha * 0.6))
+		draw_arc(Vector2.ZERO, r + 12.0, 0.0, TAU, 36, Color(color, 0.5 + alpha), 3.0, true)
 
 
 func _draw_crown(r: float) -> void:
 	var y := -r - 14.0
-	var gold := Color(1.0, 0.85, 0.3)
+	var gold := _elite_color().lerp(Color(1.0, 0.85, 0.3), 0.5)
 	var points := PackedVector2Array([Vector2(-10, y), Vector2(-10, y - 10), Vector2(-5, y - 5), Vector2(0, y - 13), Vector2(5, y - 5), Vector2(10, y - 10), Vector2(10, y)])
 	draw_colored_polygon(points, gold)
 	draw_polyline(points, Art.OUTLINE, 1.5, true)

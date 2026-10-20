@@ -127,6 +127,7 @@ func _update_confirm() -> void:
 
 
 func _run(action: String) -> void:
+	main.abandon_run()
 	get_tree().paused = false
 	if action == "restart":
 		get_tree().reload_current_scene()
@@ -148,7 +149,7 @@ func _draw_menu() -> void:
 		UiKit.text(_canvas, Vector2(0, 220), "PAUSE", 80, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var top := 330.0 if mode == Mode.PAUSE else view.y - 250.0
 	if page == Page.CONFIRM:
-		var question := "Lauf neu starten?" if _pending == "restart" else "Zurueck zum Hauptmenue? Der Lauf geht verloren."
+		var question := "Lauf neu starten?" if _pending == "restart" else "Zurueck zum Hauptmenue? Die Chips bleiben."
 		UiKit.text(_canvas, Vector2(0, top - 20.0), question, 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, view.x)
 		for i in 2:
 			var rect := Rect2(Vector2(view.x * 0.5 - 170.0 + i * 180.0, top + 10.0), Vector2(160, 56))
@@ -180,6 +181,8 @@ func _draw_result(view: Vector2) -> void:
 		var x := panel.position.x + 50.0 + i * 190.0
 		UiKit.text(_canvas, Vector2(x, panel.position.y + 60.0), stats[i][0], 18, Color(0.7, 0.74, 0.88))
 		UiKit.text(_canvas, Vector2(x, panel.position.y + 105.0), stats[i][1], 40, Color.WHITE)
+	var chips_text := "+%d Chips   (Vorrat %d)" % [main.run_chips, SaveData.chips()]
+	UiKit.text(_canvas, Vector2(0, panel.end.y + 36.0), chips_text, 26, Color(0.6, 0.95, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	for i in 2:
 		var player: Player = main.players[i]
 		var accent: Color = RobotClasses.PLAYER_COLORS[i]

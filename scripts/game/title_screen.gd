@@ -2,9 +2,9 @@ extends Node2D
 ## Titelbildschirm mit Hauptmenue, Klassenauswahl fuer beide Spieler und
 ## Steuerungsuebersicht. Startet danach die Hauptszene.
 
-enum State { MAIN, SELECT, CONTROLS, STARTING }
+enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING }
 
-const MENU_ITEMS: Array[String] = ["Spielen", "Steuerung", "Beenden"]
+const MENU_ITEMS: Array[String] = ["Spielen", "Werkstatt", "Steuerung", "Beenden"]
 const COUNTDOWN := 1.1
 
 var state := State.MAIN
@@ -12,6 +12,10 @@ var cursor := 0
 var picks: Array[int] = [0, 1]
 var locked: Array[bool] = [false, false]
 var start_timer := 0.0
+var workshop_cursor := 0
+var workshop_message := ""
+var workshop_good := false
+var workshop_message_time := 0.0
 
 var _time := 0.0
 var _camera: Camera2D
@@ -54,6 +58,8 @@ func _process(delta: float) -> void:
 		State.CONTROLS:
 			if UiKit.back() or UiKit.confirm():
 				state = State.MAIN
+		State.WORKSHOP:
+			_update_workshop(delta)
 	_stage.queue_redraw()
 	_ui.queue_redraw()
 
@@ -72,9 +78,65 @@ func _update_main() -> void:
 				state = State.SELECT
 				locked = [false, false]
 			1:
-				state = State.CONTROLS
+				state = State.WORKSHOP
+				workshop_cursor = 0
 			2:
+				state = State.CONTROLS
+			3:
 				get_tree().quit()
+
+
+## Alle Zeilen der Werkstatt: Upgrades, dann Klassen und Waffen zum Freischalten.
+func workshop_rows() -> Array[Dictionary]:
+	var rows: Array[Dictionary] = []
+	for id in Meta.UPGRADES:
+		var info: Dictionary = Meta.UPGRADES[id]
+		var level := SaveData.level(id)
+		var maxed := level >= int(info.max)
+		rows.append({"kind": "upgrade", "id": id, "name": info.name, "text": info.text, "level": level, "max": int(info.max),
+			"done": maxed, "cost": 0 if maxed else Meta.cost_of(id, level)})
+	for id in Meta.CLASS_UNLOCKS:
+		rows.append({"kind": "class", "id": id, "name": "Klasse: %s" % RobotClasses.get_stats(id).name,
+			"text": "Spielbar im Auswahlbildschirm", "level": 0, "max": 1,
+			"done": SaveData.class_unlocked(id), "cost": int(Meta.CLASS_UNLOCKS[id])})
+	for id in Meta.WEAPON_UNLOCKS:
+		rows.append({"kind": "weapon", "id": id, "name": "Waffe: %s" % Weapons.get_weapon(id).name,
+			"text": "Erscheint im Shop", "level": 0, "max": 1,
+			"done": SaveData.weapon_unlocked(id), "cost": int(Meta.WEAPON_UNLOCKS[id])})
+	return rows
+
+
+func _update_workshop(delta: float) -> void:
+	workshop_message_time = maxf(0.0, workshop_message_time - delta)
+	var rows := workshop_rows()
+	if UiKit.pressed("up"):
+		workshop_cursor = (workshop_cursor + rows.size() - 1) % rows.size()
+		Sfx.play("switch")
+	if UiKit.pressed("down"):
+		workshop_cursor = (workshop_cursor + 1) % rows.size()
+		Sfx.play("switch")
+	if UiKit.back():
+		state = State.MAIN
+		return
+	if UiKit.confirm():
+		var row := rows[workshop_cursor]
+		if row.done:
+			_workshop_say("Schon freigeschaltet" if row.kind != "upgrade" else "Schon auf Maximum")
+		elif SaveData.chips() < int(row.cost):
+			_workshop_say("Zu wenig Chips")
+		else:
+			var ok := SaveData.buy_upgrade(row.id) if row.kind == "upgrade" else SaveData.buy_unlock(row.kind, row.id)
+			if ok:
+				Sfx.play("coin")
+				_workshop_say("Gekauft: %s" % row.name, true)
+
+
+func _workshop_say(text: String, good := false) -> void:
+	workshop_message = text
+	workshop_message_time = 1.6
+	workshop_good = good
+	if not good:
+		Sfx.play("hurt")
 
 
 func _update_select(delta: float) -> void:
@@ -98,8 +160,11 @@ func _update_select(delta: float) -> void:
 				picks[i] = (picks[i] + 1) % UiKit.CLASS_ORDER.size()
 				Sfx.play("switch")
 			if Input.is_action_just_pressed(prefix + "confirm"):
-				locked[i] = true
-				Sfx.play("pickup")
+				if SaveData.class_unlocked(UiKit.CLASS_ORDER[picks[i]]):
+					locked[i] = true
+					Sfx.play("pickup")
+				else:
+					Sfx.play("hurt")
 		elif Input.is_action_just_pressed(prefix + "interact"):
 			locked[i] = false
 	if nobody_ready and (Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("p1_interact") or Input.is_action_just_pressed("p2_interact")):
@@ -137,6 +202,8 @@ func _draw_ui() -> void:
 		State.CONTROLS:
 			_draw_main(view)
 			UiKit.controls_panel(_ui, view)
+		State.WORKSHOP:
+			_draw_workshop(view)
 
 
 func _draw_main(view: Vector2) -> void:
@@ -149,6 +216,47 @@ func _draw_main(view: Vector2) -> void:
 		var rect := Rect2(Vector2(view.x * 0.5 - 160, 310 + i * 76), Vector2(320, 60))
 		UiKit.button(_ui, rect, MENU_ITEMS[i], i == cursor and state == State.MAIN)
 	UiKit.text(_ui, Vector2(0, view.y - 40), "Hoch/Runter waehlen, Kreuz oder Enter bestaetigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+
+
+func _draw_workshop(view: Vector2) -> void:
+	_ui.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.72))
+	UiKit.text(_ui, Vector2(0, 80), "WERKSTATT", 52, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	var stats := SaveData.stats()
+	UiKit.text(_ui, Vector2(0, 112), "Laeufe %d    Beste Welle %d    Boss besiegt %d" % [int(stats.runs), int(stats.best_wave), int(stats.boss_kills)], 17, Color(0.7, 0.74, 0.88), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	var chips_rect := Rect2(Vector2(view.x * 0.5 - 130.0, 128.0), Vector2(260, 44))
+	Art.rrect(_ui, chips_rect, Color(0.08, 0.14, 0.2), 14.0)
+	Art.rrect_line(_ui, chips_rect, Color(0.5, 0.9, 1.0, 0.7), 14.0, 2.0)
+	UiKit.text(_ui, chips_rect.position + Vector2(0, 31), "%d Chips" % SaveData.chips(), 26, Color(0.6, 0.95, 1.0), HORIZONTAL_ALIGNMENT_CENTER, chips_rect.size.x)
+	var rows := workshop_rows()
+	var top := 190.0
+	var row_height := 46.0
+	var panel := Rect2(Vector2(view.x * 0.5 - 560.0, top - 8.0), Vector2(1120, rows.size() * row_height + 16.0))
+	Art.panel(_ui, panel, Color(0.09, 0.11, 0.18), 16.0, Color(1, 1, 1, 0.25))
+	for i in rows.size():
+		var row := rows[i]
+		var rect := Rect2(Vector2(panel.position.x + 10.0, top + i * row_height), Vector2(panel.size.x - 20.0, row_height - 4.0))
+		var selected := i == workshop_cursor
+		if selected:
+			Art.rrect(_ui, rect, Color(0.2, 0.25, 0.38), 10.0)
+			Art.rrect_line(_ui, rect, Color(0.4, 0.75, 1.0), 10.0, 2.0)
+		var tag_colors := {"upgrade": Color(0.5, 0.85, 1.0), "class": Color(1.0, 0.7, 0.4), "weapon": Color(0.6, 1.0, 0.6)}
+		_ui.draw_rect(Rect2(rect.position + Vector2(10, 8), Vector2(5, rect.size.y - 16)), tag_colors[row.kind])
+		UiKit.text(_ui, rect.position + Vector2(26, 28), row.name, 21, Color.WHITE if not row.done or row.kind == "upgrade" else Color(0.7, 1.0, 0.75))
+		UiKit.text(_ui, rect.position + Vector2(330, 28), row.text, 17, Color(0.78, 0.8, 0.92))
+		# Stufenpunkte oder Status.
+		if row.kind == "upgrade":
+			for k in int(row.max):
+				var center := rect.position + Vector2(760.0 + k * 22.0, rect.size.y * 0.5)
+				_ui.draw_circle(center, 7.0, Color(0.5, 0.9, 1.0) if k < int(row.level) else Color(1, 1, 1, 0.15))
+		elif row.done:
+			UiKit.text(_ui, rect.position + Vector2(760, 28), "freigeschaltet", 17, Color(0.6, 1.0, 0.7))
+		var cost_text := "" if row.done else "%d" % int(row.cost)
+		var affordable := SaveData.chips() >= int(row.cost)
+		UiKit.text(_ui, rect.position + Vector2(0, 28), cost_text if not row.done else "max" if row.kind == "upgrade" else "", 21,
+			Color(0.6, 0.95, 1.0) if affordable else Color(0.7, 0.45, 0.45), HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - 18.0)
+	if workshop_message_time > 0.0:
+		UiKit.text(_ui, Vector2(0, panel.end.y + 36.0), workshop_message, 22, Color(0.6, 1.0, 0.7) if workshop_good else Color(1.0, 0.55, 0.45), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(0, view.y - 30.0), "Hoch/Runter waehlen, Kreuz kaufen, Kreis zurueck. Chips gibt es am Ende jedes Laufs.", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
 func _draw_select(view: Vector2) -> void:
@@ -169,8 +277,9 @@ func _draw_player_select(i: int, panel: Rect2) -> void:
 	var info: Dictionary = UiKit.CLASS_INFO[class_id]
 	Art.panel(_ui, panel, Color(0.09, 0.11, 0.18), 20.0, accent if locked[i] else Color(1, 1, 1, 0.3))
 	_ui.draw_rect(Rect2(panel.position + Vector2(24, 0), Vector2(120, 5)), accent)
+	var available := SaveData.class_unlocked(class_id)
 	UiKit.text(_ui, panel.position + Vector2(30, 52), "SPIELER %d" % (i + 1), 26, accent)
-	UiKit.text(_ui, panel.position + Vector2(0, 52), "BEREIT" if locked[i] else "waehlt ...", 22, Color(0.5, 1.0, 0.6) if locked[i] else Color(0.7, 0.72, 0.85), HORIZONTAL_ALIGNMENT_RIGHT, panel.size.x - 30.0)
+	UiKit.text(_ui, panel.position + Vector2(0, 52), "GESPERRT" if not available else ("BEREIT" if locked[i] else "waehlt ..."), 22, Color(1.0, 0.55, 0.45) if not available else (Color(0.5, 1.0, 0.6) if locked[i] else Color(0.7, 0.72, 0.85)), HORIZONTAL_ALIGNMENT_RIGHT, panel.size.x - 30.0)
 	# Pfeile und Name.
 	var center_x := panel.position.x + panel.size.x * 0.5
 	UiKit.text(_ui, Vector2(panel.position.x, panel.position.y + 120), stats.name.to_upper(), 46, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
@@ -183,10 +292,14 @@ func _draw_player_select(i: int, panel: Rect2) -> void:
 	Art.ellipse(_ui, floor_pos + Vector2(0, 6), 130.0, 14.0, Color(0, 0, 0, 0.4))
 	Art.rrect(_ui, Rect2(floor_pos + Vector2(-140, 0), Vector2(280, 12)), Color(0.3, 0.33, 0.42), 6.0)
 	var size: Vector2 = stats.size
-	var zoom := 2.4 if size.y < 90.0 else 1.5
+	var zoom := 2.4 if size.y < 60.0 else (1.7 if size.y < 90.0 else 1.5)
 	var state_dict := UiKit.idle_state(accent, class_id, _time)
 	state_dict["arm"] = 0.5 + 0.5 * sin(_time * 1.5)
 	RobotArt.draw_player(_ui, class_id, state_dict, floor_pos + Vector2(0, -size.y * 0.5 * zoom), zoom)
+	if not available:
+		_ui.draw_rect(Rect2(panel.position + Vector2(20, 150), Vector2(panel.size.x - 40.0, 195)), Color(0.04, 0.05, 0.09, 0.78))
+		UiKit.text(_ui, panel.position + Vector2(0, 240), "GESPERRT", 36, Color(1.0, 0.6, 0.45), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+		UiKit.text(_ui, panel.position + Vector2(0, 275), "Freischalten in der Werkstatt: %d Chips" % int(Meta.CLASS_UNLOCKS[class_id]), 19, Color(0.85, 0.88, 0.97), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 	# Tags, Beschreibung, Werte.
 	var tag_x := panel.position.x + 40.0
 	for tag in info.tags:

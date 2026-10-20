@@ -21,6 +21,7 @@ const DATA := {
 		"dash_cooldown": 1.3,
 		"stationary_fire": false,
 		"weapons": ["dust"],
+		"pickup_bonus": 0.5,
 		"damage_mult": 1.0,
 		"ability": {"id": "suck", "name": "Sog", "cooldown": 9.0, "duration": 1.4},
 	},

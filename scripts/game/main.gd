@@ -76,6 +76,9 @@ var _game_over_time := 0.0
 var _clear_time := 0.0
 var _blast_depth := 0
 var _arena_root: Node2D
+## Chips, die der Lauf eingebracht hat (nach dem Ende gesetzt), und ob er schon verbucht ist.
+var run_chips := 0
+var run_recorded := false
 
 
 func _ready() -> void:
@@ -209,6 +212,7 @@ func _open_shop() -> void:
 	if wave >= max_waves and not boss_enabled:
 		phase = Phase.VICTORY
 		_game_over_time = 0.0
+		_record_run(true)
 		return
 	phase = Phase.SHOP
 	shop_menu.before_boss = wave >= max_waves
@@ -259,9 +263,24 @@ func _start_boss() -> void:
 	Sfx.play("levelup")
 
 
+## Verbucht den Lauf einmal im Spielstand (Chips, Bestwerte).
+func _record_run(victory: bool) -> void:
+	if run_recorded:
+		return
+	run_recorded = true
+	var cleared := wave if victory else wave - 1
+	run_chips = SaveData.record_run(maxi(cleared, 0), kills, level, int(director.time), victory and boss != null and boss.dying)
+
+
+## Wird beim Verlassen per Pausemenue aufgerufen, damit auch abgebrochene Laeufe zaehlen.
+func abandon_run() -> void:
+	_record_run(false)
+
+
 func _on_boss_died() -> void:
 	phase = Phase.VICTORY
 	_game_over_time = 0.0
+	_record_run(true)
 	for player in players:
 		if player.downed:
 			player.revive(0.5)
@@ -305,6 +324,8 @@ func _spawn_players() -> void:
 		player.went_down.connect(_on_player_down)
 		player.hurt.connect(_on_player_hurt)
 		player.slam_landed.connect(_on_slam_landed)
+		player.add_mods(Meta.player_mods())
+		player.gold = Meta.start_gold()
 		add_child(player)
 		players.append(player)
 	players[0].partner = players[1]
@@ -337,6 +358,7 @@ func _on_player_down(_player: Player) -> void:
 			return
 	game_over = true
 	_game_over_time = 0.0
+	_record_run(false)
 	Sfx.play("kill")
 
 
@@ -415,7 +437,7 @@ func _spawn_pickup(kind: String, value: int, pos: Vector2) -> void:
 
 func _on_pickup_collected(pickup: Pickup, player: Player) -> void:
 	if pickup.kind == "xp":
-		xp += pickup.value
+		xp += maxi(1, int(round(pickup.value * Meta.xp_multiplier())))
 		Sfx.play("pickup")
 	elif pickup.kind == "hp":
 		var heal := player.max_health() * HEALTH_DROP_HEAL

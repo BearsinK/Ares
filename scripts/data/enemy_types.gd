@@ -53,5 +53,19 @@ const DATA := {
 }
 
 
+## Elite-Arten: jede hat eine eigene Farbe, einen Namen und eine Mechanik (siehe Enemy._update_elite).
+const ELITE_KINDS := {
+	"fire": {"name": "BRANDHERD", "color": Color(1.0, 0.5, 0.15), "text": "legt Brandherde"},
+	"shield": {"name": "SCHILDTRAEGER", "color": Color(0.45, 0.8, 1.0), "text": "traegt einen Schild"},
+	"storm": {"name": "STURMBOT", "color": Color(0.95, 0.85, 0.3), "text": "feuert Blitzfaecher"},
+	"frost": {"name": "FROSTWACHE", "color": Color(0.75, 0.92, 1.0), "text": "bremst in der Naehe"},
+}
+
+
+static func random_elite_kind() -> String:
+	var ids: Array = ELITE_KINDS.keys()
+	return ids[randi() % ids.size()]
+
+
 static func get_type(kind: String) -> Dictionary:
 	return DATA[kind]

@@ -117,9 +117,9 @@ func _choose_kind() -> String:
 	return options[0]
 
 
-func spawn(kind: String, at: Variant = null, elite := false) -> Enemy:
+func spawn(kind: String, at: Variant = null, elite := false, elite_kind := "") -> Enemy:
 	var enemy := Enemy.new()
-	enemy.setup(kind, hp_scale(), damage_scale(), players, elite)
+	enemy.setup(kind, hp_scale(), damage_scale(), players, elite, elite_kind)
 	enemy.siblings = enemies
 	enemy.position = at if at != null else _spawn_position(kind)
 	enemy.fire_projectile.connect(projectile_requested.emit)

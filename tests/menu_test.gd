@@ -50,6 +50,9 @@ func _run() -> void:
 
 
 func _title() -> void:
+	SaveData.reset()
+	SaveData.add_chips(500)
+	_check(SaveData.buy_unlock("class", "printer") and SaveData.buy_unlock("class", "vending"), "Klassen lassen sich mit Chips freischalten")
 	Engine.set_meta("classes", ["printer", "vending"])
 	var title: Node = load("res://scenes/title.tscn").instantiate()
 	add_child(title)

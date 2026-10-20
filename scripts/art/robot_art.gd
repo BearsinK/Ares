@@ -128,26 +128,36 @@ static func _hexapod(c: CanvasItem, s: Dictionary) -> void:
 
 	var speed_factor := clampf(absf(float(s.vx)) / 300.0, 0.0, 1.0)
 	var cling_side := float(s.cling_dir) * float(s.facing)
-	# Beine: erst die fernen (dunkler), dann die nahen.
+	# Spinnenbeine: duenn, mit hohem Knie ueber dem Koerper. Vorne greifen sie nach vorn,
+	# hinten nach hinten, die mittleren stehen breit. Erst die fernen, dann die nahen.
+	var reach_near := [-26.0, 23.0, 27.0]
+	var reach_far := [-27.0, -21.0, 25.0]
 	for layer in 2:
 		var far := layer == 0
 		for i in 3:
-			var hip := Vector2(-17.0 + i * 17.0 + (5.0 if far else 0.0), 4.0)
-			var phase := float(s.walk) * 0.55 + (PI if (i % 2 == 0) != far else 0.0)
+			var hip := Vector2(-13.0 + i * 13.0 + (4.0 if far else 0.0), 8.0)
+			var rest := hip.x + float(reach_far[i] if far else reach_near[i])
+			# Dreibeingang: abwechselnd heben sich nahe und ferne Beine, kleine ruhige Schritte.
+			var phase := float(s.walk) * 0.35 + (PI if (i % 2 == 0) != far else 0.0)
 			var foot := Vector2.ZERO
 			if clinging:
 				foot = Vector2(cling_side * 31.0, -10.0 + i * 14.0 + (4.0 if far else 0.0))
 			elif not bool(s.grounded):
-				foot = Vector2(hip.x * 0.8, 14.0)
+				foot = Vector2(hip.x + (rest - hip.x) * 0.55, 17.0)
 			elif planted:
-				foot = Vector2(hip.x * 1.55 + (3.0 if far else 0.0), 23.0)
+				foot = Vector2(hip.x + (rest - hip.x) * 1.15, 23.0)
 			else:
-				foot = Vector2(hip.x + sin(phase) * 13.0 * speed_factor, 23.0 - maxf(0.0, cos(phase)) * 9.0 * speed_factor)
-			var color := Color(0.18, 0.2, 0.27) if far else Color(0.3, 0.32, 0.4)
-			var bend := 1.0 if i == 2 else -1.0
+				var swing := sin(phase) * 6.0 * speed_factor
+				var lift := maxf(0.0, cos(phase)) * 6.0 * speed_factor
+				foot = Vector2(rest + swing, 23.0 - lift)
+			var color := Color(0.17, 0.19, 0.25) if far else Color(0.3, 0.32, 0.4)
+			var knee_up := -1.0 if foot.x < hip.x else 1.0
 			if clinging:
-				bend = -cling_side
-			var end := Art.limb(c, hip, foot, 15.0, 15.0, 3.6, color, bend, Color(0.7, 0.72, 0.8))
+				knee_up = -cling_side
+			var end := Art.limb(c, hip, foot, 18.0, 26.0, 2.8, color, knee_up, Color(0.7, 0.72, 0.8))
+			# Spitzer Fuss.
+			var tip_dir := (end - hip).normalized()
+			c.draw_line(end, end + tip_dir * 3.5, Color(0.85, 0.86, 0.92), 1.6, true)
 			if planted and not far:
 				c.draw_colored_polygon(PackedVector2Array([end + Vector2(-3, 0), end + Vector2(3, 0), end + Vector2(0, 5)]), Color(0.8, 0.8, 0.9))
 
@@ -200,26 +210,26 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 		c.draw_line(Vector2(x, 51), Vector2(x, 54), Color(0.32, 0.33, 0.38), 1.5)
 	for i in 4:
 		var center := Vector2(-23.0 + i * 15.3, 45.5)
-		Art.disc(c, center, 6.0, Color(0.9, 0.75, 0.15))
+		Art.disc(c, center, 6.0, Color(0.55, 0.58, 0.66))
 		for k in 3:
 			var a := spin + k * TAU / 3.0
-			c.draw_line(center, center + Vector2(cos(a), sin(a)) * 5.0, Color(0.35, 0.28, 0.05), 1.5, true)
-		Art.disc(c, center, 1.6, Color(0.3, 0.25, 0.05))
+			c.draw_line(center, center + Vector2(cos(a), sin(a)) * 5.0, Color(0.2, 0.22, 0.28), 1.5, true)
+		Art.disc(c, center, 1.6, Color(0.2, 0.22, 0.28))
 
 	# Schrank.
-	var green := Color(0.16, 0.6, 0.3)
+	var green := Color(0.24, 0.36, 0.36)
 	Art.panel(c, Rect2(-31, -54, 62, 92), green, 7.0)
 	Art.rrect(c, Rect2(-31, -54, 62, 12), Color(0.95, 0.95, 0.9), 6.0)
 	Art.rrect_line(c, Rect2(-31, -54, 62, 12), Art.OUTLINE, 6.0, 2.0)
 	# Blitz-Logo der erfundenen Marke.
-	c.draw_colored_polygon(PackedVector2Array([Vector2(-6, -52), Vector2(4, -52), Vector2(-1, -47), Vector2(5, -47), Vector2(-7, -40), Vector2(-3, -46), Vector2(-8, -46)]), Color(0.95, 0.75, 0.1))
+	c.draw_colored_polygon(PackedVector2Array([Vector2(-6, -52), Vector2(4, -52), Vector2(-1, -47), Vector2(5, -47), Vector2(-7, -40), Vector2(-3, -46), Vector2(-8, -46)]), Color(0.85, 0.72, 0.4))
 	Art.led(c, Vector2(22, -48), 2.0, accent)
-	Art.led(c, Vector2(-24, -48), 2.0, Color(0.95, 0.3, 0.3), fmod(t, 1.6) < 0.8)
+	Art.led(c, Vector2(-24, -48), 2.0, Color(0.85, 0.4, 0.35), fmod(t, 1.6) < 0.8)
 
 	# Glasfront mit Dosen, beim Schuetteln wackeln sie.
 	var glass := Rect2(-25, -37, 34, 56)
 	Art.rrect(c, glass, Color(0.05, 0.12, 0.16), 3.0)
-	var can_colors := [Color(0.9, 0.3, 0.25), Color(0.3, 0.8, 0.4), Color(0.95, 0.7, 0.2), Color(0.3, 0.55, 0.95)]
+	var can_colors := [Color(0.62, 0.66, 0.72), Color(0.46, 0.5, 0.58), Color(0.62, 0.66, 0.72), Color(0.78, 0.6, 0.35)]
 	for row in 5:
 		for col in 3:
 			var can_color: Color = can_colors[(row + col * 2) % 4]
@@ -235,7 +245,7 @@ static func _vending(c: CanvasItem, s: Dictionary) -> void:
 	Art.face(c, Vector2(20, -30), Vector2(15, 13), s.eye_color, la, s.mood, t)
 	for row in 3:
 		for col in 2:
-			Art.disc(c, Vector2(16.0 + col * 7.0, -16.0 + row * 7.0), 2.1, Color(0.9, 0.9, 0.95) if (row + col) % 2 == 0 else Color(0.95, 0.7, 0.2))
+			Art.disc(c, Vector2(16.0 + col * 7.0, -16.0 + row * 7.0), 2.1, Color(0.82, 0.84, 0.9) if (row + col) % 2 == 0 else Color(0.62, 0.66, 0.74))
 	Art.rrect(c, Rect2(15, 8, 10, 3), Color(0.05, 0.08, 0.1), 1.5)
 	Art.rivet(c, Vector2(-28, -38))
 	Art.rivet(c, Vector2(28, -38))

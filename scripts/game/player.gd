@@ -66,6 +66,10 @@ var hook_anchor := Vector2.ZERO
 var shake_charge := 0.0
 ## Zug eines Laufbands in px/s (negativ = nach links), wirkt nur am Boden.
 var belt_push := 0.0
+## Solange > 0, ist der Spieler verlangsamt (Frostwache).
+var slow_time := 0.0
+## Anzahl Shop-Kaeufe in diesem Lauf (macht weitere Kaeufe teurer).
+var purchases := 0
 # Dauerhafte Boni aus Perks und Items (Anteile, ausser max_hp als fester Wert).
 var mods := {"damage": 0.0, "fire_rate": 0.0, "speed": 0.0, "max_hp": 0.0, "dmg_taken": 0.0,
 	"dash_cd": 0.0, "pickup": 0.0, "gold": 0.0, "ability_cd": 0.0, "crit": 0.0, "kill_heal": 0.0,
@@ -111,6 +115,7 @@ func setup(index: int, new_class_id: String) -> void:
 	_prefix = "p%d_" % index
 	dash_charges = stats.dash_charges
 	hp = stats.max_hp
+	mods.pickup = float(stats.get("pickup_bonus", 0.0))
 	for weapon_id in stats.weapons:
 		weapons.append(weapon_id)
 		modules.append("")
@@ -145,7 +150,8 @@ func max_health() -> float:
 
 func move_speed() -> float:
 	var rolling := 1.7 if ability != null and ability.is_active("roll") else 1.0
-	return float(stats.speed) * (1.0 + float(mods.speed)) * rolling
+	var slowed := 0.6 if slow_time > 0.0 else 1.0
+	return float(stats.speed) * (1.0 + float(mods.speed)) * rolling * slowed
 
 
 ## Feuerrate-Faktor aus Perks und Overwatch.
@@ -283,6 +289,7 @@ func _physics_process(delta: float) -> void:
 
 func _update_timers(delta: float) -> void:
 	iframes = maxf(0.0, iframes - delta)
+	slow_time = maxf(0.0, slow_time - delta)
 	_jump_buffer = maxf(0.0, _jump_buffer - delta)
 	_mouse_timer = maxf(0.0, _mouse_timer - delta)
 	_fire_cooldown = maxf(0.0, _fire_cooldown - delta)
@@ -638,6 +645,8 @@ func _draw() -> void:
 	var accent: Color = RobotClasses.PLAYER_COLORS[player_index - 1]
 
 	ability.draw_aura(self, _art_time)
+	if slow_time > 0.0:
+		draw_arc(Vector2.ZERO, maxf(stats.size.x, stats.size.y) * 0.5 + 6.0, 0.0, TAU, 28, Color(0.75, 0.92, 1.0, 0.7), 2.5, true)
 
 	# Nachbilder vom Dash.
 	for entry in _trail:
