@@ -118,6 +118,13 @@ func fw(firmware_id: String) -> int:
 	return int(firmware.get(firmware_id, 0))
 
 
+func firmware_count() -> int:
+	var total := 0
+	for id in firmware:
+		total += int(firmware[id])
+	return total
+
+
 func add_firmware(firmware_id: String) -> void:
 	firmware[firmware_id] = fw(firmware_id) + 1
 

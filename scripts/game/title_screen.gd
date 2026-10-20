@@ -87,6 +87,7 @@ func _update_select(delta: float) -> void:
 			Engine.set_meta("classes", classes)
 			get_tree().change_scene_to_file("res://scenes/main.tscn")
 		return
+	var nobody_ready := not locked[0] and not locked[1]
 	for i in 2:
 		var prefix := "p%d_" % (i + 1)
 		if not locked[i]:
@@ -101,7 +102,7 @@ func _update_select(delta: float) -> void:
 				Sfx.play("pickup")
 		elif Input.is_action_just_pressed(prefix + "interact"):
 			locked[i] = false
-	if not locked[0] and not locked[1] and (Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("p1_interact") or Input.is_action_just_pressed("p2_interact")):
+	if nobody_ready and (Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("p1_interact") or Input.is_action_just_pressed("p2_interact")):
 		state = State.MAIN
 	if locked[0] and locked[1]:
 		start_timer = COUNTDOWN

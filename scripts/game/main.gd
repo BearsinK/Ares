@@ -27,7 +27,7 @@ const TEST_MODULES := [
 ]
 
 const DUMMY_RESPAWN_TIME := 4.0
-const RESTART_DELAY := 1.0
+const RESULT_DELAY := 1.4
 const CLEAR_DELAY := 3.0
 
 enum Phase { WAVE, CLEARING, SHOP, VICTORY }
@@ -53,6 +53,7 @@ var enemy_projectiles: Node2D
 var pickups: Node2D
 var levelup_menu: LevelUpMenu
 var shop_menu: ShopMenu
+var pause_menu: PauseMenu
 
 var level := 1
 var xp := 0
@@ -97,6 +98,9 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.main = self
 	add_child(hud)
+	pause_menu = PauseMenu.new()
+	pause_menu.main = self
+	add_child(pause_menu)
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 
 
@@ -109,18 +113,10 @@ func _physics_process(delta: float) -> void:
 			_spawn_dummy(entry.pos)
 	_respawns = _respawns.filter(func(entry: Dictionary) -> bool: return entry.t > 0.0)
 
-	if game_over or phase == Phase.VICTORY:
+	if (game_over or phase == Phase.VICTORY) and not pause_menu.is_open():
 		_game_over_time += delta
-		if _game_over_time >= RESTART_DELAY and _any_restart_pressed():
-			get_tree().reload_current_scene()
-
-
-func _any_restart_pressed() -> bool:
-	for i in [1, 2]:
-		for action in ["confirm", "jump", "fire"]:
-			if Input.is_action_just_pressed("p%d_%s" % [i, action]):
-				return true
-	return false
+		if _game_over_time >= RESULT_DELAY:
+			pause_menu.open_result(phase == Phase.VICTORY)
 
 
 func _input(event: InputEvent) -> void:
@@ -132,6 +128,10 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("pause") and _can_pause():
+		pause_menu.open_pause()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F1:
 			_cycle_weapon(0)
@@ -143,6 +143,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_switch_class(0)
 		elif event.keycode == KEY_F5:
 			_switch_class(1)
+
+
+func _can_pause() -> bool:
+	return not (game_over or phase == Phase.VICTORY or phase == Phase.SHOP or levelup_menu.is_open or shop_menu.is_open or pause_menu.is_open())
 
 
 func _grant_test_loadout() -> void:

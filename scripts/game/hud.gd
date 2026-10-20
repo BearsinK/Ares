@@ -38,10 +38,6 @@ func _draw_hud() -> void:
 		_draw_top_center(view)
 	_draw_xp_bar(view)
 	_draw_debug(view)
-	if main.game_over:
-		_draw_game_over(view)
-	elif main.phase == main.Phase.VICTORY:
-		_draw_victory(view)
 
 
 func _draw_player_panel(player: Player, origin: Vector2) -> void:
@@ -147,20 +143,3 @@ func _draw_debug(view: Vector2) -> void:
 	lines.append("FPS: %d" % Engine.get_frames_per_second())
 	for i in lines.size():
 		_text(Vector2(16, view.y - 24.0 - (lines.size() - 1 - i) * 16.0), lines[i], 12, Color(0.6, 0.62, 0.7, 0.8))
-
-
-func _draw_game_over(view: Vector2) -> void:
-	_canvas.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.65))
-	_text(Vector2(0, view.y * 0.4), "GAME OVER", 68, Color(1.0, 0.4, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	var seconds := int(main.director.time)
-	_text(Vector2(0, view.y * 0.4 + 50.0), "Zeit %02d:%02d   Stufe %d   Besiegt %d" % [seconds / 60, seconds % 60, main.level, main.kills],
-		24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	_text(Vector2(0, view.y * 0.4 + 100.0), "Springen, Schiessen oder Bestaetigen zum Neustart", 20, Color(0.8, 0.8, 0.9), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-
-
-func _draw_victory(view: Vector2) -> void:
-	_canvas.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.6))
-	_text(Vector2(0, view.y * 0.4), "ALLE WELLEN GESCHAFFT", 58, Color(0.5, 1.0, 0.6), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	_text(Vector2(0, view.y * 0.4 + 50.0), "Hier kommt spaeter der Endboss. Besiegt: %d   Stufe %d" % [main.kills, main.level],
-		24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	_text(Vector2(0, view.y * 0.4 + 100.0), "Springen, Schiessen oder Bestaetigen zum Neustart", 20, Color(0.8, 0.8, 0.9), HORIZONTAL_ALIGNMENT_CENTER, view.x)
