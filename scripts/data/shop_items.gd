@@ -48,7 +48,7 @@ static func _random_offer(player: Player, wave: int) -> Dictionary:
 	var roll := randf()
 	var type := "perk"
 	# In den ersten Wellen erscheint Bewegungs-Firmware haeufiger.
-	var firmware_chance := 0.3 if wave <= 3 else 0.12
+	var firmware_chance := 0.35 if wave <= 3 else 0.18
 	if roll < firmware_chance:
 		type = "firmware"
 	elif roll > 0.8:

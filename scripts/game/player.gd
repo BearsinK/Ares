@@ -31,6 +31,10 @@ const REVIVE_TIME := 3.0
 const REVIVE_RANGE := 90.0
 const WALL_SLIDE_SPEED := 140.0
 const GLIDE_SPEED := 160.0
+## Jet Boots: Steiggeschwindigkeit, Beschleunigung und Tankdauer in Sekunden.
+const JET_SPEED := 400.0
+const JET_ACCEL := 3600.0
+const JET_TIME := 0.9
 const WALL_JUMP_PUSH := 520.0
 const WALL_LOCK_TIME := 0.18
 const SLAM_SPEED := 1600.0
@@ -125,6 +129,11 @@ var _air_jumps_left := 0
 var _dash_time_left := 0.0
 var _dash_dir := Vector2.RIGHT
 var _dash_recharge := 0.0
+## Jet Boots: Tankfuellung (0 bis 1), ob der Schub gerade laeuft, und Gegner, die der Blade Dash schon getroffen hat.
+var _jet_fuel := 1.0
+var jet_active := false
+var _blade_hit: Array[Node2D] = []
+var _jet_timer := 0.0
 var _fire_cooldown := 0.0
 var _switch_cooldown := 0.0
 var _aim_memory := 0.0
@@ -215,6 +224,16 @@ func dash_max() -> int:
 	return int(stats.dash_charges) + fw("dash_charge")
 
 
+## Absprunggeschwindigkeit mit Spring Legs.
+func jump_speed() -> float:
+	return float(stats.jump_speed) * (1.0 + Firmware.SPRING_BONUS * float(fw("spring")))
+
+
+## Dauer eines Dashs in Sekunden (Long Dash verlaengert ihn).
+func dash_time() -> float:
+	return DASH_TIME * (1.0 + Firmware.LONG_DASH_BONUS * float(fw("long_dash")))
+
+
 func max_health() -> float:
 	return float(stats.max_hp) + float(mods.max_hp)
 
@@ -232,7 +251,7 @@ func base_speed() -> float:
 	var rolling := 1.7 if ability != null and ability.is_active("roll") else 1.0
 	var slowed := 0.6 if slow_time > 0.0 else 1.0
 	var rage := Perks.RAGE_SPEED * float(mods.rage) if low_health() else 0.0
-	return float(stats.speed) * (1.0 + float(mods.speed) + rage) * rolling * slowed
+	return float(stats.speed) * (1.0 + float(mods.speed) + rage + Firmware.SPRINT_BONUS * float(fw("sprint"))) * rolling * slowed
 
 
 ## Hexapod: beim Schiessen mit der Klassenwaffe nur halbes Tempo (am Boden, an der Wand, an der Decke).
@@ -606,6 +625,8 @@ func _update_timers(delta: float) -> void:
 	_fire_flash = maxf(0.0, _fire_flash - delta * 6.0)
 	_reload_flash = maxf(0.0, _reload_flash - delta * 4.0)
 	_update_auto_print(delta)
+	if is_on_floor() or on_rope or _clinging or _ceiling:
+		_jet_fuel = minf(1.0, _jet_fuel + delta * 2.5)
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	_happy_timer = maxf(0.0, _happy_timer - delta)
 	var arm_target := 1.0 if (Input.is_action_pressed(_prefix + "fire") or _fire_flash > 0.05) and not downed else 0.0
@@ -684,6 +705,16 @@ func _process_movement(delta: float, move: float) -> void:
 		elif fw("glide") > 0 and jump_held and not on_floor:
 			velocity.y = minf(velocity.y, GLIDE_SPEED)
 
+	# Jet Boots: in der Luft Sprung halten (erst nach dem Scheitelpunkt des Sprungs) schiebt nach oben, solange der Tank reicht.
+	var jetting := fw("jet") > 0 and jump_held and not on_floor and (jet_active or velocity.y > -120.0) and _jet_fuel > 0.0
+	if jetting:
+		velocity.y = move_toward(velocity.y, -JET_SPEED, JET_ACCEL * delta)
+		_jet_fuel = maxf(0.0, _jet_fuel - delta / JET_TIME)
+		if not jet_active:
+			Sfx.play("dash", 0.15)
+		_jet_puff(delta)
+	jet_active = jetting
+
 	if on_floor:
 		_coyote = COYOTE_TIME
 		_air_jumps_left = fw("double_jump")
@@ -701,20 +732,20 @@ func _process_movement(delta: float, move: float) -> void:
 		_jump_buffer = 0.0
 		Sfx.play("slam")
 	elif _coyote > 0.0:
-		velocity.y = -stats.jump_speed
+		velocity.y = -jump_speed()
 		_jump_buffer = 0.0
 		_coyote = 0.0
 		Sfx.play("jump")
 		_puff(Vector2(0.0, float(stats.size.y) * 0.5), 4, 110.0)
 	elif on_wall and fw("wall_jump") > 0:
-		velocity = Vector2(wall_normal.x * WALL_JUMP_PUSH, -float(stats.jump_speed) * 0.95)
+		velocity = Vector2(wall_normal.x * WALL_JUMP_PUSH, -jump_speed() * 0.95)
 		facing = signf(wall_normal.x)
 		_wall_lock = WALL_LOCK_TIME
 		_jump_buffer = 0.0
 		Sfx.play("jump")
 		_puff(Vector2(-wall_normal.x * float(stats.size.x) * 0.5, 0.0), 5, 130.0)
 	elif _air_jumps_left > 0:
-		velocity.y = -stats.jump_speed
+		velocity.y = -jump_speed()
 		_jump_buffer = 0.0
 		_air_jumps_left -= 1
 		Sfx.play("jump")
@@ -779,7 +810,7 @@ func _process_rope(delta: float, move: float, vertical: float) -> bool:
 			return false
 		if _jump_buffer > 0.0:
 			_jump_buffer = 0.0
-			velocity = Vector2(move * 340.0, -float(stats.jump_speed) * 0.7)
+			velocity = Vector2(move * 340.0, -jump_speed() * 0.7)
 			_wall_lock = 0.18 if move != 0.0 else 0.0
 			if move != 0.0:
 				facing = signf(move)
@@ -884,7 +915,7 @@ func _process_climb(move: float, vertical: float) -> bool:
 	_air_jumps_left = fw("double_jump")
 	if _jump_buffer > 0.0:
 		# Von der Wand abspringen.
-		velocity = Vector2(-wall_dir * WALL_JUMP_PUSH, -float(stats.jump_speed) * 0.95)
+		velocity = Vector2(-wall_dir * WALL_JUMP_PUSH, -jump_speed() * 0.95)
 		facing = -wall_dir
 		_wall_lock = WALL_LOCK_TIME
 		_jump_buffer = 0.0
@@ -945,7 +976,8 @@ func _try_dash() -> void:
 	_dash_dir = dir.normalized()
 	_ceiling = false
 	_ceiling_cooldown = 0.3
-	_dash_time_left = DASH_TIME
+	_dash_time_left = dash_time()
+	_blade_hit.clear()
 	dash_charges -= 1
 	dash_count += 1
 	iframes = maxf(iframes, DASH_IFRAMES)
@@ -973,6 +1005,17 @@ func _draw_speed_lines() -> void:
 		var offset := side * (float(i) - 2.0) * 9.0 + back * float(i % 2) * 8.0
 		var start := offset + back * 26.0
 		draw_line(start, start + back * (34.0 + 10.0 * (i % 3)), Color(1, 1, 1, 0.35), 2.0, true)
+
+
+## Jet Boots: Flammen unter den Fuessen, Tankanzeige als kleiner Balken, solange er nicht voll ist.
+func _draw_jet(size: Vector2) -> void:
+	var base := Vector2(0.0, size.y * 0.5)
+	for side in [-1.0, 1.0]:
+		var flicker := 0.7 + 0.3 * sin(_art_time * 60.0 + side * 2.0)
+		var length := 26.0 * flicker
+		var top := base + Vector2(side * size.x * 0.22, 0.0)
+		draw_colored_polygon(PackedVector2Array([top + Vector2(-5.0, 0.0), top + Vector2(5.0, 0.0), top + Vector2(0.0, length)]), Color(1.0, 0.55, 0.15, 0.85))
+		draw_colored_polygon(PackedVector2Array([top + Vector2(-2.5, 0.0), top + Vector2(2.5, 0.0), top + Vector2(0.0, length * 0.6)]), Color(1.0, 0.95, 0.6, 0.95))
 
 
 ## Fallstreifen beim Bodenschlag.
@@ -1013,12 +1056,39 @@ func _process_dash(delta: float) -> void:
 	if _trail_timer <= 0.0:
 		_trail_timer = 0.03
 		_spawn_ghost()
+	if fw("blade") > 0:
+		_dash_blade()
 	if _dash_time_left <= 0.0:
 		# Momentum: nach dem Dash bleibt etwas Schwung erhalten.
 		velocity = _dash_dir * base_speed() * DASH_END_MOMENTUM
 		velocity.y = minf(velocity.y, 0.0)
 		if float(mods.dash_blast) > 0.0:
 			_burst(Perks.DASH_BLAST_RADIUS, Perks.DASH_BLAST_DAMAGE * float(mods.dash_blast), Color(0.5, 0.9, 1.0))
+
+
+## Flammenstoss unter den Fuessen und Funken beim Jet-Schub.
+func _jet_puff(delta: float) -> void:
+	_jet_timer -= delta
+	if _jet_timer > 0.0 or Fx.instance == null:
+		return
+	_jet_timer = 0.04
+	Fx.instance.spark(global_position + Vector2(randf_range(-8.0, 8.0), float(stats.size.y) * 0.5), Color(1.0, 0.7, 0.25), 2, 120.0)
+
+
+## Blade Dash: Gegner auf dem Weg des Dashs werden je Dash einmal getroffen.
+func _dash_blade() -> void:
+	var damage := Firmware.BLADE_DAMAGE * damage_mult()
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if _blade_hit.has(enemy) or enemy.is_queued_for_deletion():
+			continue
+		var point := Targeting.point_of(enemy, global_position)
+		if point.distance_to(global_position) > Firmware.BLADE_REACH + Targeting.slack_of(enemy):
+			continue
+		_blade_hit.append(enemy)
+		enemy.take_damage(damage, self, _dash_dir * 2.5, current_module())
+		if Fx.instance:
+			Fx.instance.slash(point, _dash_dir, 60.0, 1.3, Color(0.6, 0.92, 1.0))
+		Sfx.play("hit", 0.2)
 
 
 ## Gehoert die Waffe zur eigenen Klasse (Klassenwaffen loesen z.B. beim Hexapod die Schiesshaltung aus)?
@@ -1454,6 +1524,12 @@ func _draw() -> void:
 		_draw_speed_lines()
 	if _slamming:
 		_draw_slam_streaks(size)
+	if jet_active:
+		_draw_jet(size)
+	if fw("jet") > 0 and _jet_fuel < 0.99 and not downed:
+		var gauge := Rect2(Vector2(-14.0, size.y * 0.5 + 6.0), Vector2(28.0, 3.0))
+		draw_rect(gauge, Color(0, 0, 0, 0.6))
+		draw_rect(Rect2(gauge.position, Vector2(gauge.size.x * _jet_fuel, gauge.size.y)), Color(1.0, 0.7, 0.25))
 	if hook_active:
 		_draw_hook()
 

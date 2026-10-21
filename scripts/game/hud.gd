@@ -4,7 +4,7 @@ extends CanvasLayer
 ## Stufe, XP-Leiste, Game-Over-Hinweis und Controller-Diagnose.
 
 const PANEL_WIDTH := 330.0
-const PANEL_HEIGHT := 128.0
+const PANEL_HEIGHT := 142.0
 const HINTS_TIME := 16.0
 const TIP_TIME := 7.0
 const NOTICE_TIME := 4.0
@@ -371,7 +371,8 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 		var count: int = player.firmware[id]
 		fw_parts.append(Firmware.SHORT[id] + (" x%d" % count if count > 1 else ""))
 	if not fw_parts.is_empty():
-		_text(origin + Vector2(0, 122), "  ".join(fw_parts), 13, Color(0.55, 0.92, 0.7), HORIZONTAL_ALIGNMENT_RIGHT, PANEL_WIDTH)
+		var fw_text := "  ".join(fw_parts)
+		_text(origin + Vector2(0, 127), fw_text, 13 if fw_text.length() <= 46 else 11, Color(0.55, 0.92, 0.7), HORIZONTAL_ALIGNMENT_RIGHT, PANEL_WIDTH)
 	if player.downed:
 		_text(origin + Vector2(0, 108), "AM BODEN: Partner hält Interagieren", 14, Color(1.0, 0.5, 0.4))
 	else:

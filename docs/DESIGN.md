@@ -260,7 +260,7 @@ Umgesetzt und automatisch getestet:
 - Spieler-Leben, Iframes nach Treffer, Wiederbeleben durch Halten, Game Over
 - XP und Gold als Pickups, Level-Ups mit gemeinsamer Team-Perk-Wahl (klassenabhängige Wirkung)
 - Wellen mit Zeitlimit und Shop (Buffs, Module, Waffen, Firmware, Reroll), Sieg-Bildschirm
-- Bewegungs-Firmware: Doppelsprung, Wandsprung, Gleiten, Bodenstoß, Greifhaken, Dash-Ladungen; durchlässige Plattformen
+- Bewegungs-Firmware: Doppelsprung, Wandsprung, Gleiten, Bodenstoß, Greifhaken, Dash-Ladungen, Jet Boots, Turbo Legs, Spring Legs, Blade Dash, Long Dash; durchlässige Plattformen
 - Titelbildschirm mit Klassenauswahl, Pausemenü, Ergebnisbildschirm
 - Klassenfähigkeiten auf L2: Sog, Overwatch, Walze, Druck (Drohnen)
 - Gegner: Rammbock (Ansturm) und Mörser (Flächenschlag) zusätzlich, Elites (größer, zäher, mehr Beute), Reparaturkits
