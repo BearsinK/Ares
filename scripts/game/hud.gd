@@ -7,6 +7,7 @@ const PANEL_WIDTH := 330.0
 const PANEL_HEIGHT := 128.0
 const HINTS_TIME := 16.0
 const TIP_TIME := 7.0
+const NOTICE_TIME := 4.0
 
 var main: Node = null
 var _canvas: Node2D
@@ -15,6 +16,8 @@ var _flash_time := 0.0
 var _age := 0.0
 var _tip_id := ""
 var _tip_time := 0.0
+## Meldungen "Neu im Archiv" unten links, hoechstens drei.
+var _notices: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -31,7 +34,19 @@ func _process(delta: float) -> void:
 	_age += delta
 	_flash_time = maxf(0.0, _flash_time - delta)
 	_update_tips(delta)
+	if not get_tree().paused:
+		for notice in _notices:
+			notice.t = float(notice.t) - delta
+		_notices = _notices.filter(func(n: Dictionary) -> bool: return float(n.t) > 0.0)
 	_canvas.queue_redraw()
+
+
+## Meldet einen neuen Archiv-Eintrag (siehe Archive).
+func notice(kind: String, id: String) -> void:
+	_notices.append({"kind": kind, "id": id, "name": Archive.entry_name(kind, id), "t": NOTICE_TIME})
+	while _notices.size() > 3:
+		_notices.pop_front()
+	Sfx.play("pickup", 0.0)
 
 
 ## Zeigt wartende Hinweise nacheinander, aber nie waehrend Menues, der Steuerungsuebersicht oder nach dem Ende.
@@ -74,6 +89,7 @@ func _draw_hud() -> void:
 		return
 	_draw_hints(view)
 	_draw_tip(view)
+	_draw_notices(view)
 	_draw_wave_banner(view)
 	_draw_wave_clear(view)
 	_draw_player_panels(view)
@@ -189,6 +205,20 @@ func _draw_tip(view: Vector2) -> void:
 	_canvas.draw_rect(Rect2(panel.position + Vector2(20.0, 0.0), Vector2(90.0, 4.0)), Color(0.5, 0.85, 1.0, alpha))
 	_text(panel.position + Vector2(24.0, 30.0), "HINWEIS   %s" % String(info.title), 17, Color(0.6, 0.92, 1.0, alpha))
 	UiKit.text(_canvas, panel.position + Vector2(24.0, 58.0), String(info.text), 19, Color(0.94, 0.96, 1.0, alpha), HORIZONTAL_ALIGNMENT_LEFT, panel.size.x - 48.0, true)
+
+
+## Kleine Tafeln unten links: "Neu im Archiv" mit Namen des Eintrags.
+func _draw_notices(view: Vector2) -> void:
+	for i in _notices.size():
+		var notice := _notices[_notices.size() - 1 - i]
+		var t: float = notice.t
+		var alpha := clampf(minf((NOTICE_TIME - t) / 0.25, t / 0.5), 0.0, 1.0)
+		var slide := (1.0 - alpha) * -40.0
+		var plate := Rect2(Vector2(18.0 + slide, view.y - 130.0 - i * 54.0), Vector2(300.0, 46.0))
+		Art.rrect(_canvas, plate, Color(0.04, 0.05, 0.09, 0.86 * alpha), 10.0)
+		Art.rrect_line(_canvas, plate, Color(0.5, 0.85, 1.0, 0.7 * alpha), 10.0, 2.0)
+		_text(plate.position + Vector2(16.0, 18.0), "NEU IM ARCHIV", 12, Color(0.6, 0.92, 1.0, alpha))
+		_text(plate.position + Vector2(16.0, 38.0), String(notice.name), 19, Color(1.0, 1.0, 1.0, alpha))
 
 
 func _draw_flash(view: Vector2) -> void:

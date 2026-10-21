@@ -44,6 +44,7 @@ static func _defaults() -> Dictionary:
 		"stats": {"runs": 0, "best_wave": 0, "kills": 0, "boss_kills": 0, "best_time": 0},
 		"fullscreen": false, "difficulty": 1,
 		"volume": {}, "shake": SHAKE_DEFAULT, "numbers": true, "rumble": true, "tips_on": true, "tips": [],
+		"archive": {"items": [], "weapons": [], "enemies": {}},
 	}
 
 
@@ -193,6 +194,55 @@ static func mark_tip(id: String) -> void:
 		seen.append(id)
 		_data.tips = seen
 		save()
+
+
+## Archiv: entdeckte Items und Waffen (Listen) und gesehene Gegner mit Anzahl der Besiegten (Dictionary).
+## kind: "items", "weapons" oder "enemies".
+static func archive_has(kind: String, id: String) -> bool:
+	_ensure()
+	var archive: Dictionary = _data.get("archive", {})
+	var entry: Variant = archive.get(kind, [])
+	return entry.has(id)
+
+
+## Traegt einen Eintrag ein. Gibt true zurueck, wenn er neu ist.
+static func archive_discover(kind: String, id: String) -> bool:
+	if archive_has(kind, id):
+		return false
+	var archive: Dictionary = _data.get("archive", {})
+	if kind == "enemies":
+		var seen: Dictionary = archive.get("enemies", {})
+		seen[id] = 0
+		archive.enemies = seen
+	else:
+		var list: Array = archive.get(kind, [])
+		list.append(id)
+		archive[kind] = list
+	_data.archive = archive
+	save()
+	return true
+
+
+## Zaehlt einen besiegten Gegner (nur im Speicher, gespeichert wird mit dem Lauf-Ende).
+static func archive_add_kill(id: String) -> void:
+	_ensure()
+	var archive: Dictionary = _data.get("archive", {})
+	var seen: Dictionary = archive.get("enemies", {})
+	seen[id] = int(seen.get(id, 0)) + 1
+	archive.enemies = seen
+	_data.archive = archive
+
+
+static func archive_kills(id: String) -> int:
+	_ensure()
+	var archive: Dictionary = _data.get("archive", {})
+	return int((archive.get("enemies", {}) as Dictionary).get(id, 0))
+
+
+static func archive_count(kind: String) -> int:
+	_ensure()
+	var archive: Dictionary = _data.get("archive", {})
+	return (archive.get(kind, []) as Variant).size()
 
 
 static func rumble_enabled() -> bool:

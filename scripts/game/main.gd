@@ -127,6 +127,7 @@ var _altar_kinds: Array[String] = []
 var wave_intro := 0.0
 ## Gewaehlte Team-Perks (id -> Anzahl) und das Banner nach der Wahl.
 var perks_taken := {}
+var _archive_timer := 0.0
 var perk_banner_id := ""
 var perk_banner_time := 0.0
 var wave_go := 0.0
@@ -186,6 +187,38 @@ func _ready() -> void:
 		stage_banner_time = 3.2
 
 
+## Archiv-Eintrag eines Gegners: Waechter und Elites zaehlen als eigene Eintraege.
+static func archive_id(enemy: Enemy) -> String:
+	return "guardian" if enemy.champion else ("elite" if enemy.elite else enemy.kind)
+
+
+## Traegt Neues ins Archiv ein (zweimal pro Sekunde genuegt): Items, Waffen, gesehene Gegner, Boss. Nicht in der Sandbox.
+func _update_archive(delta: float) -> void:
+	if sandbox:
+		return
+	_archive_timer -= delta
+	if _archive_timer > 0.0:
+		return
+	_archive_timer = 0.5
+	for player in players:
+		for id in player.items:
+			_discover("items", String(id))
+		for id in player.weapons:
+			_discover("weapons", String(id))
+	for id in perks_taken:
+		_discover("items", String(id))
+	for enemy in director.enemies:
+		if is_instance_valid(enemy):
+			_discover("enemies", archive_id(enemy))
+	if boss != null and is_instance_valid(boss):
+		_discover("enemies", "boss")
+
+
+func _discover(kind: String, id: String) -> void:
+	if SaveData.archive_discover(kind, id) and hud != null:
+		hud.notice(kind, id)
+
+
 func _physics_process(delta: float) -> void:
 	wave_banner_time = maxf(0.0, wave_banner_time - delta)
 	wave_go = maxf(0.0, wave_go - delta)
@@ -194,6 +227,7 @@ func _physics_process(delta: float) -> void:
 	_apply_tether()
 	Music.set_layer_level(1.0 if phase == Phase.BOSS else clampf(0.2 + 0.08 * float(wave), 0.2, 0.9))
 	_check_level_up()
+	_update_archive(delta)
 	_update_wave(delta)
 	_apply_shaft_lift(delta)
 	for entry in _respawns:
@@ -758,6 +792,8 @@ func _on_enemy_died(enemy: Enemy) -> void:
 		# Selbstgesprengt: keine Beute und kein Kill, die Gefahr ist vorbei.
 		return
 	kills += 1
+	if not sandbox:
+		SaveData.archive_add_kill(archive_id(enemy))
 	var info: Dictionary = enemy.data
 	_spawn_pickup("xp", int(info.xp) * (3 if enemy.elite else 1), enemy.global_position)
 	var gold_value := 1 + int(director.difficulty() * 1.1)

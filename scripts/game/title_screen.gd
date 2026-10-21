@@ -2,9 +2,9 @@ extends Node2D
 ## Titelbildschirm mit Hauptmenue, Klassenauswahl fuer beide Spieler und
 ## Steuerungsuebersicht. Startet danach die Hauptszene.
 
-enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING, SANDBOX, OPTIONS, CREDITS }
+enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING, SANDBOX, OPTIONS, CREDITS, ARCHIVE }
 
-const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Schwierigkeit", "Steuerung", "Optionen", "Credits", "Beenden"]
+const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Archiv", "Schwierigkeit", "Steuerung", "Optionen", "Credits", "Beenden"]
 const COUNTDOWN := 1.1
 
 var state := State.MAIN
@@ -24,6 +24,7 @@ var sandbox_locked: Array[bool] = [false, false]
 var sandbox_classes: Array[String] = []
 
 var options := OptionsPage.new()
+var archive := ArchivePage.new()
 
 var _time := 0.0
 var _leaving := false
@@ -78,6 +79,9 @@ func _process(delta: float) -> void:
 		State.CREDITS:
 			if UiKit.back() or UiKit.confirm():
 				state = State.MAIN
+		State.ARCHIVE:
+			if archive.update(delta):
+				state = State.MAIN
 	_stage.queue_redraw()
 	_ui.queue_redraw()
 
@@ -116,6 +120,9 @@ func _update_main() -> void:
 				options.cursor = 0
 			"Credits":
 				state = State.CREDITS
+			"Archiv":
+				state = State.ARCHIVE
+				archive.open()
 			"Beenden":
 				get_tree().quit()
 
@@ -318,6 +325,8 @@ func _draw_ui() -> void:
 			options.draw(_ui, view)
 		State.CREDITS:
 			_draw_credits(view)
+		State.ARCHIVE:
+			archive.draw(_ui, view)
 
 
 func _item_label(index: int) -> String:
@@ -333,7 +342,7 @@ func _draw_main(view: Vector2) -> void:
 	UiKit.text(_ui, Vector2(0, 240), "Der Aufstand der Apparate", 28, Color(0.8, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	Art.glow(_ui, Vector2(view.x * 0.5, 150), 160.0, Color(1.0, 0.6, 0.2))
 	for i in MENU_ITEMS.size():
-		var rect := Rect2(Vector2(view.x * 0.5 - 160, 270 + i * 62), Vector2(320, 52))
+		var rect := Rect2(Vector2(view.x * 0.5 - 160, 266 + i * 55), Vector2(320, 47))
 		UiKit.button(_ui, rect, _item_label(i), i == cursor and state == State.MAIN)
 	if MENU_ITEMS[cursor] == "Schwierigkeit" and state == State.MAIN:
 		UiKit.text(_ui, Vector2(0, view.y - 70), String(Meta.difficulty_data().text), 20, Color(1.0, 0.85, 0.5), HORIZONTAL_ALIGNMENT_CENTER, view.x)

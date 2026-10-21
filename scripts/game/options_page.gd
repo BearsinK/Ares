@@ -15,42 +15,23 @@ const ROWS: Array[Dictionary] = [
 	{"id": "back", "label": "Zurück", "kind": "back"},
 ]
 const SHAKE_NAMES: Array[String] = ["Aus", "Wenig", "Normal", "Stark"]
-const HOLD_DELAY := 0.4
-const HOLD_REPEAT := 0.07
 
 var cursor := 0
 
-var _hold_direction := 0
-var _hold_time := 0.0
+var _horizontal := HoldRepeat.new()
+var _vertical := HoldRepeat.new()
 
 
 ## Eine Eingaberunde. Gibt true zurueck, wenn die Seite geschlossen werden soll.
 func update(delta: float) -> bool:
-	if UiKit.pressed("up"):
-		cursor = (cursor + ROWS.size() - 1) % ROWS.size()
-		Sfx.play("switch")
-	if UiKit.pressed("down"):
-		cursor = (cursor + 1) % ROWS.size()
+	var step := _vertical.step(delta, "up", "down")
+	if step != 0:
+		cursor = (cursor + step + ROWS.size()) % ROWS.size()
 		Sfx.play("switch")
 	if UiKit.back():
 		return true
-	var direction := 0
-	if UiKit.pressed("left"):
-		direction -= 1
-	if UiKit.pressed("right"):
-		direction += 1
 	# Gehaltene Richtung wiederholt sich (Lautstaerke schnell verstellen).
-	var held := int(Input.is_action_pressed("p1_right") or Input.is_action_pressed("p2_right")) - int(Input.is_action_pressed("p1_left") or Input.is_action_pressed("p2_left"))
-	if direction != 0:
-		_hold_direction = direction
-		_hold_time = 0.0
-	elif held != 0 and held == _hold_direction:
-		_hold_time += delta
-		if _hold_time >= HOLD_DELAY:
-			_hold_time -= HOLD_REPEAT
-			direction = held
-	else:
-		_hold_direction = 0
+	var direction := _horizontal.step(delta, "left", "right")
 	var row := ROWS[cursor]
 	if direction != 0 and row.kind != "back":
 		change(String(row.id), direction)
