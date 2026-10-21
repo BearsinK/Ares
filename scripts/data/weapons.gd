@@ -16,20 +16,20 @@ extends RefCounted
 ## Waffen, die nur eine Klasse benutzen darf. Alles andere (rapid, shotgun, rocket, beam) darf jeder.
 const OWNER := {
 	"dust": "roomba", "sweeper": "roomba", "disc": "roomba", "vacuum": "roomba", "zapper": "roomba",
-	"turret": "hexapod", "sniper": "hexapod",
-	"can": "vending",
-	"dronegun": "printer",
+	"turret": "hexapod", "sniper": "hexapod", "burst": "hexapod", "mine": "hexapod", "silk": "hexapod",
+	"can": "vending", "flamer": "vending", "sixpack": "vending", "coinshot": "vending", "dispenser": "vending",
+	"dronegun": "printer", "boomdrone": "printer", "toner": "printer", "label": "printer", "paperjam": "printer",
 }
 
 ## Die fuenf Waffen jeder Klasse, in Anzeigereihenfolge (Klassenwaffe zuerst).
 const CLASS_SETS := {
 	"roomba": ["dust", "sweeper", "disc", "vacuum", "zapper"],
-	"hexapod": ["turret", "sniper"],
-	"vending": ["can"],
-	"printer": ["dronegun"],
+	"hexapod": ["turret", "sniper", "burst", "mine", "silk"],
+	"vending": ["can", "flamer", "sixpack", "coinshot", "dispenser"],
+	"printer": ["dronegun", "boomdrone", "toner", "label", "paperjam"],
 }
 
-const ALL_IDS: Array[String] = ["dust", "sweeper", "disc", "vacuum", "zapper", "turret", "sniper", "can", "dronegun", "rapid", "shotgun", "rocket", "beam"]
+const ALL_IDS: Array[String] = ["dust", "sweeper", "disc", "vacuum", "zapper", "turret", "sniper", "burst", "mine", "silk", "can", "flamer", "sixpack", "coinshot", "dispenser", "dronegun", "boomdrone", "toner", "label", "paperjam", "rapid", "shotgun", "rocket", "beam"]
 
 
 ## Klasse, der die Waffe gehoert ("" = darf jeder).
@@ -77,6 +77,98 @@ const DATA := {
 		"tag": "Kettenblitz, springt auf vier Ziele",
 		"fire_rate": 4.0, "damage": 12.0, "range": 480.0, "cone": 0.4, "jumps": 3, "jump_range": 230.0, "falloff": 0.85,
 		"recoil": 10.0, "shake": 1.0, "sound": "zap_gun", "barrel": 14.0, "dps": 48,
+	},
+	"burst": {
+		"mag": 24, "reload": 1.6,
+		"name": "Burst", "kind": "projectile", "color": Color(0.7, 0.95, 1.0),
+		"tag": "Dreiersalve, präzise",
+		"fire_rate": 2.4, "burst": 3, "burst_gap": 0.065, "damage": 14.0, "pellets": 1, "spread": 0.02,
+		"speed": 1500.0, "lifetime": 0.75, "pierce": 1, "size": 3.5, "push": 0.7,
+		"recoil": 30.0, "shake": 1.5, "sound": "burst_shot", "barrel": 24.0,
+	},
+	"mine": {
+		"mag": 5, "reload": 2.4,
+		"name": "Proxy Mine", "kind": "deploy", "entity": "mine", "color": Color(1.0, 0.55, 0.25),
+		"tag": "Legt Minen, die bei Gegnern explodieren",
+		"fire_rate": 1.6, "damage": 70.0, "radius": 120.0, "trigger": 95.0, "arm": 0.5, "life": 25.0, "max_active": 4, "throw": 340.0,
+		"recoil": 0.0, "shake": 1.0, "sound": "mine_place", "barrel": 18.0, "dps": 60,
+	},
+	"silk": {
+		"mag": 20, "reload": 1.6,
+		"name": "Webshot", "kind": "projectile", "style": "web", "color": Color(0.92, 0.96, 1.0),
+		"tag": "Gespinst, bremst Gegner stark",
+		"fire_rate": 3.0, "damage": 6.0, "pellets": 1, "spread": 0.03,
+		"speed": 900.0, "lifetime": 0.9, "pierce": 0, "size": 6.0, "push": 0.2,
+		"status": "webbed", "status_time": 3.0,
+		"recoil": 0.0, "shake": 0.8, "sound": "web_shot", "barrel": 22.0,
+	},
+	"flamer": {
+		"mag": 120, "reload": 2.2,
+		"name": "Flamer", "kind": "projectile", "style": "flame", "color": Color(1.0, 0.6, 0.2), "element": "fire",
+		"tag": "Flammenstrahl, brennt, durchdringt alles",
+		"fire_rate": 16.0, "damage": 3.2, "pellets": 1, "spread": 0.11,
+		"speed": 560.0, "lifetime": 0.38, "pierce": 99, "size": 9.0, "push": 0.15, "slow": 0.7, "dps": 51,
+		"recoil": 0.0, "shake": 0.4, "sound": "flame", "barrel": 22.0,
+	},
+	"sixpack": {
+		"mag": 3, "reload": 2.4,
+		"name": "Six Pack", "kind": "projectile", "style": "can", "color": Color(0.72, 0.9, 0.82),
+		"tag": "Sechs Dosen im Bogen, jede explodiert",
+		"fire_rate": 0.8, "damage": 6.0, "pellets": 6, "spread": 0.3,
+		"speed": 640.0, "lifetime": 3.0, "pierce": 0, "size": 6.0, "push": 0.6, "gravity": 1000.0,
+		"explosion_radius": 58.0, "explosion_damage": 15.0,
+		"recoil": 140.0, "shake": 3.5, "sound": "volley", "barrel": 22.0,
+	},
+	"coinshot": {
+		"mag": 30, "reload": 1.5,
+		"name": "Coinshot", "kind": "projectile", "style": "coin", "color": Color(1.0, 0.85, 0.3),
+		"tag": "Münzen, prallen ab, stärker mit Gold",
+		"fire_rate": 5.0, "damage": 9.0, "pellets": 1, "spread": 0.05,
+		"speed": 1000.0, "lifetime": 1.4, "pierce": 0, "size": 5.0, "push": 0.6, "bounces": 3, "gold_scale": 0.0008,
+		"recoil": 60.0, "shake": 0.8, "sound": "coin_shot", "barrel": 22.0,
+	},
+	"dispenser": {
+		"mag": 3, "reload": 3.0,
+		"name": "Dispenser", "kind": "deploy", "entity": "sentry", "color": Color(0.6, 1.0, 0.75),
+		"tag": "Stellt einen Geschützturm auf",
+		"fire_rate": 0.8, "damage": 12.0, "life": 14.0, "max_active": 2, "range": 700.0, "rate": 2.4, "throw": 260.0,
+		"recoil": 0.0, "shake": 1.0, "sound": "mine_place", "barrel": 18.0, "dps": 58,
+	},
+	"boomdrone": {
+		"mag": 10, "reload": 2.2, "ammo_cost": 2,
+		"name": "Boomdrone", "kind": "projectile", "style": "drone", "color": Color(1.0, 0.65, 0.3),
+		"tag": "Zwei Sprengdrohnen, jagen Gegner",
+		"fire_rate": 1.3, "damage": 5.0, "pellets": 2, "spread": 0.35,
+		"speed": 440.0, "lifetime": 2.4, "pierce": 0, "size": 6.0, "push": 0.8, "homing": 3.2,
+		"explosion_radius": 78.0, "explosion_damage": 22.0,
+		"recoil": 0.0, "shake": 2.0, "sound": "drone_launch", "barrel": 18.0,
+	},
+	"toner": {
+		"mag": 6, "reload": 2.2,
+		"name": "Toner Bomb", "kind": "projectile", "style": "canister", "color": Color(0.35, 0.25, 0.55),
+		"tag": "Tonerwolke, verletzt und verlangsamt",
+		"fire_rate": 0.9, "damage": 8.0, "pellets": 1, "spread": 0.02,
+		"speed": 620.0, "lifetime": 3.0, "pierce": 0, "size": 8.0, "push": 0.5, "gravity": 900.0,
+		"zone": {"radius": 115.0, "time": 4.5, "dps": 9.0, "status": "inked"}, "dps": 12,
+		"recoil": 0.0, "shake": 2.0, "sound": "toner_pop", "barrel": 18.0,
+	},
+	"label": {
+		"mag": 30, "reload": 1.4,
+		"name": "Labeler", "kind": "projectile", "style": "label", "color": Color(1.0, 0.88, 0.35),
+		"tag": "Markiert Ziele, alle machen mehr Schaden",
+		"fire_rate": 4.0, "damage": 4.0, "pellets": 1, "spread": 0.03,
+		"speed": 1200.0, "lifetime": 0.7, "pierce": 0, "size": 5.0, "push": 0.3,
+		"status": "tagged", "status_time": 6.0,
+		"recoil": 0.0, "shake": 0.5, "sound": "label_shot", "barrel": 18.0,
+	},
+	"paperjam": {
+		"mag": 5, "reload": 1.8,
+		"name": "Paper Jam", "kind": "projectile", "style": "paper", "color": Color(0.96, 0.96, 0.9),
+		"tag": "Papierwelle, betäubt kurz",
+		"fire_rate": 1.1, "damage": 4.0, "pellets": 7, "spread": 0.5,
+		"speed": 760.0, "lifetime": 0.4, "pierce": 2, "size": 5.0, "push": 1.2,
+		"status": "stun", "status_time": 0.7,
+		"recoil": 0.0, "shake": 2.5, "sound": "paper_burst", "barrel": 18.0,
 	},
 	"dronegun": {
 		"mag": 24, "reload": 1.2,
@@ -174,5 +266,16 @@ static func summary(weapon_id: String) -> String:
 	return "%s, ca. %d Schaden/s" % [kind, int(round(per_second))]
 
 
+## Nicht waehlbare Waffenwerte fuer Dinge, die selbst schiessen (Geschuetzturm).
+const AUX := {
+	"sentry_gun": {
+		"name": "Sentry", "kind": "projectile", "color": Color(0.6, 1.0, 0.75),
+		"fire_rate": 2.4, "damage": 12.0, "pellets": 1, "spread": 0.05,
+		"speed": 1000.0, "lifetime": 0.9, "pierce": 0, "size": 4.0, "push": 0.6,
+		"recoil": 0.0, "shake": 0.0, "sound": "shoot", "barrel": 0.0,
+	},
+}
+
+
 static func get_weapon(id: String) -> Dictionary:
-	return DATA[id]
+	return DATA[id] if DATA.has(id) else AUX[id]

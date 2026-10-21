@@ -42,6 +42,8 @@ const DROP_TIME := 0.25
 const CLIMB_SPEED := 300.0
 ## Wie lange die Schiesshaltung nach dem letzten Feuerdruck bleibt (Hexapod: langsamer beim Schiessen).
 const STANCE_HOLD := 0.12
+## Staerkste Neigung der Zeichnung auf schraegem Boden (rad, etwa 49 Grad).
+const SLOPE_MAX := 0.85
 # Ebene 8: unsichtbare Waende, die nur Spieler aufhalten (z.B. vor dem Boss), Geschosse fliegen durch.
 const WORLD_MASK := (1 << 0) | (1 << 5) | (1 << 7)
 
@@ -109,6 +111,8 @@ var _reload_span: Array[float] = []
 var _since_shot := 99.0
 var _dry_cooldown := 0.0
 var _reload_flash := 0.0
+var _burst_left := 0
+var _burst_timer := 0.0
 ## Ein Nachladen im Lauf gilt nur fuer den Spieler, der gerade nicht feuert.
 const IDLE_RELOAD := 0.9
 
@@ -162,6 +166,9 @@ var _ceiling_amount := 0.0
 var _ceiling_cooldown := 0.0
 var _coin_flash := 0.0
 var _down_amount := 0.0
+## Neigung des Koerpers auf schraegem Boden (rad, weich nachgefuehrt) und die Verschiebung, mit der die Fuesse auf der Flaeche bleiben.
+var _slope_tilt := 0.0
+var _slope_shift := Vector2.ZERO
 ## Begleitdrohnen des Druckers: aus ihnen kommen die Schüsse.
 var escorts: Array[Drone] = []
 var _escort_turn := 0
@@ -488,6 +495,25 @@ func _puff(offset: Vector2, count: int, speed := 110.0) -> void:
 		Fx.instance.spark(global_position + offset, Color(0.75, 0.77, 0.82, 0.75), count, speed)
 
 
+## Auf schraegem Boden stellt sich der Koerper parallel zur Flaeche. Die Kollisionsbox bleibt gerade und liegt mit einer
+## Ecke auf, deshalb wird die Zeichnung um die Differenz zur Flaeche hin verschoben.
+func _update_slope(grounded: bool, delta: float) -> void:
+	var tilt_target := 0.0
+	var shift_target := Vector2.ZERO
+	if grounded and not _clinging and not _ceiling and not on_rope and not downed and not _slamming:
+		var normal := get_floor_normal()
+		tilt_target = clampf(atan2(normal.x, -normal.y), -SLOPE_MAX, SLOPE_MAX)
+		var half: Vector2 = Vector2(stats.size) * 0.5
+		var lift := half.y * cos(tilt_target) + half.x * absf(sin(tilt_target)) - half.y
+		shift_target = -normal * lift
+	var follow := 1.0 - exp(-14.0 * delta)
+	_slope_tilt = lerpf(_slope_tilt, tilt_target, follow)
+	_slope_shift = _slope_shift.lerp(shift_target, follow)
+	if absf(_slope_tilt) < 0.002 and tilt_target == 0.0:
+		_slope_tilt = 0.0
+		_slope_shift = Vector2.ZERO
+
+
 ## Rein optische Zustaende: Landen, Aufstellen, Rueckstoss, Hitze, Klettern, Schritte.
 func _update_juice(delta: float) -> void:
 	var grounded := is_on_floor()
@@ -507,6 +533,7 @@ func _update_juice(delta: float) -> void:
 	if grounded:
 		_fall_speed = 0.0
 	_was_grounded = grounded
+	_update_slope(grounded, delta)
 	_land_squash = move_toward(_land_squash, 0.0, delta * 5.0)
 	_recoil = maxf(0.0, _recoil - delta * 9.0)
 	_coin_flash = maxf(0.0, _coin_flash - delta * 2.0)
@@ -1153,6 +1180,7 @@ func _rotate_weapon() -> void:
 	if weapons.size() <= 1:
 		return
 	weapon_index = (weapon_index + 1) % weapons.size()
+	_burst_left = 0
 	_switch_cooldown = 0.2
 	shake_charge = 0.0
 	_lob_charging = false
@@ -1205,6 +1233,7 @@ func heat_level() -> float:
 func _handle_fire(_delta: float) -> void:
 	if Input.is_action_just_pressed(_prefix + "weapon"):
 		_rotate_weapon()
+	_process_burst(_delta)
 	var current := Weapons.get_weapon(current_weapon_id())
 	if Input.is_action_pressed(_prefix + "fire") and not downed and is_class_weapon(current_weapon_id()):
 		_stance_timer = STANCE_HOLD
@@ -1229,6 +1258,15 @@ func _handle_fire(_delta: float) -> void:
 	if not _has_ammo(weapon_index):
 		return
 	_fire_cooldown = 1.0 / (float(weapon.fire_rate) * fire_rate_mult())
+	_shoot(weapon_id, weapon)
+	# Salve: die weiteren Schuesse folgen im festen Abstand, der Druck loest nur die erste aus.
+	if weapon.has("burst"):
+		_burst_left = int(weapon.burst) - 1
+		_burst_timer = float(weapon.get("burst_gap", 0.06))
+
+
+## Ein einzelner Schuss mit Rueckstoss, Effekten, Munition und Signal.
+func _shoot(weapon_id: String, weapon: Dictionary) -> void:
 	var origin := _fire_origin(float(weapon.barrel))
 	# Rueckstoss: am Boden schwaecher, in der Luft staerker. Drohnenschuesse stossen den Koerper nicht.
 	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
@@ -1244,6 +1282,23 @@ func _handle_fire(_delta: float) -> void:
 	fired.emit(self, weapon_id, origin, aim_dir, 0.0)
 	_spend_ammo(weapon_index, weapon)
 	_after_shot()
+
+
+## Folgeschuesse einer Salve. Ein Waffenwechsel, Boden oder leeres Magazin brechen sie ab.
+func _process_burst(delta: float) -> void:
+	if _burst_left <= 0:
+		return
+	var weapon_id := current_weapon_id()
+	var weapon := Weapons.get_weapon(weapon_id)
+	if downed or not weapon.has("burst") or ammo[weapon_index] <= 0:
+		_burst_left = 0
+		return
+	_burst_timer -= delta
+	if _burst_timer > 0.0:
+		return
+	_burst_left -= 1
+	_burst_timer = float(weapon.get("burst_gap", 0.06))
+	_shoot(weapon_id, weapon)
 
 
 ## Zustand fuer die Zeichenfunktionen (siehe RobotArt).
@@ -1296,7 +1351,7 @@ func _art_state() -> Dictionary:
 		"print": print_progress, "launch": launch,
 		"facing": facing, "aim": aim_dir, "t": _art_time, "vx": 0.0 if downed else velocity.x,
 		"walk": _walk_phase, "grounded": is_on_floor(), "clinging": _clinging, "cling_dir": _cling_dir,
-		"planted": is_deployed(),
+		"planted": is_deployed(), "slope": _slope_tilt, "slope_shift": _slope_shift,
 		"mood": mood, "firing": _fire_flash, "charge": shake_charge, "arm": _arm_deploy,
 		"weapon_color": weapon_color, "accent": RobotClasses.PLAYER_COLORS[player_index - 1],
 		"eye_color": stats.eye_color,
@@ -1496,6 +1551,8 @@ func _muzzle_offset() -> Vector2:
 		return gun.global_position - global_position
 	var muzzle: Vector2 = stats.muzzle
 	var local := Vector2(muzzle.x * facing, muzzle.y)
+	if _slope_tilt != 0.0:
+		local = local.rotated(_slope_tilt) + _slope_shift
 	if _ceiling:
 		# Kopfueber sitzt das Geschuetz unten am Koerper.
 		return Vector2(muzzle.x * facing, -muzzle.y)

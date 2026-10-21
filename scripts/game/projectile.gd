@@ -39,10 +39,13 @@ var status_time := 0.0
 var boomerang := 0.0
 ## Wolke beim Aufprall (Toner): Radius, Dauer, Schaden pro Sekunde, Zustand. Leer = keine.
 var zone: Dictionary = {}
+## Zuendet (Explosion oder Wolke) auch dann, wenn die Flugzeit ohne Treffer ablaeuft: Raketen, Drohnen, Kartuschen.
+var detonate_on_timeout := false
 
 var _returning := false
 
 var _prev_pos := Vector2.ZERO
+var _life0 := 1.0
 var _hit_targets: Array[Node] = []
 var _velocity := Vector2.ZERO
 var _trail_timer := 0.0
@@ -52,6 +55,7 @@ var _age := 0.0
 
 
 func _ready() -> void:
+	_life0 = lifetime
 	collision_layer = 1 << 3
 	collision_mask = (1 << 0) | (1 << 2) | ((1 << 5) if collide_platforms else 0)
 	_velocity = direction * speed
@@ -71,7 +75,7 @@ func _physics_process(delta: float) -> void:
 		_step_boomerang()
 	elif homing > 0.0:
 		_steer(delta)
-	if style == "disc":
+	if style in ["disc", "web", "flame", "coin", "drone", "canister", "paper"]:
 		queue_redraw()
 	_velocity.y += arc_gravity * delta
 	position += _velocity * delta
@@ -84,7 +88,7 @@ func _physics_process(delta: float) -> void:
 			Fx.instance.spark(global_position, Color(1.0, 1.0, 1.0), 1, 90.0)
 	lifetime -= delta
 	if lifetime <= 0.0:
-		if style == "rocket" and not is_queued_for_deletion():
+		if (style == "rocket" or detonate_on_timeout) and not is_queued_for_deletion():
 			# Eine Rakete, die ihr Ziel verfehlt, zuendet am Ende ihrer Flugzeit.
 			hit.emit(self, global_position, null)
 		queue_free()
@@ -172,6 +176,27 @@ func _draw() -> void:
 		"disc":
 			_draw_disc()
 			return
+		"web":
+			_draw_web()
+			return
+		"flame":
+			_draw_flame()
+			return
+		"drone":
+			_draw_drone()
+			return
+		"canister":
+			_draw_canister()
+			return
+		"label":
+			_draw_label()
+			return
+		"paper":
+			_draw_paper()
+			return
+		"coin":
+			_draw_coin()
+			return
 	var streak := clampf(speed * 0.02, 6.0, 40.0)
 	draw_line(-direction * streak, Vector2.ZERO, Color(color, 0.5), size * 1.2)
 	draw_circle(Vector2.ZERO, size, color)
@@ -208,6 +233,79 @@ func _draw_disc() -> void:
 	draw_circle(Vector2.ZERO, radius * 0.95, Color(0.16, 0.2, 0.3))
 	draw_arc(Vector2.ZERO, radius * 0.95, 0.0, TAU, 20, tint, 2.5, true)
 	draw_circle(Vector2.ZERO, radius * 0.32, tint)
+
+
+func _draw_drone() -> void:
+	# Kleine Sprengdrohne: Koerper, zwei Rotoren (verwischt) und ein blinkendes Licht.
+	draw_circle(Vector2.ZERO, size * 2.2, Color(color, 0.2))
+	draw_rect(Rect2(-size * 0.9, -size * 0.55, size * 1.8, size * 1.1), Color(0.2, 0.2, 0.26))
+	draw_rect(Rect2(-size * 0.9, -size * 0.55, size * 1.8, size * 1.1), color, false, 1.5)
+	for side in [-1.0, 1.0]:
+		var spin := absf(sin(_age * 45.0 + side))
+		draw_line(Vector2(side * size * 0.6, -size * 0.55), Vector2(side * size * 1.4, -size * 1.0), Color(0.55, 0.57, 0.65), 1.5, true)
+		draw_rect(Rect2(side * size * 1.4 - size * (0.5 + 0.9 * spin), -size * 1.15, size * (1.0 + 1.8 * spin), size * 0.25), Color(0.85, 0.88, 0.95, 0.75))
+	draw_circle(Vector2(0.0, size * 0.1), size * 0.35, Color(1.0, 0.3, 0.2, 0.5 + 0.5 * sin(_age * 18.0)))
+
+
+func _draw_canister() -> void:
+	# Tonerkartusche: dunkler Zylinder mit heller Kappe, dreht sich im Flug.
+	draw_set_transform(Vector2.ZERO, _age * 9.0)
+	draw_rect(Rect2(-size * 0.75, -size, size * 1.5, size * 2.0), Color(0.16, 0.13, 0.25))
+	draw_rect(Rect2(-size * 0.75, -size, size * 1.5, size * 2.0), color.lightened(0.25), false, 2.0)
+	draw_rect(Rect2(-size * 0.5, -size * 1.25, size, size * 0.4), color.lightened(0.4))
+	draw_set_transform(Vector2.ZERO)
+	draw_circle(Vector2.ZERO, size * 1.7, Color(color, 0.2))
+
+
+func _draw_label() -> void:
+	# Etikett: gelber Streifen mit dunkler Linie, zeigt in Flugrichtung.
+	draw_set_transform(Vector2.ZERO, direction.angle())
+	draw_line(Vector2(-26.0, 0.0), Vector2.ZERO, Color(color, 0.35), 3.0)
+	draw_rect(Rect2(-size * 1.6, -size * 0.9, size * 3.2, size * 1.8), color)
+	draw_rect(Rect2(-size * 1.6, -size * 0.9, size * 3.2, size * 1.8), Color(0.25, 0.2, 0.05), false, 1.5)
+	draw_line(Vector2(-size, 0.0), Vector2(size * 0.8, 0.0), Color(0.25, 0.2, 0.05), 1.5)
+	draw_set_transform(Vector2.ZERO)
+
+
+func _draw_paper() -> void:
+	# Papierblatt: weisses Rechteck, wirbelt im Flug.
+	draw_set_transform(Vector2.ZERO, _age * 14.0 + float(get_instance_id() % 7))
+	draw_rect(Rect2(-size * 1.1, -size * 1.5, size * 2.2, size * 3.0), color)
+	draw_rect(Rect2(-size * 1.1, -size * 1.5, size * 2.2, size * 3.0), Color(0.5, 0.5, 0.55), false, 1.2)
+	for i in 3:
+		draw_line(Vector2(-size * 0.7, -size * 0.8 + i * size * 0.8), Vector2(size * 0.7, -size * 0.8 + i * size * 0.8), Color(0.55, 0.6, 0.75), 1.0)
+	draw_set_transform(Vector2.ZERO)
+
+
+func _draw_flame() -> void:
+	# Flamme: waechst, verblasst von Weiss ueber Gelb und Orange zu dunklem Rauch.
+	var t := clampf(_age / maxf(_life0, 0.01), 0.0, 1.0)
+	var r := size * (0.55 + 1.3 * t)
+	var hot := Color(1.0, 0.95, 0.7).lerp(Color(1.0, 0.45, 0.12), minf(1.0, t * 1.6)).lerp(Color(0.25, 0.1, 0.08), clampf(t * 2.0 - 1.0, 0.0, 1.0))
+	draw_circle(Vector2.ZERO, r * 1.5, Color(hot, 0.16 * (1.0 - t)))
+	draw_circle(Vector2.ZERO, r, Color(hot, 0.85 * (1.0 - 0.7 * t)))
+	draw_circle(Vector2.ZERO, r * 0.45, Color(1.0, 1.0, 0.85, 0.7 * (1.0 - t)))
+
+
+func _draw_coin() -> void:
+	# Muenze: dreht sich um die Laengsachse, daher schmal und breit im Wechsel.
+	var squash := 0.25 + 0.75 * absf(cos(_age * 22.0))
+	draw_line(-direction * 22.0, Vector2.ZERO, Color(color, 0.35), size * 0.9, true)
+	draw_set_transform(Vector2.ZERO, direction.angle() + PI / 2.0, Vector2(squash, 1.0))
+	draw_circle(Vector2.ZERO, size * 1.15, Color(0.55, 0.4, 0.08))
+	draw_circle(Vector2.ZERO, size, color)
+	draw_arc(Vector2.ZERO, size * 0.6, 0.0, TAU, 12, Color(0.7, 0.5, 0.1), 1.5, true)
+	draw_set_transform(Vector2.ZERO)
+
+
+func _draw_web() -> void:
+	# Spinnenseide: Kugel mit Speichen, dahinter ein duenner Faden.
+	draw_line(-direction * 28.0, Vector2.ZERO, Color(color, 0.45), 1.5, true)
+	draw_circle(Vector2.ZERO, size * 1.8, Color(color, 0.18))
+	draw_circle(Vector2.ZERO, size * 0.8, color)
+	for i in 6:
+		var a := _age * 5.0 + TAU * i / 6.0
+		draw_line(Vector2.ZERO, Vector2(cos(a), sin(a)) * size * 1.5, color, 1.2, true)
 
 
 func _draw_can() -> void:
@@ -249,6 +347,9 @@ func _bounce_off() -> bool:
 	if result.is_empty():
 		return false
 	var normal: Vector2 = result.normal
+	# Beginnt der Strahl schon in der Wand, liefert die Physik keine Normale: dann zurueck, woher das Geschoss kam.
+	if normal.length_squared() < 0.25:
+		normal = -heading
 	_velocity = _velocity.bounce(normal)
 	direction = _velocity.normalized()
 	global_position = result.position + normal * (size + 2.0)

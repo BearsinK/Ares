@@ -44,6 +44,17 @@ const WEAPON_TEXT := {
 	"sweeper": "Roomba schwingt seinen Besen: trifft alle Gegner vor ihm, schleudert sie weg und fegt gegnerische Schüsse aus der Luft.",
 	"disc": "Wurfscheibe, die sich durch Gegner schneidet, umkehrt und auf dem Rückweg erneut trifft.",
 	"vacuum": "Saugkegel, der Gegner vor dem Roomba zu einem Punkt zusammenzieht. Wenig Schaden, aber ideal für Explosionen des Partners.",
+	"burst": "Dreiersalve aus dem Hexapod-Gewehr: drei schnelle, sehr genaue Schüsse pro Druck.",
+	"mine": "Wirft Minen, die am Boden scharf werden und bei Gegnern in der Nähe explodieren. Bis zu vier liegen gleichzeitig.",
+	"silk": "Schießt Gespinst: Getroffene Gegner werden drei Sekunden lang stark verlangsamt.",
+	"flamer": "Kurzer, breiter Flammenstrahl. Brennt alles an, was er trifft, und geht durch ganze Gegnergruppen. Bremst beim Halten.",
+	"sixpack": "Wirft sechs Dosen auf einmal, jede explodiert beim Aufprall. Nur drei Salven pro Magazin.",
+	"coinshot": "Schießt Münzen, die bis zu dreimal von Wänden abprallen. Je mehr Gold du trägst, desto härter treffen sie.",
+	"dispenser": "Stellt einen kleinen Automaten auf, der 14 Sekunden lang auf den nächsten Gegner schießt. Zwei gleichzeitig.",
+	"boomdrone": "Startet zwei kleine Sprengdrohnen, die sich einen Gegner suchen und beim Aufprall explodieren. Verbraucht zwei Schuss.",
+	"toner": "Wirft eine Tonerbombe. Am Aufprall bleibt eine dunkle Wolke liegen, die Gegner darin verletzt und stark bremst.",
+	"label": "Klebt Etiketten auf Gegner: Markierte Ziele nehmen von allen sechs Sekunden lang ein Drittel mehr Schaden.",
+	"paperjam": "Breite Welle aus Papierblättern auf kurze Distanz. Betäubt getroffene Gegner kurz, danach sind sie eine Weile immun.",
 	"zapper": "Kettenblitz: trifft den Gegner am Fadenkreuz und springt auf bis zu drei weitere. Nasse Gegner erleiden den vollen Volt-Effekt.",
 }
 

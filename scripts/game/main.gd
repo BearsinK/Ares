@@ -1542,6 +1542,8 @@ func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direct
 			_fire_stream(player, weapon, origin, direction, damage, element, color)
 		"chain":
 			_fire_chain(player, weapon, origin, direction, damage, element, color)
+		"deploy":
+			_fire_deploy(player, weapon, origin, direction, damage, element, color)
 		_:
 			_fire_projectiles(player, weapon, origin, direction, damage, element, color)
 
@@ -1624,6 +1626,8 @@ func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, dire
 		bullet.status = String(weapon.get("status", ""))
 		bullet.status_time = float(weapon.get("status_time", 0.0))
 		bullet.boomerang = float(weapon.get("boomerang", 0.0))
+		bullet.zone = weapon.get("zone", {})
+		bullet.detonate_on_timeout = weapon.has("zone") or weapon.has("homing")
 		if weapon.has("gravity"):
 			bullet.arc_gravity = float(weapon.gravity)
 			bullet.collide_platforms = true
@@ -1785,6 +1789,65 @@ func _fire_chain(player: Player, weapon: Dictionary, origin: Vector2, direction:
 		fx.zigzag(origin, origin + direction * minf(reach, 260.0), Color(color, 0.6), 2.0, 0.1)
 
 
+## Legt etwas ab (Mine). Zusatzprojektile legen weitere Minen im Faecher, aeltere verschwinden ueber dem Limit.
+func _fire_deploy(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
+	var count := _shot_count(player, weapon)
+	var factor := _split_factor(player, weapon)
+	var blast := float(player.mods.blast)
+	var entity := String(weapon.entity)
+	# Aelteste eigene Dinge dieser Art entfernen, damit das Limit gilt.
+	var mine_list: Array[Node] = []
+	for node in get_tree().get_nodes_in_group("deployables"):
+		if node.owner_player == player and node.kind == entity and not node.is_queued_for_deletion():
+			mine_list.append(node)
+	mine_list.sort_custom(func(a: Node, b: Node) -> bool: return a.age > b.age)
+	var limit := int(weapon.max_active) + int(player.mods.proj)
+	while mine_list.size() + count > limit and not mine_list.is_empty():
+		var old: Node = mine_list.pop_front()
+		if Fx.instance:
+			Fx.instance.spark(old.global_position, color, 4, 140.0)
+		old.queue_free()
+	for i in count:
+		var thing: Deployable
+		if entity == "sentry":
+			var sentry := Sentry.new()
+			sentry.damage = damage
+			sentry.reach = float(weapon.range)
+			sentry.shots_per_second = float(weapon.rate)
+			sentry.shot.connect(_on_sentry_shot)
+			thing = sentry
+		else:
+			var mine := Mine.new()
+			mine.damage = damage * factor * (1.0 + Perks.BLAST_DAMAGE_SHARE * blast)
+			mine.radius = float(weapon.radius) * (1.0 + blast)
+			mine.trigger_radius = float(weapon.trigger)
+			mine.arm_time = float(weapon.arm)
+			mine.detonated.connect(_on_mine_detonated)
+			thing = mine
+		thing.owner_player = player
+		thing.kind = entity
+		thing.position = origin
+		thing.velocity = direction.rotated(_fan_offset(i, count, Perks.FAN_ANGLE * 2.0)) * float(weapon.get("throw", 300.0)) + Vector2(0.0, -140.0)
+		thing.life = float(weapon.life)
+		thing.color = color
+		thing.element = element
+		thing.knock = 1.0 + float(player.mods.knock)
+		projectiles.add_child(thing)
+
+
+## Schuss eines Geschuetzturms: laeuft durch dieselbe Schusserzeugung wie die Waffen des Spielers (Upgrades gelten).
+func _on_sentry_shot(sentry: Sentry, direction: Vector2) -> void:
+	if not is_instance_valid(sentry.owner_player):
+		return
+	Sfx.play("shoot", 0.15)
+	fx.muzzle(sentry.muzzle_position(), direction, sentry.color)
+	_fire_projectiles(sentry.owner_player, Weapons.get_weapon("sentry_gun"), sentry.muzzle_position(), direction, sentry.damage, sentry.element, sentry.color)
+
+
+func _on_mine_detonated(mine: Mine) -> void:
+	_explode(mine.global_position, mine.radius, mine.damage, mine.owner_player, mine.color, mine.element, 7.0, mine.knock)
+
+
 ## Zielhilfe fuer Strahlen (Seeker Chip): dreht die Richtung auf den Gegner, der am dichtesten am Fadenkreuz liegt.
 func _assist_aim(origin: Vector2, direction: Vector2, seek: float) -> Vector2:
 	var best_angle := Perks.SEEK_CONE * seek
@@ -1843,8 +1906,9 @@ func _trace_ray(player: Player, weapon: Dictionary, origin: Vector2, direction: 
 				if bounces_left > 0 and range_left - start.distance_to(end) > 60.0:
 					bounces_left -= 1
 					range_left -= start.distance_to(end)
-					dir = dir.bounce(result.normal)
-					start = end + result.normal * 2.0
+					var wall_normal: Vector2 = result.normal if result.normal.length_squared() > 0.25 else -dir
+					dir = dir.bounce(wall_normal)
+					start = end + wall_normal * 2.0
 					bounced = true
 				break
 		points.append(end)
@@ -1857,11 +1921,30 @@ func _trace_ray(player: Player, weapon: Dictionary, origin: Vector2, direction: 
 
 func _on_projectile_hit(projectile: Projectile, pos: Vector2, _target: Node) -> void:
 	fx.spark(pos, projectile.color, 4)
+	if not projectile.zone.is_empty():
+		_spawn_zone(projectile, pos)
 	if projectile.explosion_radius > 0.0:
 		var shake_amount := 10.0 if projectile.arc_gravity <= 0.0 else 4.0 + 8.0 * projectile.charge
 		_explode(pos, projectile.explosion_radius, projectile.explosion_damage, projectile.shooter, projectile.color, projectile.element, shake_amount, projectile.knock)
 	elif projectile.arc_gravity > 0.0:
 		Sfx.play("pop")
+
+
+## Wolke am Aufprallort (Toner Bomb). Blast Core macht sie groesser.
+func _spawn_zone(projectile: Projectile, pos: Vector2) -> void:
+	var player := projectile.shooter as Player
+	var blast := float(player.mods.blast) if player != null else 0.0
+	var zone := Zone.new()
+	zone.owner_player = projectile.shooter
+	zone.position = pos
+	zone.radius = float(projectile.zone.radius) * (1.0 + blast)
+	zone.life = float(projectile.zone.time)
+	zone.dps = float(projectile.zone.dps) * (player.damage_mult() if player != null else 1.0) * (1.0 + Perks.BLAST_DAMAGE_SHARE * blast)
+	zone.status = String(projectile.zone.get("status", ""))
+	zone.element = projectile.element
+	zone.color = Color(0.14, 0.09, 0.24)
+	projectiles.add_child.call_deferred(zone)
+	Sfx.play("toner_pop", 0.1)
 
 
 func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: Color, element := "", shake_amount := 10.0, knock := 1.0) -> void:

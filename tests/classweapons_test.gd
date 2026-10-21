@@ -66,6 +66,12 @@ func _run() -> void:
 	await _disc()
 	await _vacuum()
 	await _zapper()
+	await _burst()
+	await _mine()
+	await _silk()
+	await _vendor_set()
+	await _printer_set()
+	_all_sets()
 	print("Fertig, Fehler: ", failures)
 	main.queue_free()
 	get_tree().quit(1 if failures > 0 else 0)
@@ -219,3 +225,294 @@ func _zapper() -> void:
 	_fire(p1, "zapper")
 	_check(before - a.hp > 12.0 * p1.damage_mult() * 1.4, "Zapper setzt den Volt-Effekt: nasse Gegner nehmen mehr Schaden (%.1f)" % (before - a.hp))
 	_clear()
+
+
+func _burst() -> void:
+	_clear()
+	var set_ok := Weapons.CLASS_SETS.hexapod.size() == 5 and Weapons.CLASS_SETS.hexapod[0] == "turret"
+	_check(set_ok, "Hexapod hat fuenf Waffen, das Geschuetz zuerst")
+	p2.weapons = ["burst"]
+	p2.modules = [""]
+	p2.weapon_index = 0
+	p2.global_position = Vector2(500.0, 1200.0)
+	await _frames(3)
+	var count := [0]
+	var counter := func(_p: Player, id: String, _o: Vector2, _d: Vector2, _c: float) -> void:
+		if id == "burst":
+			count[0] += 1
+	p2.fired.connect(counter)
+	var before := p2.ammo_of(0)
+	Input.action_press("p2_fire")
+	await _frames(4)
+	Input.action_release("p2_fire")
+	await _frames(30)
+	_check(count[0] == 3, "Ein Druck loest eine Dreiersalve aus (%d Schuesse)" % count[0])
+	_check(before - p2.ammo_of(0) == 3, "Jeder Schuss der Salve kostet Munition (%d)" % (before - p2.ammo_of(0)))
+	# Waffenwechsel bricht die Salve ab.
+	p2.weapons = ["burst", "rapid"]
+	p2.modules = ["", ""]
+	await _frames(2)
+	count[0] = 0
+	p2._fire_cooldown = 0.0
+	Input.action_press("p2_fire")
+	await _frames(2)
+	Input.action_release("p2_fire")
+	p2.weapon_index = 1
+	p2._burst_left = 0
+	await _frames(20)
+	_check(count[0] < 3, "Nach dem Abbruch kommen keine weiteren Salvenschuesse")
+	p2.fired.disconnect(counter)
+	p2.weapon_index = 0
+	p2.weapons = ["burst"]
+	p2.modules = [""]
+
+
+func mine_ref_valid(mine: Mine) -> bool:
+	return is_instance_valid(mine) and not mine.is_queued_for_deletion()
+
+
+func _mine() -> void:
+	_clear()
+	p2.weapons = ["mine"]
+	p2.modules = [""]
+	p2.weapon_index = 0
+	p2.global_position = Vector2(500.0, 1200.0)
+	await _frames(3)
+	_fire(p2, "mine")
+	var mines: Array = get_tree().get_nodes_in_group("deployables")
+	_check(mines.size() == 1, "Eine Mine liegt in der Welt")
+	var mine: Mine = mines[0]
+	var landed := await _until(func() -> bool: return mine.planted, 240)
+	_check(landed and mine.global_position.y > 1150.0, "Die Mine faellt und bleibt am Boden liegen (y %.0f)" % mine.global_position.y)
+	_check(not mine.is_armed(), "Frisch gelegt ist sie noch nicht scharf")
+	var armed := await _until(func() -> bool: return mine.is_armed(), 120)
+	_check(armed, "Nach kurzer Zeit wird sie scharf")
+	var far := _dummy("brute", Vector2(mine.global_position.x + 700.0, 1200.0))
+	await _frames(20)
+	_check(mine_ref_valid(mine) and far.hp == 5000.0, "Ein weit entfernter Gegner loest sie nicht aus")
+	var near := _dummy("brute", Vector2(mine.global_position.x + 60.0, 1200.0))
+	var mine_ref: WeakRef = weakref(mine)
+	var gone := await _until(func() -> bool: return mine_ref.get_ref() == null, 60)
+	await _frames(2)
+	_check(gone and near.hp < 5000.0, "Ein Gegner in der Naehe loest sie aus und wird verletzt (%.0f Schaden)" % (5000.0 - near.hp))
+	_clear()
+	# Limit: mehr als vier Minen gleichzeitig gibt es nicht.
+	for i in 6:
+		_fire(p2, "mine")
+		await _frames(2)
+	_check(get_tree().get_nodes_in_group("deployables").size() <= 4, "Hoechstens vier Minen gleichzeitig (%d)" % get_tree().get_nodes_in_group("deployables").size())
+	_clear()
+
+
+func _silk() -> void:
+	_clear()
+	p2.weapons = ["silk"]
+	p2.modules = [""]
+	p2.weapon_index = 0
+	p2.global_position = Vector2(500.0, 1200.0)
+	var e := _dummy("brute", Vector2(900.0, 1200.0))
+	await _frames(3)
+	_fire(p2, "silk")
+	var hit := await _until(func() -> bool: return e.hp < 5000.0, 120)
+	_check(hit, "Das Gespinst trifft den Gegner")
+	_check(is_equal_approx(e.statuses.speed_factor(), StatusEffects.WEB_SPEED), "Getroffene sind gebremst (%.2f)" % e.statuses.speed_factor())
+	_clear()
+
+
+func _vendor_set() -> void:
+	_clear()
+	_check(Weapons.CLASS_SETS.vending.size() == 5 and Weapons.CLASS_SETS.vending[0] == "can", "Vendor hat fuenf Waffen, die Soda Bomb zuerst")
+	p1.gold = 0
+	p1.weapons = ["flamer"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	p1.global_position = Vector2(500.0, 1200.0)
+	var a := _dummy("brute", Vector2(620.0, 1200.0))
+	var b := _dummy("brute", Vector2(690.0, 1200.0))
+	await _frames(3)
+	Input.action_press("p1_fire")
+	await _frames(30)
+	Input.action_release("p1_fire")
+	_check(a.hp < 5000.0 and b.hp < 5000.0, "Der Flammenstrahl geht durch beide Gegner")
+	_check(a.statuses.has("burning"), "Flamer brennt Gegner an (fester Feuer-Effekt)")
+	_clear()
+
+	# Six Pack: sechs Dosen, jede explodiert.
+	p1.weapons = ["sixpack"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	await _frames(3)
+	_fire(p1, "sixpack")
+	var cans := 0
+	for child in main.projectiles.get_children():
+		if child is Projectile and child.explosion_radius > 0.0 and child.arc_gravity > 0.0:
+			cans += 1
+	_check(cans == 6, "Six Pack wirft sechs Dosen (%d)" % cans)
+	_clear()
+	var target := _dummy("brute", Vector2(650.0, 1200.0))
+	await _frames(2)
+	_fire(p1, "sixpack")
+	var boom := await _until(func() -> bool: return target.hp < 5000.0, 180)
+	_check(boom, "Die Dosen treffen und explodieren (%.0f Schaden)" % (5000.0 - target.hp))
+	_clear()
+
+	# Coinshot: Prallt ab und wird mit Gold staerker.
+	p1.weapons = ["coinshot"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	await _frames(3)
+	p1.gold = 0
+	_fire(p1, "coinshot")
+	var poor: Projectile = null
+	for child in main.projectiles.get_children():
+		if child is Projectile:
+			poor = child
+	var poor_damage := poor.damage
+	_check(poor.bounces == 3 and poor.style == "coin", "Coinshot: Muenzen prallen dreimal ab")
+	_clear()
+	p1.gold = 500
+	_fire(p1, "coinshot")
+	var rich: Projectile = null
+	for child in main.projectiles.get_children():
+		if child is Projectile:
+			rich = child
+	_check(rich.damage > poor_damage * 1.3, "Mit Gold wird der Schaden hoeher (%.1f gegen %.1f)" % [rich.damage, poor_damage])
+	p1.gold = 5000
+	_clear()
+	_fire(p1, "coinshot")
+	for child in main.projectiles.get_children():
+		if child is Projectile:
+			rich = child
+	_check(rich.damage <= poor_damage * 1.61, "Der Goldbonus ist gedeckelt (%.1f)" % rich.damage)
+	p1.gold = 0
+	_clear()
+
+	# Dispenser: Turm landet, schiesst auf den naechsten Gegner, Limit zwei.
+	p1.weapons = ["dispenser"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	await _frames(3)
+	_fire(p1, "dispenser")
+	var towers: Array = get_tree().get_nodes_in_group("deployables")
+	_check(towers.size() == 1 and towers[0] is Sentry, "Ein Geschuetzturm wird geworfen")
+	var tower: Sentry = towers[0]
+	var landed := await _until(func() -> bool: return tower.planted, 240)
+	_check(landed, "Er landet und steht still")
+	var foe := _dummy("brute", Vector2(tower.global_position.x + 400.0, 1200.0))
+	var hit := await _until(func() -> bool: return foe.hp < 5000.0, 240)
+	_check(hit, "Der Turm schiesst auf den Gegner in Sichtweite (%.0f Schaden)" % (5000.0 - foe.hp))
+	for i in 4:
+		_fire(p1, "dispenser")
+		await _frames(2)
+	var count := 0
+	for node in get_tree().get_nodes_in_group("deployables"):
+		if node is Sentry:
+			count += 1
+	_check(count <= 2, "Hoechstens zwei Tuerme gleichzeitig (%d)" % count)
+	_clear()
+
+
+func _printer_set() -> void:
+	_clear()
+	_check(Weapons.CLASS_SETS.printer.size() == 5 and Weapons.CLASS_SETS.printer[0] == "dronegun", "Printbot hat fuenf Waffen, den Drohnenpuls zuerst")
+	p1.weapons = ["boomdrone"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	p1.global_position = Vector2(500.0, 1200.0)
+	p1.refill_ammo()
+	var foe := _dummy("brute", Vector2(900.0, 1200.0))
+	await _frames(3)
+	var ammo_before := p1.ammo_of(0)
+	p1._fire_cooldown = 0.0
+	Input.action_press("p1_fire")
+	await _frames(2)
+	Input.action_release("p1_fire")
+	_check(ammo_before - p1.ammo_of(0) == 2, "Boomdrone verbraucht zwei Schuss pro Salve (%d)" % (ammo_before - p1.ammo_of(0)))
+	var drones := 0
+	for child in main.projectiles.get_children():
+		if child is Projectile and child.style == "drone":
+			drones += 1
+	_check(drones == 2, "Zwei Sprengdrohnen fliegen los (%d)" % drones)
+	var boom := await _until(func() -> bool: return foe.hp < 5000.0, 240)
+	_check(boom, "Die Drohnen finden den Gegner und explodieren (%.0f Schaden)" % (5000.0 - foe.hp))
+	_clear()
+
+	# Toner Bomb: Wolke am Aufprall, verletzt und bremst.
+	p1.weapons = ["toner"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	await _frames(3)
+	var victim := _dummy("brute", Vector2(660.0, 1200.0))
+	_fire(p1, "toner")
+	var cloud: Zone = null
+	for i in 240:
+		await get_tree().physics_frame
+		for child in main.projectiles.get_children():
+			if child is Zone:
+				cloud = child
+		if cloud != null:
+			break
+	_check(cloud != null, "Die Kartusche hinterlaesst eine Wolke")
+	var inked := await _until(func() -> bool: return victim.statuses.has("inked"), 240)
+	_check(inked and victim.statuses.speed_factor() < 0.7, "Gegner in der Wolke sind gebremst (%.2f)" % victim.statuses.speed_factor())
+	_check(victim.hp < 5000.0, "und werden verletzt (%.0f)" % (5000.0 - victim.hp))
+	var cloud_ref: WeakRef = weakref(cloud)
+	var faded := await _until(func() -> bool: return cloud_ref.get_ref() == null, 400)
+	_check(faded, "Die Wolke verschwindet nach ein paar Sekunden")
+	_clear()
+
+	# Labeler: markierte Gegner nehmen mehr Schaden.
+	p1.weapons = ["label"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	await _frames(3)
+	var marked := _dummy("brute", Vector2(800.0, p1.global_position.y - 8.0))
+	_fire(p1, "label")
+	var tagged := await _until(func() -> bool: return marked.statuses.has("tagged"), 120)
+	_check(tagged, "Das Etikett markiert den Gegner")
+	var hp := marked.hp
+	marked.take_damage(100.0, p2, Vector2.ZERO, "")
+	_check(absf((hp - marked.hp) - 130.0) < 1.0, "Auch der Partner macht 30 Prozent mehr Schaden (%.0f)" % (hp - marked.hp))
+	_clear()
+
+	# Paper Jam: Welle betaeubt, danach kurz immun.
+	p1.weapons = ["paperjam"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	p1.global_position = Vector2(500.0, 1200.0)
+	await _frames(3)
+	var close := _dummy("brute", Vector2(650.0, p1.global_position.y - 8.0))
+	_fire(p1, "paperjam")
+	var sheets := 0
+	for child in main.projectiles.get_children():
+		if child is Projectile and child.style == "paper":
+			sheets += 1
+	_check(sheets == 7, "Sieben Blaetter in der Welle (%d)" % sheets)
+	var stunned := await _until(func() -> bool: return close.stunned_time > 0.0, 60)
+	_check(stunned, "Ein Gegner in der Naehe wird betaeubt")
+	close.stunned_time = 0.0
+	_clear()
+	close = _dummy("brute", Vector2(650.0, p1.global_position.y - 8.0))
+	close._stun_immunity = 1.0
+	await _frames(2)
+	_fire(p1, "paperjam")
+	await _frames(40)
+	_check(close.stunned_time == 0.0, "Direkt nach einer Betaeubung ist er immun")
+	_clear()
+
+
+func _all_sets() -> void:
+	var seen := {}
+	var ok := true
+	for class_id in Weapons.CLASS_SETS:
+		var set: Array = Weapons.CLASS_SETS[class_id]
+		ok = ok and set.size() == 5 and set[0] == RobotClasses.get_stats(class_id).weapons[0]
+		for id in set:
+			ok = ok and Weapons.owner_of(id) == class_id and not seen.has(id) and Weapons.ALL_IDS.has(id)
+			seen[id] = true
+	_check(ok, "Jede Klasse hat genau fuenf eigene Waffen, ohne Ueberschneidung")
+	_check(seen.size() == 20 and Weapons.ALL_IDS.size() == 24, "20 Klassenwaffen und 4 allgemeine (%d von %d)" % [seen.size(), Weapons.ALL_IDS.size()])
+	var texts := true
+	for id in Weapons.ALL_IDS:
+		texts = texts and Archive.WEAPON_TEXT.has(id)
+	_check(texts, "Jede Waffe hat einen Archiv-Text")

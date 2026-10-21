@@ -1,7 +1,7 @@
 extends Node
 ## Entwickler-Werkzeug (nicht Teil der Testsuite): Zufallseingaben fuer beide Spieler bei
 ## unverwundbaren Robotern. Sucht Abstuerze, NaN-Positionen und Spieler, die aus der Arena fallen.
-## Ausfuehren: CHAOS_CLASSES=roomba,hexapod CHAOS_SECONDS=120 CHAOS_BOSS=1 godot --headless --path . res://tests/chaos.tscn
+## Ausfuehren: CHAOS_CLASSES=roomba,hexapod CHAOS_SECONDS=120 CHAOS_BOSS=1 CHAOS_ARSENAL=1 godot --headless --path . res://tests/chaos.tscn
 
 const ACTIONS := ["left", "right", "up", "down", "jump", "dash", "fire", "ability", "hook", "weapon", "interact"]
 
@@ -12,6 +12,7 @@ var _next_change := [0.0, 0.0]
 var _held: Array = [[], []]
 var _problems := {}
 var _last_wave := 0
+var _next_deal := 0.0
 var _trail: Array = []
 var _trail_timer := 0.0
 var _trail_printed := false
@@ -28,7 +29,24 @@ func _ready() -> void:
 	add_child(main)
 	if OS.get_environment("CHAOS_BOSS") != "":
 		_boss.call_deferred()
+	if OS.get_environment("CHAOS_ARSENAL") != "":
+		_deal_weapons()
 	print("Chaos: ", Engine.get_meta("classes"), " ", seconds, " s")
+
+
+## CHAOS_ARSENAL=1: jeder Spieler bekommt drei zufaellige Waffen seiner Klasse (alle 15 s neu), damit alle Waffen Zufallseingaben sehen.
+func _deal_weapons() -> void:
+	for player in main.players:
+		var pool: Array = Weapons.CLASS_SETS[player.class_id].duplicate()
+		pool.append_array(["rapid", "shotgun", "rocket", "beam"])
+		pool.shuffle()
+		player.weapons.clear()
+		player.modules.clear()
+		for id in pool.slice(0, 3):
+			player.weapons.append(id)
+			player.modules.append("")
+		player.weapon_index = 0
+	_next_deal = _elapsed + 15.0
 
 
 func _boss() -> void:
@@ -57,6 +75,8 @@ func _physics_process(delta: float) -> void:
 		print("Ende nach ", snappedf(_elapsed, 0.1), " s, Welle ", main.wave, ", Phase ", main.phase, ", Probleme: ", _problems)
 		get_tree().quit(1 if not _problems.is_empty() else 0)
 		return
+	if OS.get_environment("CHAOS_ARSENAL") != "" and _elapsed >= _next_deal:
+		_deal_weapons()
 	if main.levelup_menu.is_open:
 		var menu: LevelUpMenu = main.levelup_menu
 		menu._finish(menu.perk_ids[randi() % menu.perk_ids.size()])

@@ -19,6 +19,10 @@ static func draw_player(c: CanvasItem, class_id: String, s: Dictionary, offset :
 		facing = -facing
 	var lean := clampf(float(s.vx) / 1100.0, -0.07, 0.07)
 	lean += float(s.get("tilt", 0.0))
+	# Auf schraegem Boden parallel zur Flaeche (nicht an Wand, Decke oder ausgeschaltet).
+	var flat := (1.0 - clampf(float(s.get("cling", 0.0)), 0.0, 1.0)) * (1.0 - clampf(ceiling, 0.0, 1.0)) * (1.0 - clampf(float(s.get("down", 0.0)), 0.0, 1.0))
+	lean += float(s.get("slope", 0.0)) * flat
+	offset += Vector2(s.get("slope_shift", Vector2.ZERO)) * flat * zoom
 	if ceiling > 0.0:
 		lean = lerpf(lean, PI, ceiling)
 	var cling := float(s.get("cling", 0.0))
@@ -61,7 +65,8 @@ static func draw_player(c: CanvasItem, class_id: String, s: Dictionary, offset :
 static func _local_aim(s: Dictionary) -> Vector2:
 	# Aufgehaengt an der Wand ist der Koerper gedreht: Zielrichtung in dessen Raum umrechnen.
 	var ceiling := float(s.get("ceiling", 0.0))
-	var angle := lerpf(0.0, float(s.get("rot", 0.0)), float(s.get("cling", 0.0))) + PI * ceiling
+	var flat := (1.0 - clampf(float(s.get("cling", 0.0)), 0.0, 1.0)) * (1.0 - clampf(ceiling, 0.0, 1.0)) * (1.0 - clampf(float(s.get("down", 0.0)), 0.0, 1.0))
+	var angle := lerpf(0.0, float(s.get("rot", 0.0)), float(s.get("cling", 0.0))) + PI * ceiling + float(s.get("slope", 0.0)) * flat
 	var turned: Vector2 = Vector2(s.aim).rotated(-angle)
 	var facing := float(s.facing) * (-1.0 if ceiling > 0.5 else 1.0)
 	return Vector2(turned.x * facing, turned.y)

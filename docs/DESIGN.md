@@ -110,6 +110,9 @@ Vier Elemente: Feuer, Wasser, Eis, Blitz. Status liegen auf dem Gegner, egal wel
 - Statt eines Waffenrads gibt es einen Rotate-Button: Waffe 1, dann 2, dann 3, dann wieder 1
 - Das Klassenwerkzeug (Geschütz, Dosenwerfer, Drohnendrucker, Saugkegel) bleibt die Basis jeder Klasse
 - Weitere Waffen werden im Shop gekauft und liegen im Rad
+- Jede Klasse hat fünf eigene Waffen (Klassenset), die nur sie benutzen darf, dazu vier allgemeine (Rapid, Scatter, Rocket, Beam). Die Sets betonen die Rolle: Roomba nah und schnell (Schwung, Scheibe, Sog, Blitz), Hexapod Position und Fallen (Geschütz, Sniper, Salve, Minen, Gespinst), Vendor Wucht (Flammen, Dosen, Münzen, Turm), Printer Unterstützung und Drohnen (Sprengdrohnen, Tonerwolke, Markierung, Betäubung)
+- Magazin und Nachladen: pro Waffe Magazin und Nachladezeit, automatisches Nachladen bei leerem Magazin, Teil-Nachladen nach Pause, Feuer unterbricht es. Alle Waffenwerte sind über Upgrade-Items steigerbar (Projektile, Tempo, Reichweite, Präzision, Explosion, Crit-Schaden, Wucht, Abpraller, Zielsuche, Munition, Magazin, Nachladen). Ein Zusatzprojektil zählt zu 60 Prozent zum Gesamtschaden, damit +1 nicht verdoppelt
+- Waffen mit festem Standard-Element (Zapper Volt, Flamer Pyro) bekommen Wasser-Kombos mit dem Partner; ein Modul ersetzt das feste Element
 - Waffentypen: Schnellfeuer, Schrot, Raketen und Granaten, Strahlwaffen (Laser, Flammenwerfer), Präzisionswaffe (Sniper)
 - Elemente werden nicht im Rad gewechselt. Waffen sind neutral, Elementmodule werden im Shop in eine Waffe eingebaut
 - Im Kampf wechselt man nur die Waffe, der Elementbuild bleibt eine bewusste Shop-Entscheidung
