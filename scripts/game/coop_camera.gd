@@ -25,19 +25,26 @@ func _process(delta: float) -> void:
 	offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * _shake
 	if targets.is_empty():
 		return
-	var min_pos := targets[0].global_position
-	var max_pos := min_pos
+	# Gefallene Spieler lassen wir los: die Kamera folgt nur denen, die noch stehen (der Rand-Marker im HUD zeigt, wo der Gefallene liegt).
+	var followed: Array[Node2D] = []
 	for target in targets:
+		if not (target is Player and target.downed):
+			followed.append(target)
+	if followed.is_empty():
+		followed = targets
+	var min_pos := followed[0].global_position
+	var max_pos := min_pos
+	for target in followed:
 		min_pos = min_pos.min(target.global_position)
 		max_pos = max_pos.max(target.global_position)
 
 	var center := (min_pos + max_pos) * 0.5
 	# Leichter Vorlauf in Laufrichtung, damit man mehr von dem sieht, worauf man zuläuft.
 	var look := 0.0
-	for target in targets:
+	for target in followed:
 		if target is Player and not target.downed:
 			look += clampf(target.velocity.x * 0.18, -110.0, 110.0)
-	center.x += look / targets.size()
+	center.x += look / followed.size()
 	center += bias
 	var needed := (max_pos - min_pos) + margin * 2.0
 	var view := get_viewport_rect().size

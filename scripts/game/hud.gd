@@ -106,6 +106,7 @@ func _draw_hud() -> void:
 	_draw_perk_strip(view)
 	_draw_perk_banner(view)
 	_draw_chest_markers(view)
+	_draw_downed_markers(view)
 	_draw_guardian(view)
 	_draw_stage_banner(view)
 	_draw_xp_bar(view)
@@ -517,6 +518,34 @@ func _draw_chest_markers(view: Vector2) -> void:
 		var tip := edge + dir * 30.0
 		var side := dir.orthogonal() * 9.0
 		_canvas.draw_colored_polygon(PackedVector2Array([tip + dir * 8.0, tip - dir * 4.0 + side, tip - dir * 4.0 - side]), Color(color, 0.95))
+
+
+## Gefallener Partner ausserhalb des Bildes: Pfeil am Rand in seiner Farbe, pulsiert rot, der Ring zeigt das Wiederbeleben.
+## Die Kamera folgt Gefallenen nicht, darum muss man wissen, wohin man laufen muss.
+func _draw_downed_markers(view: Vector2) -> void:
+	if main.shop_menu.is_open or main.levelup_menu.is_open or main.game_over:
+		return
+	var xf: Transform2D = main.get_viewport().get_canvas_transform()
+	var inner := Rect2(Vector2(70.0, 200.0), view - Vector2(140.0, 330.0))
+	for player in main.players:
+		if not player.downed:
+			continue
+		var screen: Vector2 = xf * (player.global_position + Vector2(0.0, -30.0))
+		if inner.has_point(screen):
+			continue
+		var edge := Vector2(clampf(screen.x, inner.position.x, inner.end.x), clampf(screen.y, inner.position.y, inner.end.y))
+		var dir := (screen - edge).normalized() if screen != edge else Vector2.UP
+		var accent: Color = RobotClasses.PLAYER_COLORS[player.player_index - 1]
+		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 160.0)
+		var plate := Rect2(edge - Vector2(44.0, 18.0), Vector2(88.0, 36.0))
+		Art.rrect(_canvas, plate, Color(0.12, 0.03, 0.04, 0.92), 9.0)
+		Art.rrect_line(_canvas, plate, Color(1.0, 0.3 + 0.2 * pulse, 0.3, 0.6 + 0.4 * pulse), 9.0, 2.5)
+		_canvas.draw_circle(plate.position + Vector2(18.0, 18.0), 8.0, Color(0.05, 0.05, 0.08))
+		_canvas.draw_arc(plate.position + Vector2(18.0, 18.0), 8.0, -PI / 2.0, -PI / 2.0 + TAU * maxf(player.revive_progress, 0.02), 24, Color(0.4, 1.0, 0.5) if player.revive_progress > 0.0 else Color(1, 1, 1, 0.3), 3.0, true)
+		_text(plate.position + Vector2(32.0, 25.0), "P%d" % player.player_index, 18, accent.lightened(0.2))
+		var tip := edge + dir * 36.0
+		var side := dir.orthogonal() * 11.0
+		_canvas.draw_colored_polygon(PackedVector2Array([tip + dir * 10.0, tip - dir * 5.0 + side, tip - dir * 5.0 - side]), Color(1.0, 0.35, 0.3, 0.7 + 0.3 * pulse))
 
 
 ## Neue Karte: Name und Charakter unten in der Mitte, solange der Wellen-Einstieg laeuft.

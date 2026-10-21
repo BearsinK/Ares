@@ -935,6 +935,8 @@ func _on_player_down(_player: Player) -> void:
 			return
 	game_over = true
 	_game_over_time = 0.0
+	# Die Spielzeit friert ein, damit der Ergebnisbildschirm den Moment des Ausfalls zeigt.
+	director.enabled = false
 	if gates != null:
 		gates.reset()
 	_record_run(false)
