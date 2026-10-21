@@ -12,6 +12,8 @@ const DATA := {
 	"dash": {"title": "DASH", "text": "R1 / Shift / Strich: kurzer Sprint, dabei unverwundbar. Die Ladung füllt sich von selbst wieder auf."},
 	"medic": {"title": "MEDIC", "text": "Heilt andere Gegner in seiner Nähe. Zuerst ausschalten."},
 	"bomber": {"title": "SPRENGI", "text": "Rennt auf euch zu und explodiert. Auf Abstand erledigen oder wegdashen."},
+	"aegis": {"title": "AEGIS", "text": "Sein Frontschild fängt Schüsse ab. Trefft ihn von hinten, von oben oder mit Sprengungen."},
+	"nest": {"title": "NEST", "text": "Setzt laufend Buzzer in die Welt. Zerstört das Nest, dann stürzen seine Buzzer mit ab."},
 	"elite": {"title": "ELITE", "text": "Größer, zäher und mit eigener Fähigkeit. Dafür dreifache Beute und oft eine Reparatur."},
 }
 

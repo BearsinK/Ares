@@ -149,14 +149,28 @@ func spawn(kind: String, at: Variant = null, elite := false, elite_kind := "", c
 	enemy.position = at if at != null else _spawn_position(kind)
 	enemy.fire_projectile.connect(projectile_requested.emit)
 	enemy.strike_requested.connect(strike_requested.emit)
+	enemy.spawn_requested.connect(_on_spawn_requested)
 	enemies.append(enemy)
 	parent_node.add_child(enemy)
 	enemy_spawned.emit(enemy)
-	if kind == "medic" or kind == "bomber":
+	if kind == "medic" or kind == "bomber" or kind == "aegis" or kind == "nest":
 		Tips.request(kind)
 	elif elite and not champion:
 		Tips.request("elite")
 	return enemy
+
+
+## Nest setzt seine Buzzer knapp ueber sich ab, bis die Obergrenze erreicht ist.
+func _on_spawn_requested(nest: Enemy, kind: String, count: int) -> void:
+	if not is_instance_valid(nest):
+		return
+	for k in count:
+		if nest.alive_minions() >= int(nest.data.get("max_minions", 4)):
+			return
+		var offset := Vector2((float(k) - float(count - 1) * 0.5) * 30.0, -nest.radius() - 14.0)
+		nest.adopt(spawn(kind, nest.global_position + offset))
+		if Fx.instance:
+			Fx.instance.spark(nest.global_position + offset, Color(0.7, 1.0, 0.35), 6, 220.0)
 
 
 func _spawn_position(kind: String) -> Vector2:

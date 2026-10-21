@@ -760,6 +760,10 @@ static func draw_enemy(c: CanvasItem, kind: String, s: Dictionary, offset := Vec
 			_bomber(c, s)
 		"medic":
 			_medic(c, s)
+		"aegis":
+			_aegis(c, s)
+		"nest":
+			_nest(c, s)
 	# Schwer beschaedigt: Rauch und Funken.
 	var low := 1.0 - clampf(float(s.get("hp_frac", 1.0)) / 0.35, 0.0, 1.0)
 	if low > 0.0:
@@ -905,6 +909,84 @@ static func _medic(c: CanvasItem, s: Dictionary) -> void:
 		Art.bar(c, shoulder, hand, 3.0, _tint(Color(0.5, 0.55, 0.56), s))
 		if windup >= 0.0:
 			Art.glow(c, hand, 6.0 + 5.0 * windup, green)
+
+
+## Aegis: stiernackiger Kerl mit grossem Bogenschild vor sich. Der Schild stoesst beim Schlag nach vorn und blitzt bei Abprallern.
+static func _aegis(c: CanvasItem, s: Dictionary) -> void:
+	var t: float = s.t
+	var windup: float = s.windup
+	var block := float(s.get("block", 0.0))
+	var steel := _tint(Color(0.26, 0.46, 0.74), s)
+	Art.shadow(c, Vector2(0, 14), 14.0, 2.8, 0.3)
+	# Rad und breiter Rumpf.
+	Art.disc(c, Vector2(0, 9), 7.5, _tint(Color(0.14, 0.16, 0.22), s))
+	for i in 4:
+		var a := float(s.walk) * 0.8 + i * PI / 2.0
+		c.draw_line(Vector2(0, 9), Vector2(0, 9) + Vector2(cos(a), sin(a)) * 6.0, Color(0.5, 0.58, 0.7), 1.5, true)
+	Art.panel(c, Rect2(-10, -10, 20, 19), steel, 6.0)
+	Art.rrect(c, Rect2(-10, 1, 20, 3), _tint(Color(0.95, 0.75, 0.2), s), 1.0)
+	# Kopf mit schmalem Visier.
+	Art.panel(c, Rect2(-8, -20, 16, 11), _tint(Color(0.32, 0.36, 0.46), s), 4.0)
+	var look := Vector2(float(s.aim.x) * float(s.facing), float(s.aim.y))
+	Art.face(c, Vector2(1, -14.5), Vector2(12, 6), Color(0.6, 0.95, 1.0), look, "angry", t)
+	c.draw_line(Vector2(-3, -20), Vector2(-5, -25), Color(0.6, 0.65, 0.75), 1.5, true)
+	Art.led(c, Vector2(-5, -25), 1.4, Color(0.4, 0.9, 1.0), fmod(t, 1.0) < 0.5)
+	# Schild: zurueckgezogen in der Vorwarnung, nach vorn gestossen im Schlag.
+	var push := 0.0
+	if bool(s.slam):
+		push = 7.0
+	elif windup >= 0.0:
+		push = lerpf(0.0, -5.0, windup)
+	var center := Vector2(-2.0 + push, -2.0)
+	var radius := 23.0
+	c.draw_arc(center, radius, -1.1, 1.1, 18, Art.OUTLINE, 11.0, true)
+	c.draw_arc(center, radius, -1.1, 1.1, 18, _tint(Color(0.55, 0.7, 0.9), s).lerp(Color.WHITE, block * 0.8), 8.0, true)
+	c.draw_arc(center, radius - 2.5, -0.95, 0.95, 16, Color(0.6, 0.95, 1.0, 0.55 + 0.4 * block), 2.0, true)
+	# Schimmernde Energiewand vor dem Schild; bei Treffern greller.
+	var pts := PackedVector2Array([center])
+	for k in 9:
+		var a := -1.0 + 2.0 * float(k) / 8.0
+		pts.append(center + Vector2(cos(a), sin(a)) * (radius - 3.0))
+	c.draw_colored_polygon(pts, Color(0.4, 0.8, 1.0, 0.1 + 0.3 * block))
+	if block > 0.0:
+		Art.glow(c, center + Vector2(radius, 0.0), 12.0 + 8.0 * block, Color(0.6, 0.9, 1.0))
+	# Haltegriff.
+	Art.bar(c, Vector2(6, -2), center + Vector2(radius - 6.0, 0.0), 3.0, _tint(Color(0.45, 0.5, 0.6), s))
+	if windup >= 0.0:
+		Art.glow(c, center + Vector2(radius, 0.0), 6.0 + 6.0 * windup, Color(1.0, 0.45, 0.25))
+
+
+## Nest: kriechende Brutstation mit Zellen im Rumpf und einer Luke, die vor dem Ausstoss aufgeht.
+static func _nest(c: CanvasItem, s: Dictionary) -> void:
+	var t: float = s.t
+	var windup := maxf(float(s.windup), 0.0)
+	var fire := float(s.get("fire", 0.0))
+	var green := _tint(Color(0.42, 0.62, 0.22), s)
+	Art.shadow(c, Vector2(0, 16), 19.0, 3.0, 0.3)
+	# Ketten.
+	Art.rrect(c, Rect2(-19, 7, 38, 9), _tint(Color(0.16, 0.18, 0.14), s), 4.0)
+	for k in 5:
+		var x := -15.0 + k * 7.5
+		Art.disc(c, Vector2(x, 11.5), 2.6, Color(0.45, 0.5, 0.4))
+	# Rumpf.
+	Art.panel(c, Rect2(-16, -12, 32, 21), green, 7.0)
+	# Brutzellen: leuchten bernsteinfarben, schneller kurz vor dem Ausstoss.
+	for row in 2:
+		for col in 3:
+			var cell := Vector2(-9.0 + col * 9.0, -6.0 + row * 8.0)
+			var pulse := 0.5 + 0.5 * sin(t * (2.5 + 6.0 * windup) + col * 1.7 + row * 2.3)
+			Art.disc(c, cell, 3.4, Color(0.12, 0.16, 0.08))
+			c.draw_circle(cell, 2.4, Color(1.0, 0.78, 0.25, 0.35 + 0.55 * pulse))
+	# Luke oben: hebt sich in der Vorwarnung, aus der Oeffnung kommt Licht.
+	var lift := 9.0 * windup + 5.0 * fire
+	if lift > 1.0:
+		Art.glow(c, Vector2(0, -13.0), 8.0 + lift, Color(0.75, 1.0, 0.35))
+	Art.panel(c, Rect2(-10, -19 - lift, 20, 7), _tint(Color(0.3, 0.42, 0.18), s), 3.0)
+	# Sensorauge und Antenne.
+	Art.disc(c, Vector2(11, -3), 3.6, Color(0.08, 0.1, 0.05))
+	Art.led(c, Vector2(11, -3), 2.4, Color(1.0, 0.7, 0.2), true)
+	c.draw_line(Vector2(-12, -12), Vector2(-15, -24), Color(0.6, 0.7, 0.5), 1.5, true)
+	Art.led(c, Vector2(-15, -24), 1.6, Color(0.8, 1.0, 0.4), fmod(t, 1.2) < 0.7 or windup > 0.0)
 
 
 static func _shooter(c: CanvasItem, s: Dictionary) -> void:

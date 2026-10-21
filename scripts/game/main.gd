@@ -844,6 +844,9 @@ func _on_enemy_spawned(enemy: Enemy) -> void:
 
 
 func _on_enemy_died(enemy: Enemy) -> void:
+	if enemy.minion:
+		# Vom Nest gesetzt: weder Beute noch Kill.
+		return
 	if enemy.suicide:
 		# Selbstgesprengt: keine Beute und kein Kill, die Gefahr ist vorbei.
 		return

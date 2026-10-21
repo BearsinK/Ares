@@ -114,6 +114,8 @@ func _make_event_sounds() -> void:
 	# Wellenstart: Zaehlton und Startsignal.
 	_streams["count"] = _layers([[660.0, 660.0, 0.1, "sine", 0.3, 0.0, 0.0]])
 	_streams["go"] = _layers([[880.0, 880.0, 0.1, "square", 0.22, 0.0, 0.0], [1320.0, 1320.0, 0.28, "square", 0.24, 0.0, 0.1]])
+	# Schuss am Frontschild abgeprallt: metallisches Pling.
+	_streams["block"] = _layers([[2600.0, 1900.0, 0.05, "square", 0.16, 0.5, 0.0], [1300.0, 900.0, 0.1, "sine", 0.2, 0.0, 0.01]])
 	# Welle geschafft: kurze Fanfare.
 	_streams["fanfare"] = _layers([
 		[523.0, 523.0, 0.12, "square", 0.2, 0.0, 0.0], [659.0, 659.0, 0.12, "square", 0.2, 0.0, 0.11], [784.0, 784.0, 0.12, "square", 0.2, 0.0, 0.22],

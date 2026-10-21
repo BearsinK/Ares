@@ -8,6 +8,8 @@ signal died(enemy: Enemy)
 signal fire_projectile(enemy: Enemy, origin: Vector2, direction: Vector2, speed: float, damage: float)
 signal stuck(enemy: Enemy)
 signal strike_requested(enemy: Enemy, position: Vector2, radius: float, delay: float, damage: float)
+## Nest: bittet den Director, count Gegner der Art kind in die Welt zu setzen.
+signal spawn_requested(enemy: Enemy, kind: String, count: int)
 
 enum State { CHASE, WINDUP, COOLDOWN, CHARGE }
 
@@ -20,6 +22,8 @@ const ELITE_SCALE := 1.35
 const CHAMPION_HP_MULT := 5.0
 const CHAMPION_SCALE := 1.9
 const FROST_RADIUS := 230.0
+## Anteil des Schadens, der durch einen Frontschild kommt.
+const BLOCK_PASS := 0.1
 
 var kind := "walker"
 var data: Dictionary = {}
@@ -32,6 +36,10 @@ var elite := false
 var champion := false
 ## Hat sich selbst gesprengt (Sprengi): keine Beute.
 var suicide := false
+## Von einem Nest gesetzt: keine Beute und kein Kill.
+var minion := false
+var _minions: Array = []
+var _block_flash := 0.0
 var _wounded_cache: Array = []
 var _wounded_stamp := -1000
 ## Art der Elite (fire, shield, storm, frost), siehe EnemyTypes.ELITE_KINDS.
@@ -156,6 +164,34 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 		_die()
 
 
+## Frontschild (Aegis): Ein Direkttreffer von vorn wird abgefangen. Gemeint ist Flugrichtung gegen die Blickrichtung,
+## nicht steil von oben oder unten. Ohne Richtung (Sprengung, Faehigkeit, Effekt) und im Betaeubt-Zustand geht alles durch.
+func is_blocking(direction: Vector2) -> bool:
+	if not bool(data.get("frontal_shield", false)) or stunned_time > 0.0 or _dead or direction.length_squared() < 0.0001:
+		return false
+	var heading := direction.normalized()
+	return heading.x * _facing < -0.35 and absf(heading.y) < 0.8
+
+
+func on_blocked(direction: Vector2) -> void:
+	_block_flash = 1.0
+	Sfx.play("block", 0.1)
+	if Fx.instance:
+		Fx.instance.spark(global_position + Vector2(_facing * radius() * 0.9, -radius() * 0.2), Color(0.6, 0.9, 1.0), 4, 260.0)
+		Fx.instance.number_text(global_position + Vector2(0.0, -radius() - 14.0), "Block", Color(0.6, 0.85, 1.0), 15, 0.45)
+
+
+## Lebende Buzzer dieses Nests.
+func alive_minions() -> int:
+	_minions = _minions.filter(func(m: Variant) -> bool: return is_instance_valid(m) and not m._dead)
+	return _minions.size()
+
+
+func adopt(minion_enemy: Enemy) -> void:
+	minion_enemy.minion = true
+	_minions.append(minion_enemy)
+
+
 ## Arc Coil: ein Treffer springt auf den naechsten Gegner in der Naehe.
 func _arc_proc(source: Player, amount: float) -> void:
 	if randf() >= Perks.ARC_CHANCE * float(source.mods.arc):
@@ -191,6 +227,9 @@ func reach() -> float:
 
 func _die() -> void:
 	_dead = true
+	for follower in _minions:
+		if is_instance_valid(follower) and not follower._dead:
+			follower.take_damage(1.0e9, null, Vector2.ZERO, "", true)
 	Sfx.play("kill")
 	if Fx.instance:
 		Fx.instance.spark(global_position, data.color, 36 if elite else 14, 520.0 if elite else 380.0)
@@ -228,6 +267,7 @@ func _physics_process(delta: float) -> void:
 		_state = State.COOLDOWN
 		_cooldown = maxf(_cooldown, 0.6)
 	_flash = maxf(0.0, _flash - delta)
+	_block_flash = maxf(0.0, _block_flash - delta * 6.0)
 	_slam_flash = maxf(0.0, _slam_flash - delta)
 	_cooldown = maxf(0.0, _cooldown - delta)
 	statuses.update(delta)
@@ -294,7 +334,7 @@ func _maybe_redraw() -> void:
 
 
 func _needs_smooth_redraw() -> bool:
-	return _flash > 0.0 or _hurt_time > 0.0 or _fire_flash > 0.0 or _slam_flash > 0.0 or _squash > 0.0 \
+	return _flash > 0.0 or _hurt_time > 0.0 or _fire_flash > 0.0 or _slam_flash > 0.0 or _squash > 0.0 or _block_flash > 0.0 \
 		or stunned_time > 0.0 or _state == State.WINDUP or _state == State.CHARGE or elite
 
 
@@ -543,6 +583,11 @@ func _execute_attack() -> void:
 		if Fx.instance:
 			Fx.instance.ring(global_position, float(data.range) * 0.5, Color(0.4, 1.0, 0.55))
 		return
+	if data.attack == "spawn":
+		Sfx.play("heal", 0.2)
+		_fire_flash = 1.0
+		spawn_requested.emit(self, String(data.spawn_kind), int(data.spawn_count))
+		return
 	if data.attack == "strike":
 		Sfx.play("enemy_shoot")
 		# Zielt leicht vor den Spieler, damit stehenbleiben bestraft wird.
@@ -595,11 +640,11 @@ func _draw() -> void:
 		"flash": _flash > 0.0, "windup": windup, "slam": _slam_flash > 0.0 or charging,
 		"vx": velocity.x, "grounded": is_on_floor(), "hurt": _hurt_time / 0.25, "fire": _fire_flash,
 		"hp_frac": hp / max_hp, "foot": float(data.radius), "lod": siblings.size() > 40 and not elite,
-		"squash": _draw_squash(),
+		"squash": _draw_squash(), "block": _block_flash,
 	}, Vector2.ZERO, body_scale * maxf(grow, 0.05))
 	if elite:
 		_draw_crown(r)
-	if windup >= 0.0 and stunned_time <= 0.0 and data.attack != "strike" and data.attack != "heal":
+	if windup >= 0.0 and stunned_time <= 0.0 and data.attack != "strike" and data.attack != "heal" and data.attack != "spawn":
 		_draw_alert(r, windup)
 	if stunned_time > 0.0:
 		# Betaeubt: drei Sterne kreisen ueber dem Kopf.
@@ -684,6 +729,9 @@ func _draw_telegraph(r: float) -> void:
 		draw_rect(rect, Color(1.0, 0.35, 0.25, 0.4 + 0.4 * progress), false, 2.0)
 	elif data.attack == "strike":
 		return
+	elif data.attack == "spawn":
+		# Ring waechst um das Nest, bis die Luke aufspringt.
+		draw_arc(Vector2(0.0, -r), (r + 14.0) * progress + 6.0, 0.0, TAU, 28, Color(0.7, 1.0, 0.35, 0.3 + 0.5 * progress), 3.0, true)
 	elif data.attack == "heal":
 		# Heilkreis waechst, gruene Linien zu den Verbuendeten, die gleich geheilt werden.
 		var heal_range := float(data.range)

@@ -20,9 +20,9 @@ const IDS: Array[String] = ["basin", "caverns", "zigzag"]
 const NAMES := {"basin": "Rostbecken", "caverns": "Kavernen", "zigzag": "Zickzack", "classic": "Halle"}
 ## Charakter jeder Karte: Kurztext fuers Banner und Gewichte, mit denen der Director Gegnertypen bevorzugt.
 const INFO := {
-	"basin": {"text": "Weite Hallen, viele Bodengegner", "bias": {"walker": 1.4, "charger": 1.6, "brute": 1.2, "bomber": 1.2}},
-	"caverns": {"text": "Enge Gänge, viele Flieger und Sprengis", "bias": {"flyer": 1.9, "bomber": 1.5, "shooter": 0.8}},
-	"zigzag": {"text": "Lange Rampen, Schützen und Mörser", "bias": {"shooter": 1.7, "mortar": 1.7, "medic": 1.4, "walker": 0.8}},
+	"basin": {"text": "Weite Hallen, viele Bodengegner", "bias": {"walker": 1.4, "charger": 1.6, "brute": 1.2, "bomber": 1.2, "aegis": 1.4}},
+	"caverns": {"text": "Enge Gänge, viele Flieger und Sprengis", "bias": {"flyer": 1.9, "bomber": 1.5, "shooter": 0.8, "nest": 1.4}},
+	"zigzag": {"text": "Lange Rampen, Schützen und Mörser", "bias": {"shooter": 1.7, "mortar": 1.7, "medic": 1.4, "walker": 0.8, "aegis": 1.2}},
 }
 const ROPE_WIDTH := 20.0
 ## Wie oft ein Stage-Wechsel stattfindet: alle drei Wellen eine neue Karte.

@@ -13,7 +13,7 @@ const HINTS := {
 	"achievements": "",
 }
 
-const ENEMY_ORDER: Array[String] = ["walker", "shooter", "flyer", "charger", "mortar", "brute", "bomber", "medic", "elite", "guardian", "boss"]
+const ENEMY_ORDER: Array[String] = ["walker", "shooter", "flyer", "charger", "mortar", "brute", "bomber", "medic", "aegis", "nest", "elite", "guardian", "boss"]
 const ENEMY_TEXT := {
 	"walker": "Läuft auf euch zu und schlägt zu. Dutzendware, in Gruppen aber gefährlich.",
 	"shooter": "Hält Abstand und feuert langsame Stachelkugeln. Auf die Warnung achten, dann ausweichen.",
@@ -23,6 +23,8 @@ const ENEMY_TEXT := {
 	"brute": "Langsam und enorm zäh, schlägt in einem großen Kreis. Auf Abstand bleiben und Feuer halten.",
 	"bomber": "Rennt los und sprengt sich selbst. Vorher abschießen, dann gibt es keinen Schaden. Sprengt er sich, lässt er keine Beute fallen.",
 	"medic": "Hält Abstand und heilt verwundete Gegner in der Nähe. Zuerst ausschalten.",
+	"aegis": "Trägt einen Frontschild, der Schüsse von vorn fast ganz abfängt. Von hinten, von oben, mit Sprengungen und Fähigkeiten oder zu zweit von beiden Seiten verwundbar.",
+	"nest": "Hält Abstand und setzt alle paar Sekunden Buzzer in die Welt. Wer das Nest zerstört, schickt auch seine Buzzer in den Schrott. Die Buzzer geben keine Beute.",
 	"elite": "Größer und zäher, mit eigener Fähigkeit: Inferno legt Feuerherde, Bulwark trägt einen Schild, Stormer feuert Blitzfächer, Frostbite bremst in der Nähe. Dafür dreifache Beute.",
 	"guardian": "Mini-Boss am Ende jeder Karte als Brute, Ramtank oder Mörser in Riesenform. Wer ihn besiegt, bekommt eine Goldkiste und eine Reparatur.",
 	"boss": "Der Smelter, Herr der Gießerei. Der Endboss: Wer ihn besiegt, stoppt die Fabrik.",

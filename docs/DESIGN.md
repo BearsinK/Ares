@@ -289,3 +289,21 @@ Offene Punkte nach dieser Runde:
 - Balance ist geschätzt, nur der Bot (der Hindernissen kaum ausweicht) und Tests sind Maßstab. Echte Spieltests entscheiden über Preise, Prämien und Gegnerwerte
 - Items nach Seltenheit stufen und im Shop sichtbar machen
 - Freischaltungen über Herausforderungen statt nur über Chips
+
+## Runde Politur und Tiefe (Optionen, Hinweise, Archiv, Erfolge, neue Gegner)
+
+Grundlage: Was ein Spiel von einem Prototyp trennt, ist selten ein Feature, sondern Lesbarkeit, Einstieg, Rückmeldung und Gründe wiederzukommen.
+
+- Optionen für alles, was Spieler verschieden wollen: Lautstärke (Gesamt, Musik, Effekte) in Stufen mit der alten Mischung als Standard, Bildschirmwackeln in vier Stufen, Schadenszahlen, Controller-Vibration, Hinweise, Vollbild. Gemeinsame Seite für Titel und Pause, Werte im Spielstand, nur Lautstärke wiederholt sich beim Halten
+- Einstieg ohne Tutorial-Level: Einmalige Hinweise (Kiste, Altäre, Wiederbeleben, erster Treffer ohne Dash, Medic, Sprengi, Aegis, Nest, Elite) erscheinen erst, wenn das Thema auftaucht, nacheinander, nie über der Steuerungsübersicht oder in Menüs
+- Rückmeldung über Klang: Jede neue Mechanik hat einen eigenen Klang (Kiste, Ablehnen statt Schadens-Sound, Altäre, Wächter-Horn, Medic, Zündschnur, Vertrag, Tore, Countdown, Fanfare, Abpraller am Schild). Ein Test prüft, dass jeder Klang im Code existiert und nicht übersteuert
+- Gründe wiederzukommen: Archiv (Items, Gegner, Waffen entdecken, Zähler besiegter Gegner, Meldung bei Neuem) und 18 Erfolge mit einmaliger Chips-Belohnung. Erfolge belohnen Spielweise statt Grind (Welle ohne Treffer, Zangengriff, Boss auf Hardcore, Speedrun, Kisten und Altäre)
+- Gegnervielfalt über Konter statt Zahlen: Aegis zwingt zu Position und Zusammenspiel (Zangengriff, Sprengungen, von oben, durchdashen), Nest zwingt zur Priorität (Quelle zerstören statt Nachschub bekämpfen)
+- Feinschliff: Überblendungen zwischen Szenen, Versionsnummer, Credits mit Godot-Lizenzhinweis, Icon
+
+Messung statt Bauchgefühl bei Leistung: Das Gegner-Skript kostet bei 60 Gegnern rund 1,5 ms pro Frame, der Rest ist Engine-Grundlast, daher keine Umbauten.
+
+Offene Punkte:
+- Balance der neuen Gegner und der Erfolgs-Belohnungen ist geschätzt
+- Englische Texte fehlen (alle Texte stehen im Code, ein Übersetzungs-Layer wäre eine eigene Aufgabe)
+- Kein Endlosmodus nach dem Boss
