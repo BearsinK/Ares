@@ -85,7 +85,7 @@ func _draw_gates() -> void:
 	var view := _canvas.get_viewport_rect().size
 	var a := _ease(amount)
 	var half := view.x * 0.5
-	var shake := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 7.0 * _shake
+	var shake := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 7.0 * _shake * SaveData.shake_scale()
 	for side in [-1.0, 1.0]:
 		# Jedes Tor von aussen nach innen; bei a = 1 treffen sie sich in der Mitte.
 		var width := half + 14.0

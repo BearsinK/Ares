@@ -5,6 +5,12 @@ extends RefCounted
 ## nichts gelesen oder geschrieben, dann gilt ein frischer Spielstand im Speicher.
 
 const PATH := "user://ares_save.json"
+## Lautstaerke in Stufen 0..10. Bei den Standardstufen (8 mal 8) klingt alles wie vorher.
+const VOLUME_STEPS := 10
+const VOLUME_DEFAULT := 8
+## Bildschirmwackeln: Aus, Wenig, Normal, Stark (Faktor auf jeden Kameraruck).
+const SHAKE_SCALES: Array[float] = [0.0, 0.5, 1.0, 1.5]
+const SHAKE_DEFAULT := 2
 
 static var persist := DisplayServer.get_name() != "headless"
 ## Testphase: Alle Klassen und Waffen sind freigeschaltet (Tests im Headless-Modus pruefen die Sperren weiter).
@@ -27,13 +33,17 @@ static func _ensure() -> void:
 	if parsed is Dictionary:
 		for key in parsed:
 			_data[key] = parsed[key]
+		# Alter Spielstand: Musik aus wird zur Musiklautstaerke 0.
+		if not parsed.has("volume") and parsed.get("music", true) == false:
+			_data.volume = {"music": 0}
 
 
 static func _defaults() -> Dictionary:
 	return {
 		"chips": 0, "levels": {}, "classes": [], "weapons": [],
 		"stats": {"runs": 0, "best_wave": 0, "kills": 0, "boss_kills": 0, "best_time": 0},
-		"music": true, "fullscreen": false, "difficulty": 1,
+		"fullscreen": false, "difficulty": 1,
+		"volume": {}, "shake": SHAKE_DEFAULT, "numbers": true, "rumble": true,
 	}
 
 
@@ -110,9 +120,64 @@ static func stats() -> Dictionary:
 	return _data.stats
 
 
-static func music_enabled() -> bool:
+## Stufe 0..10 fuer "master", "music" oder "sfx".
+static func volume_step(bus: String) -> int:
 	_ensure()
-	return bool(_data.music)
+	var volumes: Dictionary = _data.get("volume", {})
+	return clampi(int(volumes.get(bus, VOLUME_DEFAULT)), 0, VOLUME_STEPS)
+
+
+static func set_volume_step(bus: String, step: int) -> void:
+	_ensure()
+	var volumes: Dictionary = _data.get("volume", {})
+	volumes[bus] = clampi(step, 0, VOLUME_STEPS)
+	_data.volume = volumes
+	save()
+
+
+## Verstaerkung in dB fuer einen Bus mit Gesamtlautstaerke: 0 dB bei den Standardstufen, -80 bei Stumm.
+static func gain_db(bus: String) -> float:
+	var product := volume_step("master") * volume_step(bus)
+	if product <= 0:
+		return -80.0
+	return linear_to_db(float(product) / float(VOLUME_DEFAULT * VOLUME_DEFAULT))
+
+
+static func shake_level() -> int:
+	_ensure()
+	return clampi(int(_data.get("shake", SHAKE_DEFAULT)), 0, SHAKE_SCALES.size() - 1)
+
+
+static func set_shake_level(level: int) -> void:
+	_ensure()
+	_data.shake = clampi(level, 0, SHAKE_SCALES.size() - 1)
+	save()
+
+
+static func shake_scale() -> float:
+	return SHAKE_SCALES[shake_level()]
+
+
+static func numbers_enabled() -> bool:
+	_ensure()
+	return bool(_data.get("numbers", true))
+
+
+static func set_numbers(enabled: bool) -> void:
+	_ensure()
+	_data.numbers = enabled
+	save()
+
+
+static func rumble_enabled() -> bool:
+	_ensure()
+	return bool(_data.get("rumble", true))
+
+
+static func set_rumble(enabled: bool) -> void:
+	_ensure()
+	_data.rumble = enabled
+	save()
 
 
 ## 0 = Rookie, 1 = Normal, 2 = Hardcore (siehe Meta.DIFFICULTIES).
@@ -135,12 +200,6 @@ static func fullscreen_enabled() -> bool:
 static func set_fullscreen(enabled: bool) -> void:
 	_ensure()
 	_data.fullscreen = enabled
-	save()
-
-
-static func set_music(enabled: bool) -> void:
-	_ensure()
-	_data.music = enabled
 	save()
 
 

@@ -23,7 +23,7 @@ func _exit_tree() -> void:
 
 
 func number(pos: Vector2, amount: float, color := Color(1.0, 1.0, 0.5), size := 22) -> void:
-	if _items.size() >= MAX_ITEMS:
+	if _items.size() >= MAX_ITEMS or not SaveData.numbers_enabled():
 		return
 	_items.append({"type": "number", "pos": pos + Vector2(randf_range(-14.0, 14.0), 0.0), "text": str(int(round(amount))),
 		"t": 0.6, "max": 0.6, "color": color, "size": size})

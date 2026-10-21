@@ -17,7 +17,7 @@ var _shake := 0.0
 
 ## Schuettelt die Kamera. Der staerkste aktuelle Wert gewinnt und klingt ab.
 func add_shake(amount: float) -> void:
-	_shake = maxf(_shake, amount)
+	_shake = maxf(_shake, amount * SaveData.shake_scale())
 
 
 func _process(delta: float) -> void:

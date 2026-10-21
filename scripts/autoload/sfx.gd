@@ -4,6 +4,7 @@ extends Node
 
 const MIX_RATE := 22050
 const POOL_SIZE := 16
+const BASE_DB := -6.0
 
 ## Lautstaerke einzelner Sounds (1.0 = unveraendert). Schuesse sind bewusst leiser,
 ## weil sie staendig vorkommen.
@@ -22,7 +23,7 @@ var _last_played: Dictionary = {}
 func _ready() -> void:
 	for i in POOL_SIZE:
 		var player := AudioStreamPlayer.new()
-		player.volume_db = -6.0
+		player.volume_db = BASE_DB
 		add_child(player)
 		_players.append(player)
 
@@ -74,12 +75,16 @@ func _ready() -> void:
 func play(sound: String, pitch_variation := 0.1) -> void:
 	if not _streams.has(sound):
 		return
+	var gain := SaveData.gain_db("sfx")
+	if gain <= -79.0:
+		return
 	var now := Time.get_ticks_msec()
 	if now - int(_last_played.get(sound, -1000)) < 30:
 		return
 	_last_played[sound] = now
 	var player := _players[_next]
 	_next = (_next + 1) % POOL_SIZE
+	player.volume_db = BASE_DB + gain
 	player.stream = _streams[sound]
 	player.pitch_scale = 1.0 + randf_range(-pitch_variation, pitch_variation)
 	player.play()

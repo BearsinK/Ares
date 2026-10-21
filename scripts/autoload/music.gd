@@ -18,7 +18,6 @@ const TRIADS := [
 ]
 const BASS_STEPS := [0, 3, 6, 8, 11, 14]
 
-var enabled := true
 var ready_to_play := false
 var layer_level := 0.3
 
@@ -36,7 +35,6 @@ func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
 		set_process(false)
 		return
-	enabled = SaveData.music_enabled()
 	_base_player = AudioStreamPlayer.new()
 	_layer_player = AudioStreamPlayer.new()
 	add_child(_base_player)
@@ -66,9 +64,8 @@ func save_wav(path: String, mixed := true) -> void:
 	stream.save_to_wav(path)
 
 
-func set_enabled(value: bool) -> void:
-	enabled = value
-	SaveData.set_music(value)
+## Uebernimmt die gespeicherte Lautstaerke (nach Aenderung in den Optionen).
+func apply_settings() -> void:
 	_apply_volume()
 
 
@@ -81,8 +78,10 @@ func set_layer_level(level: float) -> void:
 func _apply_volume() -> void:
 	if _base_player == null:
 		return
-	_base_player.volume_db = BASE_DB if enabled else -80.0
-	_layer_player.volume_db = (BASE_DB - 14.0 * (1.0 - layer_level)) if enabled and layer_level > 0.02 else -80.0
+	var gain := SaveData.gain_db("music")
+	var audible := gain > -79.0
+	_base_player.volume_db = BASE_DB + gain if audible else -80.0
+	_layer_player.volume_db = (BASE_DB + gain - 14.0 * (1.0 - layer_level)) if audible and layer_level > 0.02 else -80.0
 
 
 # ---------------------------------------------------------------- Berechnung

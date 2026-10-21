@@ -60,6 +60,15 @@ func toggle_fullscreen() -> void:
 	set_fullscreen(not is_fullscreen())
 
 
+## Kurzes Rumpeln im Controller des Spielers (1 oder 2), wenn Vibration an ist und ein Controller steckt.
+func rumble(player_index: int, weak: float, strong: float, duration: float) -> void:
+	if not SaveData.rumble_enabled():
+		return
+	var device := player_index - 1
+	if Input.get_connected_joypads().has(device):
+		Input.start_joy_vibration(device, clampf(weak, 0.0, 1.0), clampf(strong, 0.0, 1.0), duration)
+
+
 func _add_action(action: String, deadzone: float) -> void:
 	if not InputMap.has_action(action):
 		InputMap.add_action(action, deadzone)

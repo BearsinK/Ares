@@ -1297,6 +1297,8 @@ func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direct
 		sound = "turret_over"
 	Sfx.play(sound)
 	camera.add_shake(float(weapon.shake))
+	if float(weapon.shake) >= 5.0:
+		InputSetup.rumble(player.player_index, 0.2, minf(0.3 + float(weapon.shake) * 0.05, 0.7), 0.12)
 	fx.muzzle(origin, direction, color)
 	if weapon.kind == "lob":
 		_fire_lob(player, weapon, origin, direction, damage, element, color, charge)

@@ -188,7 +188,7 @@ func _draw_player_panels(view: Vector2) -> void:
 	for i in 2:
 		var player: Player = main.players[i]
 		var x := 18.0 if i == 0 else view.x - width - 18.0
-		var shake := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 6.0 * player.hurt_amount()
+		var shake := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 6.0 * player.hurt_amount() * SaveData.shake_scale()
 		_canvas.draw_set_transform(Vector2(x, 12.0) + shake, 0.0, Vector2(s, s))
 		_draw_player_panel(player, Vector2(10.0, 8.0))
 	_canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

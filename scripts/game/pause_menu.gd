@@ -4,9 +4,9 @@ extends CanvasLayer
 ## Beide Spieler koennen es bedienen. Neustart und Hauptmenue fragen nach.
 
 enum Mode { CLOSED, PAUSE, RESULT }
-enum Page { MAIN, CONTROLS, CONFIRM }
+enum Page { MAIN, CONTROLS, CONFIRM, OPTIONS }
 
-const PAUSE_ITEMS: Array[String] = ["Weiter", "Steuerung", "Vollbild", "Musik", "Neustart", "Hauptmenü"]
+const PAUSE_ITEMS: Array[String] = ["Weiter", "Optionen", "Steuerung", "Neustart", "Hauptmenü"]
 const RESULT_ITEMS: Array[String] = ["Neustart", "Hauptmenü"]
 const INPUT_GRACE := 0.5
 
@@ -15,6 +15,8 @@ var mode := Mode.CLOSED
 var page := Page.MAIN
 var cursor := 0
 var victory := false
+
+var options := OptionsPage.new()
 
 var _pending := ""
 var _confirm_cursor := 1
@@ -77,6 +79,9 @@ func _process(delta: float) -> void:
 				page = Page.MAIN
 		Page.CONFIRM:
 			_update_confirm()
+		Page.OPTIONS:
+			if options.update(delta):
+				page = Page.MAIN
 	_canvas.queue_redraw()
 
 
@@ -99,12 +104,11 @@ func _update_main() -> void:
 	match items[cursor]:
 		"Weiter":
 			close()
+		"Optionen":
+			page = Page.OPTIONS
+			options.cursor = 0
 		"Steuerung":
 			page = Page.CONTROLS
-		"Vollbild":
-			InputSetup.toggle_fullscreen()
-		"Musik":
-			Music.set_enabled(not Music.enabled)
 		"Neustart":
 			_ask("restart")
 		"Hauptmenü":
@@ -147,6 +151,9 @@ func _draw_menu() -> void:
 	if page == Page.CONTROLS:
 		UiKit.controls_panel(_canvas, view)
 		return
+	if page == Page.OPTIONS:
+		options.draw(_canvas, view)
+		return
 	if mode == Mode.RESULT:
 		_draw_result(view)
 	else:
@@ -162,12 +169,7 @@ func _draw_menu() -> void:
 	var items := _items()
 	for i in items.size():
 		var rect := Rect2(Vector2(view.x * 0.5 - 160.0, top + i * 70.0), Vector2(320, 56))
-		var label := items[i]
-		if label == "Musik":
-			label = "Musik: %s" % ("An" if Music.enabled else "Aus")
-		elif label == "Vollbild":
-			label = "Vollbild: %s" % ("An" if InputSetup.is_fullscreen() else "Aus")
-		UiKit.button(_canvas, rect, label, i == cursor)
+		UiKit.button(_canvas, rect, items[i], i == cursor)
 	UiKit.text(_canvas, Vector2(0, view.y - 40.0), "Hoch/Runter wählen, Kreuz oder Enter bestätigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 

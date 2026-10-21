@@ -2,9 +2,9 @@ extends Node2D
 ## Titelbildschirm mit Hauptmenue, Klassenauswahl fuer beide Spieler und
 ## Steuerungsuebersicht. Startet danach die Hauptszene.
 
-enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING, SANDBOX }
+enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING, SANDBOX, OPTIONS }
 
-const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Schwierigkeit", "Steuerung", "Vollbild", "Musik", "Beenden"]
+const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Schwierigkeit", "Steuerung", "Optionen", "Beenden"]
 const COUNTDOWN := 1.1
 
 var state := State.MAIN
@@ -22,6 +22,8 @@ var sandbox_config := {}
 var sandbox_cursor: Array[int] = [0, 0]
 var sandbox_locked: Array[bool] = [false, false]
 var sandbox_classes: Array[String] = []
+
+var options := OptionsPage.new()
 
 var _time := 0.0
 var _camera: Camera2D
@@ -69,6 +71,9 @@ func _process(delta: float) -> void:
 			_update_workshop(delta)
 		State.SANDBOX:
 			_update_sandbox(delta)
+		State.OPTIONS:
+			if options.update(delta):
+				state = State.MAIN
 	_stage.queue_redraw()
 	_ui.queue_redraw()
 
@@ -102,10 +107,9 @@ func _update_main() -> void:
 				workshop_cursor = 0
 			"Steuerung":
 				state = State.CONTROLS
-			"Vollbild":
-				InputSetup.toggle_fullscreen()
-			"Musik":
-				Music.set_enabled(not Music.enabled)
+			"Optionen":
+				state = State.OPTIONS
+				options.cursor = 0
 			"Beenden":
 				get_tree().quit()
 
@@ -298,13 +302,11 @@ func _draw_ui() -> void:
 			_draw_workshop(view)
 		State.SANDBOX:
 			_draw_sandbox(view)
+		State.OPTIONS:
+			options.draw(_ui, view)
 
 
 func _item_label(index: int) -> String:
-	if MENU_ITEMS[index] == "Musik":
-		return "Musik: %s" % ("An" if Music.enabled else "Aus")
-	if MENU_ITEMS[index] == "Vollbild":
-		return "Vollbild: %s" % ("An" if InputSetup.is_fullscreen() else "Aus")
 	if MENU_ITEMS[index] == "Schwierigkeit":
 		return "Stufe: %s" % String(Meta.difficulty_data().name)
 	return MENU_ITEMS[index]

@@ -311,6 +311,7 @@ func take_hit(amount: float, from: Vector2) -> bool:
 	var push := 1.0 - float(stats.get("knockback_resist", 0.0))
 	velocity += Vector2(away.x * 320.0, -260.0) * push
 	Sfx.play("hurt")
+	InputSetup.rumble(player_index, 0.3, clampf(0.3 + final_amount / 40.0, 0.3, 1.0), 0.25)
 	hurt.emit(self, final_amount)
 	if float(mods.thorns) > 0.0 and hp > 0.0:
 		_burst(Perks.THORNS_RADIUS, Perks.THORNS_DAMAGE * float(mods.thorns), Color(1.0, 0.5, 0.35))
@@ -328,6 +329,7 @@ func take_hit(amount: float, from: Vector2) -> bool:
 		shake_charge = 0.0
 		_lob_charging = false
 		velocity = Vector2(velocity.x * 0.3, velocity.y)
+		InputSetup.rumble(player_index, 0.6, 1.0, 0.6)
 		went_down.emit(self)
 	return true
 
