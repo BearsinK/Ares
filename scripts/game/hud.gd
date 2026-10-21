@@ -349,7 +349,12 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 		if module != "":
 			_canvas.draw_circle(chip.position + Vector2(10, 12), 4.5, Elements.COLORS[module])
 		_text(chip.position + Vector2(18 if module != "" else 8, 17), weapon_name, 14, Color.WHITE if active else Color(0.65, 0.65, 0.72))
+		_draw_ammo_strip(player, i, chip)
 		x += width + 6.0
+	# Zahl der aktiven Waffe hinter den Chips.
+	var count_color := Color(1.0, 0.8, 0.3) if player.is_reloading() else (Color(1.0, 0.45, 0.35) if player.ammo_of(player.weapon_index) * 4 <= player.ammo_max_of(player.weapon_index) else Color(0.85, 0.92, 1.0))
+	var count_text := "Nachladen" if player.is_reloading() else "%d / %d" % [player.ammo_of(player.weapon_index), player.ammo_max_of(player.weapon_index)]
+	_text(origin + Vector2(0, 85), count_text, 16, count_color, HORIZONTAL_ALIGNMENT_RIGHT, PANEL_WIDTH - 10.0)
 
 	# Firmware.
 	var fw_parts: Array[String] = []
@@ -375,6 +380,19 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 				_text(item_center + Vector2(7.0, 12.0), "x%d" % count, 12, Color(1.0, 0.95, 0.6))
 			item_x += 30.0
 			shown += 1
+
+
+## Munition als schmaler Streifen am unteren Rand des Waffenchips: gefuellt = Magazin, beim Nachladen waechst er gelb.
+func _draw_ammo_strip(player: Player, index: int, chip: Rect2) -> void:
+	var strip := Rect2(chip.position + Vector2(4.0, chip.size.y - 5.0), Vector2(chip.size.x - 8.0, 3.0))
+	_canvas.draw_rect(strip, Color(0, 0, 0, 0.5))
+	var maximum := maxi(player.ammo_max_of(index), 1)
+	if player.is_reloading(index):
+		_canvas.draw_rect(Rect2(strip.position, Vector2(strip.size.x * player.reload_ratio(index), strip.size.y)), Color(1.0, 0.8, 0.3))
+		return
+	var fraction := float(player.ammo_of(index)) / float(maximum)
+	var tint := Color(0.55, 0.9, 1.0) if fraction > 0.25 else Color(1.0, 0.4, 0.3)
+	_canvas.draw_rect(Rect2(strip.position, Vector2(strip.size.x * fraction, strip.size.y)), tint)
 
 
 func _draw_boss_bar(view: Vector2, boss: Boss) -> void:

@@ -27,7 +27,13 @@ var homing := 0.0
 var accel := 0.0
 var speed_max := 0.0
 var push := 1.0
+## Aussehen: "bullet", "rocket" oder "can". Raketen zuenden am Ende der Flugzeit, wenn sie nichts getroffen haben.
+var style := "bullet"
+## Verbleibende Abpraller an Waennen (Ricochet) und Wucht-Faktor fuer Treffer und Explosionen (Heavy Slugs).
+var bounces := 0
+var knock := 1.0
 
+var _prev_pos := Vector2.ZERO
 var _hit_targets: Array[Node] = []
 var _velocity := Vector2.ZERO
 var _trail_timer := 0.0
@@ -51,6 +57,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_age += delta
+	_prev_pos = global_position
 	if homing > 0.0:
 		_steer(delta)
 	_velocity.y += arc_gravity * delta
@@ -64,7 +71,7 @@ func _physics_process(delta: float) -> void:
 			Fx.instance.spark(global_position, Color(1.0, 1.0, 1.0), 1, 90.0)
 	lifetime -= delta
 	if lifetime <= 0.0:
-		if homing > 0.0 and not is_queued_for_deletion():
+		if style == "rocket" and not is_queued_for_deletion():
 			# Eine Rakete, die ihr Ziel verfehlt, zuendet am Ende ihrer Flugzeit.
 			hit.emit(self, global_position, null)
 		queue_free()
@@ -92,8 +99,8 @@ func _steer(delta: float) -> void:
 	queue_redraw()
 	_trail_timer -= delta
 	if _trail_timer <= 0.0 and Fx.instance:
-		_trail_timer = 0.025
-		Fx.instance.spark(global_position - direction * 10.0, Color(1.0, 0.7, 0.3, 0.8), 1, 70.0)
+		_trail_timer = 0.025 if style == "rocket" else 0.07
+		Fx.instance.spark(global_position - direction * 10.0, Color(1.0, 0.7, 0.3, 0.8) if style == "rocket" else Color(color, 0.7), 1, 70.0)
 
 
 ## Naechster Gegner einigermassen in Flugrichtung (sonst dreht die Rakete Kreise), ohne Wand dazwischen.
@@ -117,10 +124,10 @@ func _has_line_of_sight(target: Node2D) -> bool:
 
 
 func _draw() -> void:
-	if homing > 0.0:
+	if style == "rocket":
 		_draw_rocket()
 		return
-	if arc_gravity > 0.0:
+	if style == "can":
 		_draw_can()
 		return
 	var streak := clampf(speed * 0.02, 6.0, 40.0)
@@ -161,8 +168,31 @@ func _on_body_entered(body: Node2D) -> void:
 	# Plattformen sind von unten durchlaessig, ein aufsteigender Wurf fliegt hindurch.
 	if body is CollisionObject2D and (body.collision_layer & (1 << 5)) != 0 and _velocity.y <= 0.0:
 		return
+	if bounces > 0 and explosion_radius <= 0.0 and arc_gravity <= 0.0 and _bounce_off():
+		return
 	hit.emit(self, global_position, null)
 	queue_free()
+
+
+## Prallt von der Wand ab (Ricochet): Normale per Strahl vom letzten Ort, Geschwindigkeit gespiegelt.
+## Gibt false zurueck, wenn keine Wand gefunden wurde (dann verhaelt sich das Geschoss wie sonst).
+func _bounce_off() -> bool:
+	var heading := _velocity.normalized()
+	var query := PhysicsRayQueryParameters2D.create(_prev_pos, global_position + heading * (size + 6.0), 1 << 0)
+	var result := get_world_2d().direct_space_state.intersect_ray(query)
+	if result.is_empty():
+		return false
+	var normal: Vector2 = result.normal
+	_velocity = _velocity.bounce(normal)
+	direction = _velocity.normalized()
+	global_position = result.position + normal * (size + 2.0)
+	bounces -= 1
+	_hit_targets.clear()
+	if Fx.instance:
+		Fx.instance.spark(result.position, color, 3, 140.0)
+	Sfx.play("block", 0.2)
+	queue_redraw()
+	return true
 
 
 func _on_area_entered(area: Area2D) -> void:
@@ -171,7 +201,7 @@ func _on_area_entered(area: Area2D) -> void:
 	if not area.has_method("take_damage") or area in _hit_targets:
 		return
 	_hit_targets.append(area)
-	area.take_damage(damage, shooter, direction * push, element)
+	area.take_damage(damage, shooter, direction * push * knock, element)
 	hit.emit(self, global_position, area)
 	if pierce <= 0:
 		queue_free()

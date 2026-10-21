@@ -177,10 +177,91 @@ const DATA := {
 			"hexapod": {"far": 0.45},
 		},
 	},
+	# Waffen-Upgrades: wirken auf alle Waffen des Spielers.
+	"extmag": {
+		"name": "Extended Mag",
+		"mods": {
+			"default": {"mag": 0.3},
+			"vending": {"mag": 0.4},
+		},
+	},
+	"speedloader": {
+		"name": "Speed Loader",
+		"mods": {
+			"default": {"reload": 0.35},
+			"hexapod": {"reload": 0.5},
+		},
+	},
+	"splitter": {
+		"name": "Split Barrel",
+		"mods": {
+			"default": {"proj": 1.0},
+		},
+	},
+	"velocoil": {
+		"name": "Velocity Coil",
+		"mods": {
+			"default": {"proj_speed": 0.25},
+		},
+	},
+	"longbarrel": {
+		"name": "Long Barrel",
+		"mods": {
+			"default": {"range": 0.25},
+			"hexapod": {"range": 0.35},
+		},
+	},
+	"stabilizer": {
+		"name": "Stabilizer",
+		"mods": {
+			"default": {"accuracy": 0.3},
+			"printer": {"accuracy": 0.4},
+		},
+	},
+	"blastcore": {
+		"name": "Blast Core",
+		"mods": {
+			"default": {"blast": 0.25},
+			"vending": {"blast": 0.35},
+			"printer": {"blast": 0.3},
+		},
+	},
+	"killshot": {
+		"name": "Killshot",
+		"mods": {
+			"default": {"crit_dmg": 0.5, "crit": 0.05},
+			"hexapod": {"crit_dmg": 0.7, "crit": 0.05},
+		},
+	},
+	"ecochip": {
+		"name": "Eco Chip",
+		"mods": {
+			"default": {"ammo_save": 0.15},
+		},
+	},
+	"heavyslugs": {
+		"name": "Heavy Slugs",
+		"mods": {
+			"default": {"knock": 0.5},
+			"vending": {"knock": 0.7},
+		},
+	},
+	"ricochet": {
+		"name": "Ricochet",
+		"mods": {
+			"default": {"bounce": 1.0},
+		},
+	},
+	"seeker": {
+		"name": "Seeker Chip",
+		"mods": {
+			"default": {"seek": 1.0},
+		},
+	},
 }
 
 ## Verhaltens-Items: die grosse Goldkiste enthaelt immer eines davon.
-const RARE_IDS: Array[String] = ["frenzy", "arccoil", "dashblast", "thorns", "laststand", "shieldcell", "recycler", "executioner"]
+const RARE_IDS: Array[String] = ["frenzy", "arccoil", "dashblast", "thorns", "laststand", "shieldcell", "recycler", "executioner", "splitter", "ricochet", "seeker"]
 ## Ziehgewicht seltener Items gegen 1,0 bei normalen: aus Kisten faellt etwa jedes sechste Item selten.
 const RARE_WEIGHT := 0.4
 
@@ -205,6 +286,9 @@ const LABELS := {
 	"pierce": "Durchschlag", "death_blast": "Explosionsschaden", "link": "Cable Link",
 	"frenzy": "Frenzy", "arc": "Arc", "dash_blast": "Dash Blast", "thorns": "Thorns", "rage": "Last Stand",
 	"shield": "Schild", "recycle": "Recycler", "execute": "Executioner", "close": "Nahkampf", "far": "Fernkampf",
+	"mag": "Magazin", "reload": "Nachladetempo", "proj": "Projektile", "proj_speed": "Projektiltempo", "range": "Reichweite",
+	"accuracy": "Präzision", "blast": "Explosion", "crit_dmg": "Crit-Schaden", "knock": "Wucht", "bounce": "Abpraller",
+	"seek": "Zielsuche", "ammo_save": "Munition sparen",
 }
 
 ## Stapelbare Verhaltens-Perks (nicht nur Zahlen): Anteil pro Stapel und Schwellen, einmal definiert fuer Spiel und Text.
@@ -226,6 +310,17 @@ const RECYCLE_SECONDS := 0.6
 const EXECUTE_THRESHOLD := 0.3
 const CLOSE_RANGE := 240.0
 const FAR_RANGE := 650.0
+## Waffen-Upgrades. Ein zusaetzliches Projektil zaehlt nur zu diesem Anteil zum Gesamtschaden, der Rest wird auf alle verteilt.
+const PROJ_EXTRA_VALUE := 0.6
+## Streuwinkel zwischen den Projektilen eines Faechers (Einzelschuss-Waffen mit +Projektil), in rad.
+const FAN_ANGLE := 0.1
+## Lenkrate je Stapel Zielsuche (rad/s) und Blickfeld der Zielhilfe fuer Strahlen (rad).
+const SEEK_TURN := 2.6
+const SEEK_CONE := 0.14
+## Anteil des Explosions-Zuwachses, der als Schaden dazukommt (der Rest geht in den Radius).
+const BLAST_DAMAGE_SHARE := 0.5
+## Mindest-Streuung nach Praezision (Anteil der Grundstreuung).
+const ACCURACY_FLOOR := 0.1
 
 
 static func mods_for(perk_id: String, class_id: String) -> Dictionary:
@@ -272,6 +367,20 @@ static func describe(perk_id: String, class_id: String) -> String:
 			parts.append("+%d%% Schaden auf unter %d px" % [int(value * 100.0), int(CLOSE_RANGE)])
 		elif key == "far":
 			parts.append("+%d%% Schaden auf über %d px" % [int(value * 100.0), int(FAR_RANGE)])
+		elif key == "proj":
+			parts.append("+%d Projektil pro Schuss" % int(value))
+		elif key == "reload":
+			parts.append("+%d%% Nachladetempo" % int(round(value * 100.0)))
+		elif key == "accuracy":
+			parts.append("-%d%% Streuung" % int(round(value * 100.0)))
+		elif key == "blast":
+			parts.append("+%d%% Explosionsradius, +%d%% Explosionsschaden" % [int(round(value * 100.0)), int(round(value * BLAST_DAMAGE_SHARE * 100.0))])
+		elif key == "bounce":
+			parts.append("Schüsse prallen %dx von Wänden ab" % int(value))
+		elif key == "seek":
+			parts.append("Schüsse lenken auf Gegner (Strahlen: Zielhilfe)")
+		elif key == "ammo_save":
+			parts.append("%d%% Chance: Schuss kostet keine Munition" % int(round(value * 100.0)))
 		else:
 			parts.append("+%d%% %s" % [int(value * 100.0), LABELS[key]])
 	return ", ".join(parts)

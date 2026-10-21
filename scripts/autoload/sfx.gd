@@ -11,7 +11,7 @@ const BASE_DB := -6.0
 const GAIN := {
 	"shoot": 0.4, "shoot_rapid": 0.3, "shoot_heavy": 0.55, "shotgun": 0.55, "rocket": 0.6, "beam": 0.35, "sniper": 0.6,
 	"turret": 0.45, "turret_over": 0.45, "can_throw": 0.55, "enemy_shoot": 0.45, "drone": 0.3, "drone_shot": 0.3,
-	"hit": 0.55, "kill": 0.7, "shake": 0.6, "pop": 0.6,
+	"hit": 0.55, "kill": 0.7, "shake": 0.6, "pop": 0.6, "reload_start": 0.6, "reload_done": 0.7, "dry": 0.6,
 }
 
 var _streams: Dictionary = {}
@@ -123,6 +123,11 @@ func _make_event_sounds() -> void:
 	_streams["go"] = _layers([[880.0, 880.0, 0.1, "square", 0.22, 0.0, 0.0], [1320.0, 1320.0, 0.28, "square", 0.24, 0.0, 0.1]])
 	# Schuss am Frontschild abgeprallt: metallisches Pling.
 	_streams["block"] = _layers([[2600.0, 1900.0, 0.05, "square", 0.16, 0.5, 0.0], [1300.0, 900.0, 0.1, "sine", 0.2, 0.0, 0.01]])
+	# Nachladen: Magazin raus (dumpfer Klack), danach Magazin rein mit Verschluss (hell und kurz).
+	_streams["reload_start"] = _layers([[420.0, 180.0, 0.05, "square", 0.22, 0.5, 0.0], [260.0, 140.0, 0.06, "sine", 0.2, 0.2, 0.02]])
+	_streams["reload_done"] = _layers([[300.0, 220.0, 0.04, "square", 0.22, 0.4, 0.0], [1500.0, 1000.0, 0.05, "square", 0.2, 0.5, 0.07], [900.0, 700.0, 0.05, "sine", 0.18, 0.1, 0.1]])
+	# Magazin leer: trockenes Klicken.
+	_streams["dry"] = _layers([[1800.0, 1200.0, 0.025, "square", 0.18, 0.6, 0.0]])
 	# Welle geschafft: kurze Fanfare.
 	_streams["fanfare"] = _layers([
 		[523.0, 523.0, 0.12, "square", 0.2, 0.0, 0.0], [659.0, 659.0, 0.12, "square", 0.2, 0.0, 0.11], [784.0, 784.0, 0.12, "square", 0.2, 0.0, 0.22],

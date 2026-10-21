@@ -1516,7 +1516,7 @@ func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direct
 	var weapon := Weapons.get_weapon(weapon_id)
 	var damage := float(weapon.damage) * player.damage_mult()
 	if randf() < float(player.mods.crit):
-		damage *= 2.0
+		damage *= 2.0 + float(player.mods.crit_dmg)
 	var element := player.current_module()
 	var color := Elements.color_of(element, weapon.color)
 	var sound: String = weapon.sound
@@ -1535,49 +1535,90 @@ func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direct
 		_fire_projectiles(player, weapon, origin, direction, damage, element, color)
 
 
+## Anzahl Projektile eines Schusses (Split Barrel) und der Schadensanteil je Projektil.
+## Ein Zusatzprojektil zaehlt nur zu Perks.PROJ_EXTRA_VALUE zum Gesamtschaden, damit +1 nicht verdoppelt.
+func _shot_count(player: Player, weapon: Dictionary) -> int:
+	return int(weapon.get("pellets", 1)) + int(player.mods.proj)
+
+
+func _split_factor(player: Player, weapon: Dictionary) -> float:
+	var base := float(weapon.get("pellets", 1))
+	var extra := float(player.mods.proj)
+	return (base + Perks.PROJ_EXTRA_VALUE * extra) / (base + extra)
+
+
+## Streuung nach Praezision (Stabilizer), nie unter dem Mindestanteil.
+func _spread_scale(player: Player) -> float:
+	return maxf(Perks.ACCURACY_FLOOR, 1.0 - float(player.mods.accuracy))
+
+
+## Winkel des i-ten von count Projektilen in einem Faecher um die Zielrichtung.
+func _fan_offset(index: int, count: int, step: float) -> float:
+	return (float(index) - float(count - 1) * 0.5) * step
+
+
 func _fire_lob(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color, charge: float) -> void:
-	var can := Projectile.new()
-	can.position = origin
-	can.direction = direction
-	can.speed = lerpf(float(weapon.speed), float(weapon.speed_max), charge)
-	can.arc_gravity = float(weapon.gravity)
-	can.damage = damage
-	can.lifetime = float(weapon.lifetime)
-	can.size = float(weapon.size)
-	can.color = color
-	can.element = element
-	can.shooter = player
-	can.collide_platforms = true
-	can.charge = charge
-	# Nur geschuettelte Dosen explodieren, Staerke und Radius wachsen mit dem Schuetteln.
-	if charge >= float(weapon.min_shake):
-		can.shaken = true
-		can.explosion_radius = lerpf(float(weapon.explosion_radius), float(weapon.explosion_radius_max), charge)
-		can.explosion_damage = lerpf(float(weapon.explosion_damage), float(weapon.explosion_damage_max), charge) * player.damage_mult()
-	can.hit.connect(_on_projectile_hit)
-	projectiles.add_child(can)
+	var count := _shot_count(player, weapon)
+	var factor := _split_factor(player, weapon)
+	var blast := float(player.mods.blast)
+	for i in count:
+		var can := Projectile.new()
+		can.position = origin
+		can.direction = direction.rotated(_fan_offset(i, count, Perks.FAN_ANGLE * 1.5))
+		can.speed = lerpf(float(weapon.speed), float(weapon.speed_max), charge) * player.lob_speed_factor()
+		can.arc_gravity = float(weapon.gravity)
+		can.damage = damage * factor
+		can.lifetime = float(weapon.lifetime)
+		can.size = float(weapon.size)
+		can.color = color
+		can.element = element
+		can.shooter = player
+		can.style = "can"
+		can.collide_platforms = true
+		can.charge = charge
+		can.knock = 1.0 + float(player.mods.knock)
+		# Nur geschuettelte Dosen explodieren, Staerke und Radius wachsen mit dem Schuetteln.
+		if charge >= float(weapon.min_shake):
+			can.shaken = true
+			can.explosion_radius = lerpf(float(weapon.explosion_radius), float(weapon.explosion_radius_max), charge) * (1.0 + blast)
+			can.explosion_damage = lerpf(float(weapon.explosion_damage), float(weapon.explosion_damage_max), charge) * player.damage_mult() \
+				* (1.0 + Perks.BLAST_DAMAGE_SHARE * blast) * factor
+		can.hit.connect(_on_projectile_hit)
+		projectiles.add_child(can)
 
 
 func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
-	for i in int(weapon.pellets):
+	var count := _shot_count(player, weapon)
+	var factor := _split_factor(player, weapon)
+	var blast := float(player.mods.blast)
+	var speed_mult := 1.0 + float(player.mods.proj_speed)
+	# Einzelschuss-Waffen fuehren Zusatzprojektile als Faecher, Streuwaffen (Pellets) streuen ohnehin.
+	var fan := int(weapon.get("pellets", 1)) == 1 and count > 1
+	var spread := (float(weapon.spread) + float(weapon.get("spread_heat", 0.0)) * player.heat_level()) * _spread_scale(player)
+	for i in count:
 		var bullet := Projectile.new()
 		bullet.position = origin
-		var spread := float(weapon.spread) + float(weapon.get("spread_heat", 0.0)) * player.heat_level()
-		bullet.direction = direction.rotated(randf_range(-spread, spread))
-		bullet.speed = float(weapon.speed) * randf_range(0.9, 1.0) if weapon.pellets > 1 else float(weapon.speed)
-		bullet.homing = float(weapon.get("homing", 0.0))
+		var aim := direction.rotated(randf_range(-spread, spread))
+		if fan:
+			aim = aim.rotated(_fan_offset(i, count, Perks.FAN_ANGLE))
+		bullet.direction = aim
+		bullet.speed = float(weapon.speed) * speed_mult * (randf_range(0.9, 1.0) if int(weapon.pellets) > 1 else 1.0)
+		bullet.homing = float(weapon.get("homing", 0.0)) + Perks.SEEK_TURN * float(player.mods.seek)
 		bullet.accel = float(weapon.get("accel", 0.0))
-		bullet.speed_max = float(weapon.get("speed_max", 0.0))
+		bullet.speed_max = float(weapon.get("speed_max", 0.0)) * speed_mult
 		bullet.push = float(weapon.get("push", 1.0))
-		bullet.damage = damage
-		bullet.lifetime = float(weapon.lifetime)
+		bullet.knock = 1.0 + float(player.mods.knock)
+		bullet.bounces = int(player.mods.bounce)
+		bullet.style = "rocket" if weapon.has("homing") else "bullet"
+		bullet.damage = damage * factor
+		bullet.lifetime = float(weapon.lifetime) * (1.0 + float(player.mods.range))
 		bullet.pierce = int(weapon.pierce) + int(player.mods.pierce)
 		bullet.size = float(weapon.size)
 		bullet.color = color
 		bullet.element = element
 		bullet.shooter = player
-		bullet.explosion_radius = float(weapon.get("explosion_radius", 0.0))
-		bullet.explosion_damage = float(weapon.get("explosion_damage", 0.0)) * player.damage_mult()
+		bullet.explosion_radius = float(weapon.get("explosion_radius", 0.0)) * (1.0 + blast)
+		bullet.explosion_damage = float(weapon.get("explosion_damage", 0.0)) * player.damage_mult() * (1.0 + Perks.BLAST_DAMAGE_SHARE * blast) * factor
 		bullet.hit.connect(_on_projectile_hit)
 		projectiles.add_child(bullet)
 
@@ -1604,46 +1645,96 @@ func spawn_drone_shot(player: Player, origin: Vector2, direction: Vector2) -> vo
 
 
 func _fire_hitscan(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
-	var space := get_world_2d().direct_space_state
-	var target := origin + direction * float(weapon.range)
-	var end := target
-	var exclude: Array[RID] = []
-	var hits_left := int(weapon.pierce) + int(player.mods.pierce) + 1
 	# Dauerstrahl: je laenger gehalten, desto mehr Schaden.
 	if weapon.has("ramp_max"):
 		damage *= lerpf(1.0, float(weapon.ramp_max), player.channel_ratio())
-	var push := float(weapon.get("push", 1.0))
-	while hits_left > 0:
-		var query := PhysicsRayQueryParameters2D.create(origin, target, (1 << 0) | (1 << 2))
-		query.collide_with_areas = true
-		query.collide_with_bodies = true
-		query.exclude = exclude
-		var result := space.intersect_ray(query)
-		if result.is_empty():
+	var count := _shot_count(player, weapon)
+	var factor := _split_factor(player, weapon)
+	var aim := _assist_aim(origin, direction, float(player.mods.seek)) if float(player.mods.seek) > 0.0 else direction
+	for i in count:
+		var ray_dir := aim.rotated(_fan_offset(i, count, Perks.FAN_ANGLE * 0.6)) if count > 1 else aim
+		_trace_ray(player, weapon, origin, ray_dir, damage * factor, element, color)
+
+
+## Zielhilfe fuer Strahlen (Seeker Chip): dreht die Richtung auf den Gegner, der am dichtesten am Fadenkreuz liegt.
+func _assist_aim(origin: Vector2, direction: Vector2, seek: float) -> Vector2:
+	var best_angle := Perks.SEEK_CONE * seek
+	var result := direction
+	var space := get_world_2d().direct_space_state
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		var offset: Vector2 = enemy.global_position - origin
+		if offset.length() < 40.0:
+			continue
+		var angle := absf(direction.angle_to(offset))
+		if angle >= best_angle:
+			continue
+		var query := PhysicsRayQueryParameters2D.create(origin, enemy.global_position, 1 << 0)
+		if not space.intersect_ray(query).is_empty():
+			continue
+		best_angle = angle
+		result = offset.normalized()
+	return result
+
+
+## Ein Strahl: trifft bis zu pierce+1 Gegner, prallt mit Ricochet an Waenden ab und zeichnet jede Teilstrecke.
+func _trace_ray(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
+	var space := get_world_2d().direct_space_state
+	var range_left := float(weapon.range) * (1.0 + float(player.mods.range))
+	var hits_left := int(weapon.pierce) + int(player.mods.pierce) + 1
+	var bounces_left := int(player.mods.bounce)
+	var push := float(weapon.get("push", 1.0)) * (1.0 + float(player.mods.knock))
+	var dir := direction
+	var start := origin
+	var exclude: Array[RID] = []
+	var points: Array[Vector2] = [origin]
+	while true:
+		var target := start + dir * range_left
+		var end := target
+		var bounced := false
+		while hits_left > 0:
+			var query := PhysicsRayQueryParameters2D.create(start, target, (1 << 0) | (1 << 2))
+			query.collide_with_areas = true
+			query.collide_with_bodies = true
+			query.exclude = exclude
+			var result := space.intersect_ray(query)
+			if result.is_empty():
+				break
+			var collider: Object = result.collider
+			if collider.has_method("take_damage"):
+				collider.take_damage(damage, player, dir * push, element)
+				fx.spark(result.position, color, 4)
+				exclude.append(result.rid)
+				hits_left -= 1
+				if hits_left <= 0:
+					end = result.position
+			else:
+				end = result.position
+				fx.spark(end, color, 3)
+				if bounces_left > 0 and range_left - start.distance_to(end) > 60.0:
+					bounces_left -= 1
+					range_left -= start.distance_to(end)
+					dir = dir.bounce(result.normal)
+					start = end + result.normal * 2.0
+					bounced = true
+				break
+		points.append(end)
+		if not bounced:
 			break
-		var collider: Object = result.collider
-		if collider.has_method("take_damage"):
-			collider.take_damage(damage, player, direction * push, element)
-			fx.spark(result.position, color, 4)
-			exclude.append(result.rid)
-			hits_left -= 1
-		else:
-			end = result.position
-			fx.spark(end, color, 3)
-			break
-	fx.tracer(origin, end, color, float(weapon.width), float(weapon.tracer_life))
+		exclude.clear()
+	for i in points.size() - 1:
+		fx.tracer(points[i], points[i + 1], color, float(weapon.width), float(weapon.tracer_life))
 
 
 func _on_projectile_hit(projectile: Projectile, pos: Vector2, _target: Node) -> void:
 	fx.spark(pos, projectile.color, 4)
 	if projectile.explosion_radius > 0.0:
 		var shake_amount := 10.0 if projectile.arc_gravity <= 0.0 else 4.0 + 8.0 * projectile.charge
-		_explode(pos, projectile.explosion_radius, projectile.explosion_damage, projectile.shooter, projectile.color, projectile.element, shake_amount)
+		_explode(pos, projectile.explosion_radius, projectile.explosion_damage, projectile.shooter, projectile.color, projectile.element, shake_amount, projectile.knock)
 	elif projectile.arc_gravity > 0.0:
 		Sfx.play("pop")
 
 
-func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: Color, element := "", shake_amount := 10.0) -> void:
+func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: Color, element := "", shake_amount := 10.0, knock := 1.0) -> void:
 	fx.explosion(pos, radius, color)
 	camera.add_shake(shake_amount)
 	Sfx.play("explosion")
@@ -1652,6 +1743,6 @@ func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: 
 		if distance <= radius + 25.0:
 			var falloff := 1.0 - 0.5 * clampf(distance / radius, 0.0, 1.0)
 			var away: Vector2 = (enemy.global_position - pos).normalized()
-			enemy.take_damage(damage * falloff, shooter, away, element)
+			enemy.take_damage(damage * falloff, shooter, away * knock, element)
 
 

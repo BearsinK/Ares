@@ -87,7 +87,10 @@ var purchases := 0
 var mods := {"damage": 0.0, "fire_rate": 0.0, "speed": 0.0, "max_hp": 0.0, "dmg_taken": 0.0,
 	"dash_cd": 0.0, "pickup": 0.0, "gold": 0.0, "ability_cd": 0.0, "crit": 0.0, "kill_heal": 0.0,
 	"pierce": 0.0, "death_blast": 0.0, "link": 0.0, "frenzy": 0.0, "arc": 0.0, "dash_blast": 0.0, "thorns": 0.0,
-	"rage": 0.0, "shield": 0.0, "recycle": 0.0, "execute": 0.0, "close": 0.0, "far": 0.0}
+	"rage": 0.0, "shield": 0.0, "recycle": 0.0, "execute": 0.0, "close": 0.0, "far": 0.0,
+	# Waffen-Upgrades: Magazin, Nachladen, Projektile, Tempo, Reichweite, Praezision, Explosion, Crit-Schaden, Rueckstoss, Abpraller, Zielsuche, Munitionsersparnis.
+	"mag": 0.0, "reload": 0.0, "proj": 0.0, "proj_speed": 0.0, "range": 0.0, "accuracy": 0.0, "blast": 0.0,
+	"crit_dmg": 0.0, "knock": 0.0, "bounce": 0.0, "seek": 0.0, "ammo_save": 0.0}
 ## Persoenliche Items (Shop, Kisten): Perk-Id -> Anzahl. Team-Perks vom Level-Up stehen nicht hier.
 var items := {}
 ## Schild aus Shield Cell: schluckt Schaden, laedt nach einer Weile ohne Treffer wieder auf.
@@ -95,6 +98,19 @@ var shield := 0.0
 var frenzy_stacks := 0
 var _frenzy_time := 0.0
 var _since_hit := 99.0
+## Munition im Magazin je Waffenplatz (gleicher Index wie weapons). Wird ueber _sync_ammo abgeglichen,
+## damit Tests und Shop die Waffenliste frei aendern koennen.
+var ammo: Array[int] = []
+var _ammo_ids: Array[String] = []
+var _ammo_max: Array[int] = []
+## Restzeit des laufenden Nachladens je Platz (0 = laedt nicht) und die Gesamtdauer fuer die Anzeige.
+var _reload_left: Array[float] = []
+var _reload_span: Array[float] = []
+var _since_shot := 99.0
+var _dry_cooldown := 0.0
+var _reload_flash := 0.0
+## Ein Nachladen im Lauf gilt nur fuer den Spieler, der gerade nicht feuert.
+const IDLE_RELOAD := 0.9
 
 var _prefix := "p1_"
 var _coyote := 0.0
@@ -243,6 +259,8 @@ func add_mods(new_mods: Dictionary) -> void:
 		hp += float(new_mods.max_hp)
 	if new_mods.has("shield"):
 		shield += float(new_mods.shield)
+	if new_mods.has("mag"):
+		_sync_ammo()
 
 
 ## Perk als persoenliches Item aufnehmen (Shop, Kiste): Werte der Klassenvariante, mit Zaehler fuers HUD.
@@ -531,6 +549,7 @@ func _update_juice(delta: float) -> void:
 
 
 func _update_timers(delta: float) -> void:
+	_update_ammo(delta)
 	iframes = maxf(0.0, iframes - delta)
 	_since_hit += delta
 	if frenzy_stacks > 0:
@@ -552,6 +571,7 @@ func _update_timers(delta: float) -> void:
 	_switch_cooldown = maxf(0.0, _switch_cooldown - delta)
 	_art_time += delta
 	_fire_flash = maxf(0.0, _fire_flash - delta * 6.0)
+	_reload_flash = maxf(0.0, _reload_flash - delta * 4.0)
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	_happy_timer = maxf(0.0, _happy_timer - delta)
 	var arm_target := 1.0 if (Input.is_action_pressed(_prefix + "fire") or _fire_flash > 0.05) and not downed else 0.0
@@ -987,10 +1007,141 @@ func add_weapon(weapon_id: String, replace_index := -1) -> void:
 		weapons[index] = weapon_id
 		modules[index] = ""
 		weapon_index = index
+	_sync_ammo()
 
 
 func current_module() -> String:
 	return modules[weapon_index] if weapon_index < modules.size() else ""
+
+
+## Faktor auf die Wurfgeschwindigkeit der Dose aus Projektiltempo und Reichweite (Reichweite zaehlt halb).
+func lob_speed_factor() -> float:
+	return (1.0 + float(mods.proj_speed)) * (1.0 + 0.5 * float(mods.range))
+
+
+## Magazingroesse einer Waffe mit allen Upgrades (mindestens +1 pro Magazin-Upgrade, auch bei kleinen Magazinen).
+func mag_size_of(weapon_id: String) -> int:
+	var base := int(Weapons.get_weapon(weapon_id).get("mag", 30))
+	var bonus := float(mods.mag)
+	if bonus <= 0.0:
+		return base
+	return maxi(base + 1, roundi(float(base) * (1.0 + bonus)))
+
+
+## Nachladezeit einer Waffe in Sekunden mit allen Upgrades.
+func reload_time_of(weapon_id: String) -> float:
+	return float(Weapons.get_weapon(weapon_id).get("reload", 1.5)) / (1.0 + float(mods.reload))
+
+
+func ammo_of(index: int) -> int:
+	_sync_ammo()
+	return ammo[index] if index >= 0 and index < ammo.size() else 0
+
+
+func ammo_max_of(index: int) -> int:
+	_sync_ammo()
+	return _ammo_max[index] if index >= 0 and index < _ammo_max.size() else 0
+
+
+## Laedt die Waffe auf diesem Platz gerade nach? Ohne Angabe: die aktive Waffe.
+func is_reloading(index := -1) -> bool:
+	_sync_ammo()
+	var slot := weapon_index if index < 0 else index
+	return slot < _reload_left.size() and _reload_left[slot] > 0.0
+
+
+## 0 bis 1: Fortschritt des Nachladens (0, wenn die Waffe nicht nachlaedt).
+func reload_ratio(index := -1) -> float:
+	_sync_ammo()
+	var slot := weapon_index if index < 0 else index
+	if slot >= _reload_left.size() or _reload_left[slot] <= 0.0:
+		return 0.0
+	return clampf(1.0 - _reload_left[slot] / maxf(_reload_span[slot], 0.01), 0.0, 1.0)
+
+
+## Fuellt alle Magazine sofort (Wellenstart, Tests).
+func refill_ammo() -> void:
+	_sync_ammo()
+	for i in ammo.size():
+		ammo[i] = _ammo_max[i]
+		_reload_left[i] = 0.0
+
+
+## Gleicht Munition und Nachladen mit der Waffenliste ab: neue oder getauschte Waffen starten voll,
+## groessere Magazine fuellen sich um den Zuwachs.
+func _sync_ammo() -> void:
+	var count := weapons.size()
+	if ammo.size() != count:
+		ammo.resize(count)
+		_ammo_ids.resize(count)
+		_ammo_max.resize(count)
+		_reload_left.resize(count)
+		_reload_span.resize(count)
+	for i in count:
+		var size := mag_size_of(weapons[i])
+		if _ammo_ids[i] != weapons[i]:
+			_ammo_ids[i] = weapons[i]
+			ammo[i] = size
+			_ammo_max[i] = size
+			_reload_left[i] = 0.0
+		elif size != _ammo_max[i]:
+			ammo[i] = clampi(ammo[i] + size - _ammo_max[i], 0, size)
+			_ammo_max[i] = size
+
+
+func _update_ammo(delta: float) -> void:
+	_sync_ammo()
+	_since_shot += delta
+	_dry_cooldown = maxf(0.0, _dry_cooldown - delta)
+	if not downed and Input.is_action_pressed(_prefix + "fire"):
+		_since_shot = 0.0
+	for i in weapons.size():
+		if _reload_left[i] > 0.0:
+			_reload_left[i] -= delta
+			if _reload_left[i] <= 0.0:
+				_reload_left[i] = 0.0
+				ammo[i] = _ammo_max[i]
+				if i == weapon_index and not downed:
+					Sfx.play("reload_done", 0.05)
+					_reload_flash = 1.0
+		elif ammo[i] < _ammo_max[i] and (ammo[i] <= 0 or _since_shot >= IDLE_RELOAD):
+			_start_reload(i)
+
+
+func _start_reload(index: int) -> void:
+	if _reload_left[index] > 0.0 or ammo[index] >= _ammo_max[index]:
+		return
+	var missing := float(_ammo_max[index] - ammo[index]) / float(_ammo_max[index])
+	var span := reload_time_of(weapons[index]) * lerpf(0.5, 1.0, missing)
+	_reload_left[index] = span
+	_reload_span[index] = span
+	if index == weapon_index and not downed:
+		Sfx.play("reload_start", 0.05)
+
+
+## Verbraucht Munition fuer einen Schuss. Overwatch und Effizienz-Chip sparen sie, ein leeres Magazin laedt von selbst nach.
+func _spend_ammo(index: int, weapon: Dictionary) -> void:
+	_since_shot = 0.0
+	if ability != null and ability.is_active("overwatch"):
+		return
+	if float(mods.ammo_save) > 0.0 and randf() < minf(0.75, float(mods.ammo_save)):
+		return
+	ammo[index] = maxi(0, ammo[index] - int(weapon.get("ammo_cost", 1)))
+	if ammo[index] <= 0:
+		_start_reload(index)
+
+
+## Kann die aktive Waffe feuern? Leer: trockenes Klicken beim Druecken, das Nachladen laeuft schon.
+func _has_ammo(index: int) -> bool:
+	if ammo[index] > 0:
+		# Feuer unterbricht ein Teilnachladen.
+		_reload_left[index] = 0.0
+		return true
+	_start_reload(index)
+	if _dry_cooldown <= 0.0:
+		_dry_cooldown = 0.35
+		Sfx.play("dry", 0.05)
+	return false
 
 
 func _rotate_weapon() -> void:
@@ -1007,6 +1158,8 @@ func _rotate_weapon() -> void:
 ## im Bogen. Je laenger geschuettelt, desto weiter, schneller und explosiver.
 func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 	var held := Input.is_action_pressed(_prefix + "fire")
+	if held and not _lob_charging and _fire_cooldown <= 0.0 and _switch_cooldown <= 0.0 and not _has_ammo(weapon_index):
+		return
 	if held and _fire_cooldown <= 0.0 and _switch_cooldown <= 0.0:
 		_lob_charging = true
 		shake_charge = minf(1.0, shake_charge + delta / float(weapon.shake_time))
@@ -1028,6 +1181,7 @@ func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 			# Schaum spritzt aus dem Ausgabefach.
 			Fx.instance.spark(origin, Color(1.0, 1.0, 1.0, 0.9), 4 + int(8.0 * thrown_charge), 220.0)
 		fired.emit(self, weapon_id, origin, aim_dir, thrown_charge)
+		_spend_ammo(weapon_index, weapon)
 		_after_shot()
 	elif not held:
 		shake_charge = 0.0
@@ -1067,6 +1221,8 @@ func _handle_fire(_delta: float) -> void:
 	var weapon := Weapons.get_weapon(weapon_id)
 	if weapon.kind == "lob":
 		return
+	if not _has_ammo(weapon_index):
+		return
 	_fire_cooldown = 1.0 / (float(weapon.fire_rate) * fire_rate_mult())
 	var origin := _fire_origin(float(weapon.barrel))
 	# Rueckstoss: am Boden schwaecher, in der Luft staerker. Drohnenschuesse stossen den Koerper nicht.
@@ -1081,6 +1237,7 @@ func _handle_fire(_delta: float) -> void:
 		if Fx.instance:
 			Fx.instance.spark(global_position + Vector2(-5.0 * facing, -14.0), Color(1.0, 0.82, 0.4), 1, 150.0)
 	fired.emit(self, weapon_id, origin, aim_dir, 0.0)
+	_spend_ammo(weapon_index, weapon)
 	_after_shot()
 
 
@@ -1197,6 +1354,7 @@ func _draw() -> void:
 	_draw_laser()
 	if shake_charge > 0.0:
 		_draw_lob_preview(size)
+	_draw_reload(size)
 
 
 ## Laserpointer jedes Spielers: Zielen ist schwer, der Strahl zeigt die Richtung bis zur ersten Wand.
@@ -1259,13 +1417,24 @@ func _draw_downed(size: Vector2) -> void:
 		draw_arc(Vector2.ZERO, ring_radius, -PI / 2.0, -PI / 2.0 + TAU * revive_progress, 40, Color(0.4, 1.0, 0.5), 5.0, true)
 
 
+## Nachladen: ein warmer Ring um den Roboter fuellt sich, am Ende blitzt er kurz auf.
+func _draw_reload(size: Vector2) -> void:
+	var radius := maxf(size.x, size.y) * 0.5 + 18.0
+	if is_reloading():
+		var ratio := reload_ratio()
+		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 36, Color(1, 1, 1, 0.1), 3.0, true)
+		draw_arc(Vector2.ZERO, radius, -PI / 2.0, -PI / 2.0 + TAU * ratio, 36, Color(1.0, 0.8, 0.3, 0.9), 3.0, true)
+	elif _reload_flash > 0.0:
+		draw_arc(Vector2.ZERO, radius + 6.0 * (1.0 - _reload_flash), 0.0, TAU, 36, Color(0.7, 1.0, 0.6, _reload_flash), 3.0, true)
+
+
 func _draw_lob_preview(size: Vector2) -> void:
 	# Ladering und gepunktete Flugbahn der Dose.
 	var weapon := Weapons.get_weapon(current_weapon_id())
 	var ring_color := Color(0.4, 0.95, 0.55).lerp(Color(1, 1, 1), shake_charge)
 	var ring_radius := maxf(size.x, size.y) * 0.5 + 10.0
 	draw_arc(Vector2.ZERO, ring_radius, -PI / 2.0, -PI / 2.0 + TAU * shake_charge, 40, ring_color, 4.0, true)
-	var speed := lerpf(float(weapon.speed), float(weapon.speed_max), shake_charge)
+	var speed := lerpf(float(weapon.speed), float(weapon.speed_max), shake_charge) * lob_speed_factor()
 	var gravity: float = weapon.gravity
 	var pos := _muzzle_offset() + aim_dir * float(weapon.barrel)
 	var vel := aim_dir * speed
