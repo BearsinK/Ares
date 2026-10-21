@@ -687,8 +687,9 @@ func _process_movement(delta: float, move: float) -> void:
 	if _wall_lock <= 0.0:
 		velocity.x = move_toward(velocity.x, move * move_speed(), accel * delta)
 
-	var on_wall := is_on_wall_only() and not on_floor
-	var wall_normal := get_wall_normal() if on_wall else Vector2.ZERO
+	var solid_normal := _solid_wall_normal()
+	var on_wall := is_on_wall_only() and not on_floor and solid_normal != Vector2.ZERO
+	var wall_normal := solid_normal if on_wall else Vector2.ZERO
 	var pushing_wall := on_wall and move != 0.0 and signf(move) == -signf(wall_normal.x)
 	var jump_held := Input.is_action_pressed(_prefix + "jump")
 
@@ -888,8 +889,9 @@ func _process_climb(move: float, vertical: float) -> bool:
 	if _wall_lock > 0.0 or _slamming:
 		_clinging = false
 		return false
-	var touching := is_on_wall()
-	var wall_dir := -signf(get_wall_normal().x) if touching else 0.0
+	var wall_normal := _solid_wall_normal()
+	var touching := wall_normal != Vector2.ZERO
+	var wall_dir := -signf(wall_normal.x) if touching else 0.0
 	var pushing := touching and move != 0.0 and signf(move) == wall_dir
 	var on_floor := is_on_floor()
 
@@ -925,6 +927,19 @@ func _process_climb(move: float, vertical: float) -> bool:
 		_clinging = false
 		Sfx.play("jump")
 	return true
+
+
+## Normale einer echten Wand, an der man klettern oder abspringen darf (sichtbare Waende der Ebene 1), sonst Null.
+## Unsichtbare Begrenzungen (Ebene 8, z.B. vor dem Boss) zaehlen nicht: man kann sie nicht beklettern.
+func _solid_wall_normal() -> Vector2:
+	if not is_on_wall():
+		return Vector2.ZERO
+	for i in get_slide_collision_count():
+		var hit := get_slide_collision(i)
+		var collider := hit.get_collider()
+		if absf(hit.get_normal().x) > 0.7 and collider is CollisionObject2D and (collider.collision_layer & 1) != 0:
+			return hit.get_normal()
+	return Vector2.ZERO
 
 
 ## True, wenn der Spieler auf einer durchlaessigen Plattform steht.
@@ -1585,19 +1600,20 @@ func _draw_laser() -> void:
 	var from := _muzzle_offset() + aim_dir * 18.0
 	var length := _laser_length
 	var color := laser_color()
-	var pulse := 0.8 + 0.2 * sin(_art_time * 9.0)
-	var boost := 1.0 + 0.7 * _fire_flash
+	var pulse := 0.85 + 0.15 * sin(_art_time * 9.0)
+	# Beim Schiessen wird der Strahl noch blasser, damit man die Schuesse sieht.
+	var boost := 1.0 - 0.5 * _fire_flash
 	var segments := 12
 	for i in segments:
 		var a := from + aim_dir * length * float(i) / float(segments)
 		var b := from + aim_dir * length * float(i + 1) / float(segments)
 		var fade := 1.0 - float(i) / float(segments)
-		draw_line(a, b, Color(color, (0.08 + 0.34 * fade * fade) * pulse * boost), 3.0 + 1.5 * fade, true)
-		draw_line(a, b, Color(1, 1, 1, 0.1 + 0.3 * fade * fade), 1.0, true)
+		draw_line(a, b, Color(color, (0.03 + 0.12 * fade * fade) * pulse * boost), 2.0 + 0.5 * fade, true)
+		draw_line(a, b, Color(1, 1, 1, (0.03 + 0.1 * fade * fade) * boost), 1.0, true)
 	var end := from + aim_dir * length
-	draw_circle(end, 4.5, Color(color, 0.8 * pulse))
-	draw_circle(end, 9.0, Color(color, 0.22))
-	draw_circle(end, 1.8, Color(1, 1, 1, 0.9))
+	draw_circle(end, 3.0, Color(color, 0.4 * pulse * boost))
+	draw_circle(end, 6.0, Color(color, 0.08))
+	draw_circle(end, 1.2, Color(1, 1, 1, 0.5))
 
 
 func _update_laser() -> void:

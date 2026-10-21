@@ -164,14 +164,14 @@ func _bot(i: int, delta: float) -> void:
 	var move := 0.0
 	var boss_fight: bool = main.phase == main.Phase.BOSS
 	if boss_fight:
-		# Hindernisse: gegen das Band anlaufen, Kiste, Stapel und Saege ueberspringen,
-		# unter Traegern durchlaufen (dort nicht springen).
+		# Hindernisse rollen von links auf den Boss zu: gegen das Band anlaufen (nach links), Kiste, Stapel und Saege
+		# ueberspringen, unter Traegern durchlaufen (dort nicht springen). Vom Schredder und vom Boss fernhalten.
 		var jump_now := false
 		var beam_near := false
 		var obstacle_ahead := false
 		for ob in get_tree().get_nodes_in_group("belt_obstacles"):
-			var dx: float = ob.global_position.x - p.global_position.x
-			var closing: float = ob.speed + maxf(0.0, p.velocity.x)
+			var dx: float = p.global_position.x - ob.global_position.x
+			var closing: float = ob.speed + maxf(0.0, -p.velocity.x)
 			var edge := dx - 45.0 - float(p.stats.size.x) * 0.5
 			if p.global_position.y < 1100.0 or edge < -40.0 or edge > 300.0:
 				continue
@@ -185,16 +185,18 @@ func _bot(i: int, delta: float) -> void:
 			for ob in get_tree().get_nodes_in_group("belt_obstacles"):
 				info += " %s@%d" % [ob.kind, ob.global_position.x - p.global_position.x]
 			print("TRACE x %d y %d vx %d vy %d floor %s jump %s |%s" % [p.global_position.x, p.global_position.y, p.velocity.x, p.velocity.y, p.is_on_floor(), jump_now, info])
-		if obstacle_ahead and (not p.is_on_floor() or p.global_position.x < (2300.0) + 140.0):
-			move = 1.0
+		if obstacle_ahead and not p.is_on_floor():
+			move = -1.0
 		if jump_now and not beam_near:
 			_jump_hold[i] = 0.5
 		if _jump_hold[i] > 0.0 and not beam_near:
 			want_jump = true
 		_jump_hold[i] = maxf(0.0, _jump_hold[i] - delta)
 		# Auf Abstand zum Boss halten und gegen das Band anlaufen.
-		var target_x := 2300.0
-		if p.global_position.x < target_x:
+		var target_x := 1900.0
+		if p.global_position.x > target_x:
+			move = -1.0
+		elif p.global_position.x < target_x - 250.0:
 			move = 1.0
 		for strike in main.enemy_projectiles.get_children():
 			if strike is AreaStrike and absf(strike.global_position.x - p.global_position.x) < strike.radius + 40.0:

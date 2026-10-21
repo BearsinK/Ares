@@ -1,11 +1,11 @@
 class_name Boss
 extends Area2D
-## Endboss "Der Schmelzer": ein Hochofen-Koloss am rechten Ende des Laufbands.
+## Endboss "Der Schmelzer": ein Hochofen-Koloss am rechten Ende des Laufbands, das alles zu ihm hinzieht.
 ## Sein Panzer schluckt den Grossteil des Schadens, nur wenn der Kern offen ist
 ## (Vent-Phase) richtet man vollen Schaden an. Wasser und Eis schwaechen ihn,
-## Feuer prallt ab. Er schickt Hindernisse aufs Band, feuert auf Spieler und
-## laesst Glut regnen. Bei 66 und 33 Prozent Leben wechselt die Phase und das
-## Band wird schneller.
+## Feuer prallt ab. Er schickt Hindernisse aufs Band, laesst Lasten von der Decke fallen,
+## ruft Verstaerkung, feuert auf Spieler und laesst Glut regnen. Wer in seinen Schredder gezogen
+## wird, nimmt fetten Schaden. Bei 66 und 33 Prozent Leben wechselt die Phase und das Band wird schneller.
 
 signal died
 signal phase_changed(phase: int)
@@ -20,17 +20,25 @@ static func damage_scale() -> float:
 const ARMOR := 0.25
 const START_DELAY := 3.5
 const TRANSITION_TIME := 2.2
-const BELT_SPEEDS := [100.0, 135.0, 170.0]
+const BELT_SPEEDS := [100.0, 130.0, 160.0]
 const VENT_TIMES := [7.0, 6.0, 5.0]
 const GAPS := [1.4, 1.0, 0.7]
 const MUZZLE := Vector2(-250.0, -333.0)
 const WEAK := {"water": 1.5, "ice": 1.25, "fire": 0.6}
 
 const CYCLES := [
-	["obstacles", "fire", "obstacles", "vent"],
-	["obstacles", "rain", "obstacles", "fire", "vent"],
-	["obstacles", "rain", "adds", "obstacles", "fire", "rain", "vent"],
+	["obstacles", "adds", "drops", "fire", "obstacles", "vent"],
+	["obstacles", "drops", "adds", "rain", "obstacles", "fire", "vent"],
+	["obstacles", "drops", "adds", "rain", "obstacles", "drops", "fire", "adds", "vent"],
 ]
+## Verstaerkung je Phase: Art und Zahl.
+const ADDS := [
+	[["walker", 2]],
+	[["walker", 2], ["flyer", 1]],
+	[["walker", 2], ["shooter", 1], ["flyer", 2]],
+]
+## Zeitabstand der Abwuerfe von der Decke.
+const DROP_GAP := 1.1
 # Hindernismuster pro Phase: Paare aus Typ und Zeitpunkt (Sekunden nach Start).
 const PATTERNS := [
 	[
@@ -93,7 +101,7 @@ func _ready() -> void:
 	add_child(shape)
 	_say("ENDBOSS: SMELTER", 3.2)
 	if arena != null:
-		arena.belt_speed = BELT_SPEEDS[0]
+		arena.base_speed = BELT_SPEEDS[0]
 
 
 func is_invulnerable() -> bool:
@@ -152,7 +160,7 @@ func _start_transition(new_phase: int) -> void:
 	_shots.clear()
 	_gap = 1.0
 	if arena != null:
-		arena.belt_speed = BELT_SPEEDS[phase - 1]
+		arena.base_speed = BELT_SPEEDS[phase - 1]
 	_say("PHASE %d: DAS BAND WIRD SCHNELLER!" % phase, 2.6)
 	Sfx.play("explosion")
 	if main != null and "camera" in main and main.camera != null:
@@ -242,6 +250,10 @@ func _update_attack(delta: float) -> void:
 				var step: Array = _steps.pop_front()
 				if arena != null:
 					arena.spawn_obstacle(step[0])
+		"drops":
+			while not _steps.is_empty() and _steps[0][1] <= _elapsed():
+				var step: Array = _steps.pop_front()
+				_drop(int(step[0]))
 	if _attack_time <= 0.0:
 		_end_attack()
 
@@ -259,6 +271,13 @@ func _begin(id: String) -> void:
 			_steps = (patterns[randi() % patterns.size()] as Array).duplicate()
 			_attack_length = float(_steps[-1][1]) + 2.5
 			_say("HINDERNISSE!", 1.6)
+		"drops":
+			var drop_count := 2 + phase
+			_steps = []
+			for k in drop_count:
+				_steps.append([k, k * DROP_GAP])
+			_attack_length = (drop_count - 1) * DROP_GAP + 2.0
+			_say("ACHTUNG, LASTEN VON OBEN!", 1.6)
 		"fire":
 			var count := 2 + phase
 			for k in count:
@@ -272,7 +291,7 @@ func _begin(id: String) -> void:
 		"adds":
 			_adds()
 			_attack_length = 1.5
-			_say("SCHWEISSDROHNEN!", 1.6)
+			_say("VERSTÄRKUNG!", 1.6)
 		"vent":
 			open = true
 			_attack_length = float(VENT_TIMES[phase - 1])
@@ -302,13 +321,32 @@ func _rain() -> void:
 		main._on_strike_requested(null, Vector2(x, y), 100.0, 1.4 + k * 0.2, 28.0 * damage_scale())
 
 
-func _adds() -> void:
-	if main == null or main.director.alive_count() >= 8:
+## Eine Last von der Decke ueber einem Spieler (abwechselnd, mit etwas Vorhalt in Laufrichtung).
+func _drop(index: int) -> void:
+	if arena == null:
 		return
-	for k in 2:
-		main.director.spawn("flyer", Vector2(2500.0 + k * 90.0, 800.0))
-	for k in 2:
-		main.director.spawn("walker", Vector2(2600.0 + k * 70.0, 1225.0))
+	var alive := _alive_players()
+	var x := randf_range(600.0, 2300.0)
+	if not alive.is_empty():
+		var target: Player = alive[index % alive.size()]
+		x = target.global_position.x + clampf(target.velocity.x, -300.0, 300.0) * 0.5 + randf_range(-40.0, 40.0)
+	arena.spawn_drop(x)
+
+
+## Der Boss ruft Verstaerkung aus seiner Luke neben dem Schredder.
+func _adds() -> void:
+	if main == null or main.director.alive_count() >= 10:
+		return
+	var slot := 0
+	for entry in ADDS[phase - 1]:
+		for k in int(entry[1]):
+			var kind := String(entry[0])
+			var pos := Vector2(2640.0 - slot * 70.0, 1225.0)
+			if kind == "flyer":
+				pos = Vector2(2560.0 - slot * 60.0, 800.0)
+			main.director.spawn(kind, pos)
+			slot += 1
+	Sfx.play("telegraph")
 
 
 func _update_shots(delta: float) -> void:

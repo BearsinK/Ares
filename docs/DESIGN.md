@@ -333,3 +333,10 @@ Grundlage: Klassen sollen sich nicht nur über Werte, sondern über die Art zu k
 - Kamera und Gefallene: Die Kamera folgt nur Stehenden und lässt Gefallene los. Ein Pfeil am Bildrand in der Farbe des Gefallenen zeigt, wohin man zum Wiederbeleben laufen muss, mit dem Fortschrittsring
 - Die Spielzeit friert bei Game Over ein, damit das Ergebnis den Moment des Ausfalls zeigt
 - Mobilität: Neue Firmware Jet Boots, Turbo Legs, Spring Legs, Blade Dash, Long Dash, dazu drei Stufen für Double Jump und Dash Cell. Jede hat eine eigene Wirkung statt eines reinen Zahlenbonus (Schub mit Tank, Schaden im Dash, weitere Sprünge). Firmware erscheint im Shop häufiger (35 Prozent in den ersten drei Wellen, danach 18)
+
+## Runde Endboss, Rand-Pfeile, Zielstrahl
+
+- Endboss: Das Band läuft zum Boss statt vom Boss weg, die Plattformen sind weg. Der Boss ist der Fresser: Der Schredder vor ihm gibt fetten Schaden mit Rückstoß statt Instakill. Hindernisse rollen von links ein (1000 px vor dem linken Spieler, außerhalb des Bildes) und sind etwas schneller als das Band, Lasten fallen mit Warnstreifen von der Decke, der Boss ruft in jeder Phase Verstärkung. Das Band zieht von selbst bis plus 25 an, damit der Druck steigt, ohne die langsamste Klasse (Vendor, 220) abzuhängen
+- Unsichtbare Begrenzungen (Ebene 8) zählen nicht als Wand: Klettern und Wandsprung gehen nur an sichtbaren Wänden
+- Rote Pfeile am Bildrand zeigen Gegner außerhalb des Bildes (bis 1700 px, höchstens zehn, nahe Gegner in einer Richtung teilen sich einen größeren Pfeil, Elites golden umrandet)
+- Zielstrahl der Spieler ist deutlich blasser und wird beim Schießen noch blasser, damit man die Schüsse sieht

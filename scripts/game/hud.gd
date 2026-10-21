@@ -5,6 +5,9 @@ extends CanvasLayer
 
 const PANEL_WIDTH := 330.0
 const PANEL_HEIGHT := 142.0
+## Pfeile fuer Gegner ausserhalb des Bildes: Reichweite in Weltpixeln und Hoechstzahl.
+const ENEMY_ARROW_RANGE := 1700.0
+const ENEMY_ARROW_MAX := 10
 const HINTS_TIME := 16.0
 const TIP_TIME := 7.0
 const NOTICE_TIME := 4.0
@@ -106,6 +109,7 @@ func _draw_hud() -> void:
 	_draw_perk_strip(view)
 	_draw_perk_banner(view)
 	_draw_chest_markers(view)
+	_draw_enemy_arrows(view)
 	_draw_downed_markers(view)
 	_draw_guardian(view)
 	_draw_stage_banner(view)
@@ -535,6 +539,55 @@ func _draw_chest_markers(view: Vector2) -> void:
 		var tip := edge + dir * 30.0
 		var side := dir.orthogonal() * 9.0
 		_canvas.draw_colored_polygon(PackedVector2Array([tip + dir * 8.0, tip - dir * 4.0 + side, tip - dir * 4.0 - side]), Color(color, 0.95))
+
+
+## Rote Pfeile am Bildrand fuer Gegner ausserhalb des Bildes. Nahe Gegner in derselben Richtung teilen sich einen Pfeil (er wird groesser),
+## weit entfernte fehlen, damit der Rand nicht zuwaechst. Elites und Waechter sind goldumrandet.
+func _draw_enemy_arrows(view: Vector2) -> void:
+	if main.shop_menu.is_open or main.levelup_menu.is_open or main.game_over or main.phase == main.Phase.SHOP:
+		return
+	var xf: Transform2D = main.get_viewport().get_canvas_transform()
+	var inner := Rect2(Vector2(60.0, 210.0), view - Vector2(120.0, 300.0))
+	var visible_rect := Rect2(Vector2.ZERO, view).grow(-6.0)
+	var arrows: Array[Dictionary] = []
+	for enemy in main.director.enemies:
+		if not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
+			continue
+		var screen: Vector2 = xf * enemy.global_position
+		if visible_rect.has_point(screen):
+			continue
+		# Zu weit weg zaehlt nicht (Weltabstand zum naechsten Spieler).
+		var nearest := INF
+		for player in main.players:
+			nearest = minf(nearest, player.global_position.distance_to(enemy.global_position))
+		if nearest > ENEMY_ARROW_RANGE:
+			continue
+		var edge := Vector2(clampf(screen.x, inner.position.x, inner.end.x), clampf(screen.y, inner.position.y, inner.end.y))
+		var dir := (screen - edge).normalized() if screen != edge else Vector2.UP
+		var strong: bool = enemy.elite or enemy == main.guardian
+		var merged := false
+		for arrow in arrows:
+			if (arrow.edge as Vector2).distance_to(edge) < 46.0:
+				arrow.count += 1
+				arrow.near = minf(arrow.near, nearest)
+				arrow.strong = arrow.strong or strong
+				merged = true
+				break
+		if not merged and arrows.size() < ENEMY_ARROW_MAX:
+			arrows.append({"edge": edge, "dir": dir, "count": 1, "near": nearest, "strong": strong})
+	for arrow in arrows:
+		var closeness := 1.0 - clampf(float(arrow.near) / ENEMY_ARROW_RANGE, 0.0, 1.0)
+		var size := 11.0 + 3.0 * minf(float(arrow.count) - 1.0, 4.0) + 5.0 * closeness
+		var alpha := 0.45 + 0.5 * closeness
+		var dir: Vector2 = arrow.dir
+		var side := dir.orthogonal()
+		var base: Vector2 = arrow.edge
+		var tip := base + dir * size * 1.6
+		var points := PackedVector2Array([tip, base + side * size * 0.8, base - side * size * 0.8])
+		_canvas.draw_colored_polygon(points, Color(1.0, 0.18, 0.18, alpha))
+		var outline := points.duplicate()
+		outline.append(points[0])
+		_canvas.draw_polyline(outline, Color(1.0, 0.85, 0.3, 0.9) if arrow.strong else Color(0.25, 0.02, 0.04, 0.8), 2.0, true)
 
 
 ## Gefallener Partner ausserhalb des Bildes: Pfeil am Rand in seiner Farbe, pulsiert rot, der Ring zeigt das Wiederbeleben.

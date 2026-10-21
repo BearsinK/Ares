@@ -619,7 +619,7 @@ func _start_boss() -> void:
 	boss.died.connect(_on_boss_died)
 	for i in players.size():
 		var player := players[i]
-		player.global_position = Vector2(1650.0 + i * 120.0, FLOOR_Y - float(player.stats.size.y) * 0.5 - 2.0)
+		player.global_position = Vector2(1500.0 + i * 120.0, FLOOR_Y - float(player.stats.size.y) * 0.5 - 2.0)
 		player.velocity = Vector2.ZERO
 		if player.downed:
 			player.revive(0.6)
@@ -1473,11 +1473,9 @@ func _build_wave_layout() -> void:
 	_add_block(Rect2(2570.0, 600.0, 340.0, 24.0), "platform")
 
 
-## Ofenhalle: links die Verbrennungsgrube, ueber den Boden laeuft das Band.
-## Die Plattformen liegen ueber dem Band und sind der Ausweichweg.
+## Ofenhalle: Ein Laufband zieht ueber den ganzen Boden zum Boss. Es gibt keine Plattformen, man muss ausweichen.
 func _build_boss_layout() -> void:
-	_add_block(Rect2(BossArena.PIT_WIDTH, FLOOR_Y, ARENA_SIZE.x - BossArena.PIT_WIDTH, 100.0), "floor")
-	_add_block(Rect2(0.0, FLOOR_Y + 90.0, BossArena.PIT_WIDTH, 60.0), "floor")
+	_add_block(Rect2(0.0, FLOOR_Y, ARENA_SIZE.x, 100.0), "floor")
 	_add_block(Rect2(-100.0, -100.0, 100.0, ARENA_SIZE.y + 200.0), "wall")
 	_add_block(Rect2(ARENA_SIZE.x, -100.0, 100.0, ARENA_SIZE.y + 200.0), "wall")
 	_add_block(Rect2(0.0, -100.0, ARENA_SIZE.x, 100.0), "ceiling")
@@ -1492,18 +1490,7 @@ func _build_boss_layout() -> void:
 	wall_shape.shape = wall_box
 	wall.add_child(wall_shape)
 	_arena_root.add_child(wall)
-	var platforms: Array[Rect2] = [
-		Rect2(360.0, 1070.0, 300.0, 24.0),
-		Rect2(930.0, 1070.0, 300.0, 24.0),
-		Rect2(1500.0, 1070.0, 300.0, 24.0),
-		Rect2(2070.0, 1070.0, 300.0, 24.0),
-		Rect2(650.0, 890.0, 260.0, 24.0),
-		Rect2(1230.0, 890.0, 260.0, 24.0),
-		Rect2(1810.0, 890.0, 260.0, 24.0),
-		Rect2(2380.0, 890.0, 220.0, 24.0),
-	]
-	for rect in platforms:
-		_add_block(rect, "platform")
+
 
 
 func _add_block(rect: Rect2, kind := "platform") -> void:

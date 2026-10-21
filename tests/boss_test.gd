@@ -46,13 +46,13 @@ func _run() -> void:
 	_check(main.phase == main.Phase.BOSS and main.boss != null, "Danach beginnt der Bosskampf")
 	var boss: Boss = main.boss
 	var arena: BossArena = main.boss_arena
-	_check(arena.belt_speed == Boss.BELT_SPEEDS[0], "Laufband laeuft in Phase 1")
+	_check(arena.base_speed == Boss.BELT_SPEEDS[0], "Laufband laeuft in Phase 1")
 	_check(boss.is_invulnerable(), "Boss ist anfangs unverwundbar (Auftritt)")
 	var hp0 := boss.hp
 	boss.take_damage(500.0, p1)
 	_check(boss.hp == hp0, "Waehrend des Auftritts nimmt er keinen Schaden")
 
-	# Laufband zieht nach links, Plattform nicht.
+	# Laufband zieht nach rechts, zum Boss. Plattformen gibt es nicht mehr.
 	p1.iframes = 9999.0
 	p2.iframes = 9999.0
 	p1.global_position = Vector2(1500.0, 1225.0)
@@ -60,22 +60,47 @@ func _run() -> void:
 	await _frames(10)
 	var x0 := p1.global_position.x
 	await _frames(60)
-	_check(x0 - p1.global_position.x > 60.0, "Laufband zieht den Spieler nach links (%d px)" % (x0 - p1.global_position.x))
-	p2.global_position = Vector2(1000.0, 1040.0)
-	p2.velocity = Vector2.ZERO
-	await _frames(30)
-	var px0 := p2.global_position.x
-	await _frames(60)
-	_check(absf(p2.global_position.x - px0) < 3.0, "Auf der Plattform steht man sicher")
+	_check(p1.global_position.x - x0 > 60.0, "Laufband zieht den Spieler zum Boss (%d px)" % (p1.global_position.x - x0))
+	var floating := false
+	for node in get_tree().get_nodes_in_group("ceilings"):
+		if (node.get_meta("rect") as Rect2).position.y > 0.0:
+			floating = true
+	_check(not floating, "Es gibt keine Plattformen in der Boss-Halle")
 
-	# Ofen verbrennt.
+	# Hexapod an der unsichtbaren Wand vor dem Boss: kein Klettern.
+	p2.iframes = 9999.0
+	p2.global_position = Vector2(BossArena.BOSS_WALL_X - 60.0, 1215.0)
+	p2.velocity = Vector2.ZERO
+	await _frames(10)
+	Input.action_press("p2_right")
+	Input.action_press("p2_up")
+	await _frames(70)
+	Input.action_release("p2_right")
+	Input.action_release("p2_up")
+	_check(not p2.is_clinging() and p2.global_position.y > 1100.0, "Die unsichtbare Wand laesst sich nicht beklettern (y %d)" % p2.global_position.y)
+	p2.global_position = Vector2(1000.0, 1225.0)
+	p2.velocity = Vector2.ZERO
+
+	# Schredder vor dem Boss: fetter Schaden, kein Instakill, Rueckschleudern.
 	p1.iframes = 0.0
 	p1.hp = p1.max_health()
-	p1.global_position = Vector2(110.0, 1235.0)
-	await _frames(5)
-	_check(p1.hp < p1.max_health(), "Der Ofen verbrennt (%d Leben)" % p1.hp)
+	p1.global_position = Vector2(BossArena.BOSS_WALL_X - 50.0, 1215.0)
+	p1.velocity = Vector2.ZERO
+	await _frames(4)
+	var maw_loss := p1.max_health() - p1.hp
+	_check(maw_loss >= 25.0 and p1.hp > 0.0, "Der Schredder frisst fett, aber toetet nicht sofort (%d Schaden)" % maw_loss)
+	_check(p1.velocity.x < -100.0, "Man wird zurueckgeschleudert (%d)" % p1.velocity.x)
 	p1.iframes = 9999.0
 	p1.global_position = Vector2(1500.0, 1225.0)
+
+	# Das Band wird mit der Zeit schneller, aber nur begrenzt.
+	boss._delay = 0.0
+	await _frames(60)
+	_check(arena.belt_speed > arena.base_speed, "Das Band zieht von selbst an (%.1f auf %.1f)" % [arena.base_speed, arena.belt_speed])
+	arena._creep = BossArena.BELT_CREEP_MAX
+	await _frames(5)
+	_check(arena.belt_speed <= arena.base_speed + BossArena.BELT_CREEP_MAX + 0.01, "Zuwachs ist begrenzt (%.1f)" % arena.belt_speed)
+	arena._creep = 0.0
 
 	# Hindernisse.
 	boss._delay = 0.0
@@ -108,7 +133,7 @@ func _run() -> void:
 	p1.hp = p1.max_health()
 	p1.global_position = Vector2(1700.0, 1225.0)
 	await _frames(5)
-	_check(p1.hp == p1.max_health(), "Frisch aus der Luke ist ein Hindernis kurz harmlos")
+	_check(p1.hp == p1.max_health(), "Frisch eingerollt ist ein Hindernis kurz harmlos")
 	fresh.queue_free()
 	p1.iframes = 0.0
 	var beam := BeltObstacle.new()
@@ -130,6 +155,48 @@ func _run() -> void:
 	_check(p1.hp < p1.max_health(), "Im Bereich des Traegers wird man getroffen")
 	beam.queue_free()
 	p1.iframes = 9999.0
+
+	# Lasten von der Decke: erst Warnung (harmlos), dann Fall und Einschlag, danach rollt sie als Kiste zum Boss.
+	p1.iframes = 0.0
+	p1.hp = p1.max_health()
+	p1.global_position = Vector2(1500.0, 1225.0)
+	p1.velocity = Vector2.ZERO
+	arena.base_speed = 0.0
+	arena._creep = 0.0
+	await _frames(3)
+	arena.spawn_drop(1500.0)
+	var drop: BeltObstacle = null
+	for node in get_tree().get_nodes_in_group("belt_obstacles"):
+		if node.kind == "drop":
+			drop = node
+	_check(drop != null and drop.is_falling(), "Eine Last erscheint ueber dem Band")
+	await _frames(30)
+	_check(p1.hp == p1.max_health() and drop.global_position.y < 1100.0, "Die Warnung ist harmlos")
+	var landed := false
+	for i in 200:
+		await get_tree().physics_frame
+		if not drop.is_falling():
+			landed = true
+			break
+	_check(landed and p1.hp < p1.max_health(), "Der Einschlag trifft hart (%d Schaden)" % (p1.max_health() - p1.hp))
+	var drop_x := drop.global_position.x
+	await _frames(90)
+	_check(drop.global_position.x > drop_x + 20.0, "Die gelandete Last rollt zum Boss")
+	drop.queue_free()
+	arena.base_speed = Boss.BELT_SPEEDS[0]
+	p1.iframes = 9999.0
+
+	# Verstaerkung: der Boss ruft Gegner.
+	for node in get_tree().get_nodes_in_group("enemies"):
+		if node is Enemy:
+			node.free()
+	boss._begin("adds")
+	await _frames(3)
+	_check(main.director.alive_count() >= 2, "Der Boss ruft Verstaerkung (%d Gegner)" % main.director.alive_count())
+	boss._end_attack()
+	for node in get_tree().get_nodes_in_group("enemies"):
+		if node is Enemy:
+			node.free()
 
 	# Machbarkeit: Kiste, Stapel und Saege lassen sich mit Anlauf und Sprung ueberwinden.
 	boss._attack = "idle"
@@ -191,13 +258,13 @@ func _run() -> void:
 	boss.hp = Boss.MAX_HP * 0.67
 	boss.take_damage(Boss.MAX_HP * 0.05, p1)
 	_check(boss.phase == 2, "Unter 66 Prozent beginnt Phase 2")
-	_check(arena.belt_speed == Boss.BELT_SPEEDS[1], "Das Band wird schneller")
+	_check(arena.base_speed == Boss.BELT_SPEEDS[1], "Das Band wird schneller")
 	_check(boss.is_invulnerable() and not boss.open, "Beim Phasenwechsel ist er kurz unverwundbar")
 	await get_tree().create_timer(Boss.TRANSITION_TIME + 0.3, true, false, true).timeout
 	boss.open = true
 	boss.hp = Boss.MAX_HP * 0.34
 	boss.take_damage(Boss.MAX_HP * 0.05, p1)
-	_check(boss.phase == 3 and arena.belt_speed == Boss.BELT_SPEEDS[2], "Unter 33 Prozent beginnt Phase 3")
+	_check(boss.phase == 3 and arena.base_speed == Boss.BELT_SPEEDS[2], "Unter 33 Prozent beginnt Phase 3")
 	await get_tree().create_timer(Boss.TRANSITION_TIME + 0.3, true, false, true).timeout
 
 	# Tod und Sieg.
@@ -227,20 +294,21 @@ func _dodge(player: Player, kind: String) -> void:
 	await _frames(10)
 	var obstacle := BeltObstacle.new()
 	obstacle.kind = kind
-	obstacle.speed = arena.belt_speed
+	obstacle.speed = arena.belt_speed + BossArena.OBSTACLE_BOOST
 	obstacle.players = main.players
-	obstacle.position.x = player.global_position.x + 700.0
+	obstacle.position.x = player.global_position.x - 700.0
 	arena.add_child(obstacle)
 	obstacle._age = 1.0
 	var hold := 0.0
 	var jumped := false
-	Input.action_press("p1_right")
+	# Das Hindernis kommt von links aufs Band, man laeuft gegen das Band und springt rechtzeitig.
+	Input.action_press("p1_left")
 	for i in 240:
 		await get_tree().physics_frame
 		if not is_instance_valid(obstacle):
 			break
-		var dx := obstacle.global_position.x - player.global_position.x
-		var closing := obstacle.speed + maxf(0.0, player.velocity.x)
+		var dx := player.global_position.x - obstacle.global_position.x
+		var closing := obstacle.speed + maxf(0.0, -player.velocity.x)
 		if not jumped and player.is_on_floor() and dx < closing * 0.42 + 10.0:
 			jumped = true
 			hold = 0.5
@@ -251,7 +319,7 @@ func _dodge(player: Player, kind: String) -> void:
 			Input.action_release("p1_jump")
 		if dx < -160.0:
 			break
-	Input.action_release("p1_right")
+	Input.action_release("p1_left")
 	Input.action_release("p1_jump")
 	_check(jumped and player.hp == player.max_health(), "%s ist mit Anlauf und Sprung machbar" % kind)
 	if is_instance_valid(obstacle):
