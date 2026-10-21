@@ -165,7 +165,12 @@ func _run() -> void:
 
 	# Auch spaeter im Lauf (4 Kisten, enge Karte) kommen immer genug Kisten zusammen.
 	var shortfalls := 0
+	var altar_shortfalls := 0
+	var ground: Array = main.stage_layout.ground
 	for trial in 30:
+		# Spieler stehen irgendwo auf der Karte, auch mitten drin: trotzdem muessen genug Kisten und Altaere entstehen.
+		p1.global_position = ground[randi() % ground.size()]
+		p2.global_position = ground[randi() % ground.size()]
 		main._clear_chests()
 		main._altar_kinds.clear()
 		main._large_chest_placed = false
@@ -174,7 +179,9 @@ func _run() -> void:
 		main._refresh_chests()
 		if _live().size() < 5:
 			shortfalls += 1
-	_check(shortfalls == 0, "Welle 7: immer vier Kisten und die grosse (zu wenig in %d von 30)" % shortfalls)
+		if _altars().size() < 2:
+			altar_shortfalls += 1
+	_check(shortfalls == 0 and altar_shortfalls == 0, "Welle 7, Spieler irgendwo: immer vier Kisten, die grosse und zwei Altaere (zu wenig: Kisten %d, Altaere %d von 30)" % [shortfalls, altar_shortfalls])
 	main.wave = 3
 
 	# Kartenwechsel: alte Kisten weg, neue Karte hat neue.

@@ -67,6 +67,8 @@ func _update_tips(delta: float) -> void:
 
 ## Farbiger Bildschirmrand-Blitz (z.B. rot bei Treffern).
 func flash(color: Color) -> void:
+	if SaveData.calm_effects():
+		return
 	_flash_color = color
 	_flash_time = 0.35
 

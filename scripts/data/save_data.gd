@@ -43,7 +43,7 @@ static func _defaults() -> Dictionary:
 		"chips": 0, "levels": {}, "classes": [], "weapons": [],
 		"stats": {"runs": 0, "best_wave": 0, "kills": 0, "boss_kills": 0, "best_time": 0, "endless_best": 0},
 		"fullscreen": false, "difficulty": 1,
-		"volume": {}, "shake": SHAKE_DEFAULT, "numbers": true, "rumble": true, "tips_on": true, "tips": [],
+		"volume": {}, "shake": SHAKE_DEFAULT, "numbers": true, "rumble": true, "tips_on": true, "tips": [], "autopause": true, "calm": false,
 		"archive": {"items": [], "weapons": [], "enemies": {}, "achievements": []},
 	}
 
@@ -169,6 +169,30 @@ static func numbers_enabled() -> bool:
 static func set_numbers(enabled: bool) -> void:
 	_ensure()
 	_data.numbers = enabled
+	save()
+
+
+## Ruhige Effekte: kein Randblitz, kein Zeitlupen-Stopp bei Treffern, weniger Funken (fuer empfindliche Augen und schwache Rechner).
+static func calm_effects() -> bool:
+	_ensure()
+	return bool(_data.get("calm", false))
+
+
+static func set_calm_effects(enabled: bool) -> void:
+	_ensure()
+	_data.calm = enabled
+	save()
+
+
+## Automatisch pausieren, wenn das Fenster den Fokus verliert oder ein Controller sich trennt.
+static func autopause_enabled() -> bool:
+	_ensure()
+	return bool(_data.get("autopause", true))
+
+
+static func set_autopause(enabled: bool) -> void:
+	_ensure()
+	_data.autopause = enabled
 	save()
 
 

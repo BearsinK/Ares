@@ -82,6 +82,18 @@ func _effects() -> void:
 	_check(fx._items.size() == 2, "Hinweistexte bleiben auch ohne Schadenszahlen")
 	fx.queue_free()
 
+	# Ruhige Effekte: weniger Funken, kein Randblitz, kein Zeitlupen-Stopp.
+	var fx2 := Fx.new()
+	add_child(fx2)
+	fx2.spark(Vector2.ZERO, Color.WHITE, 8)
+	var normal_sparks: int = fx2._items.size()
+	SaveData.set_calm_effects(true)
+	fx2.spark(Vector2.ZERO, Color.WHITE, 8)
+	var calm_sparks: int = fx2._items.size() - normal_sparks
+	_check(normal_sparks == 8 and calm_sparks == 4, "Ruhige Effekte halbieren die Funken (%d gegen %d)" % [normal_sparks, calm_sparks])
+	fx2.queue_free()
+	SaveData.set_calm_effects(false)
+
 	SaveData.set_volume_step("sfx", 0)
 	Sfx.apply_settings()
 	var before: int = Sfx._next
@@ -135,18 +147,16 @@ func _title_flow() -> void:
 	_check(SaveData.shake_level() == 0, "und weiter im Kreis: Aus")
 	await _tap("p1_down")
 	await _tap("p1_confirm")
+	_check(SaveData.calm_effects(), "Kreuz schaltet die Ruhigen Effekte ein")
+	await _tap("p1_down")
+	await _tap("p1_confirm")
 	_check(not SaveData.numbers_enabled(), "Kreuz schaltet Schadenszahlen aus")
 	await _tap("p1_down")
 	await _tap("p1_confirm")
 	_check(not SaveData.rumble_enabled(), "Kreuz schaltet Vibration aus")
 	_check(page.value_text("rumble") == "Aus" and page.value_text("master") == "70 %", "Werte erscheinen als Text")
-	await _tap("p1_up")
-	await _tap("p1_up")
-	await _tap("p1_up")
-	await _tap("p1_up")
-	await _tap("p1_up")
-	await _tap("p1_up")
-	await _tap("p1_up")
+	for i in 6:
+		await _tap("p1_up")
 	await _tap("p1_interact")
 	_check(title.state == title.State.MAIN, "Kreis schliesst die Optionen")
 	await _tap("p1_down")
@@ -185,8 +195,8 @@ func _hold() -> void:
 	# Schalter wechseln nur beim frischen Druck, Halten flackert nicht.
 	SaveData.reset()
 	page = OptionsPage.new()
-	page.cursor = 4
-	_check(String(OptionsPage.ROWS[4].id) == "numbers" and SaveData.numbers_enabled(), "Zeile 5 ist der Zahlen-Schalter (an)")
+	page.cursor = 5
+	_check(String(OptionsPage.ROWS[5].id) == "numbers" and SaveData.numbers_enabled(), "Zeile 6 ist der Zahlen-Schalter (an)")
 	await get_tree().process_frame
 	Input.action_press("p1_right")
 	for i in 90:

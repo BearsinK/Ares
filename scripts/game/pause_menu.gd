@@ -19,6 +19,8 @@ var cursor := 0
 var victory := false
 
 var options := OptionsPage.new()
+## Grund der Pause (z.B. Controller getrennt), wird unter dem Titel gezeigt.
+var note := ""
 
 var _pending := ""
 var _leaving := false
@@ -55,6 +57,7 @@ func open_result(new_victory: bool) -> void:
 
 func close() -> void:
 	options.flush()
+	note = ""
 	mode = Mode.CLOSED
 	visible = false
 	get_tree().paused = false
@@ -169,6 +172,8 @@ func _draw_menu() -> void:
 		_draw_result(view)
 	else:
 		UiKit.text(_canvas, Vector2(0, 220), "PAUSE", 80, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		if note != "":
+			UiKit.text(_canvas, Vector2(0, 272), note, 22, Color(1.0, 0.65, 0.45), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var top := 330.0 if mode == Mode.PAUSE else view.y - 250.0
 	if page == Page.CONFIRM:
 		var question := "Lauf neu starten?" if _pending == "restart" else "Zurück zum Hauptmenü? Die Chips bleiben."

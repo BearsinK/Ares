@@ -8,9 +8,11 @@ const ROWS: Array[Dictionary] = [
 	{"id": "music", "label": "Musik", "kind": "volume"},
 	{"id": "sfx", "label": "Effekte", "kind": "volume"},
 	{"id": "shake", "label": "Bildschirmwackeln", "kind": "choice"},
+	{"id": "calm", "label": "Ruhige Effekte", "kind": "toggle"},
 	{"id": "numbers", "label": "Schadenszahlen", "kind": "toggle"},
 	{"id": "rumble", "label": "Vibration", "kind": "toggle"},
 	{"id": "tips", "label": "Hinweise", "kind": "toggle"},
+	{"id": "autopause", "label": "Auto-Pause", "kind": "toggle"},
 	{"id": "fullscreen", "label": "Vollbild", "kind": "toggle"},
 	{"id": "back", "label": "Zurück", "kind": "back"},
 ]
@@ -79,6 +81,9 @@ func change(id: String, direction: int) -> void:
 			var count := SaveData.SHAKE_SCALES.size()
 			SaveData.set_shake_level((SaveData.shake_level() + direction + count) % count)
 			Sfx.play("switch")
+		"calm":
+			SaveData.set_calm_effects(not SaveData.calm_effects())
+			Sfx.play("switch")
 		"numbers":
 			SaveData.set_numbers(not SaveData.numbers_enabled())
 			Sfx.play("switch")
@@ -89,6 +94,9 @@ func change(id: String, direction: int) -> void:
 			InputSetup.rumble(2, 0.4, 0.6, 0.25)
 		"tips":
 			SaveData.set_tips(not SaveData.tips_enabled())
+			Sfx.play("switch")
+		"autopause":
+			SaveData.set_autopause(not SaveData.autopause_enabled())
 			Sfx.play("switch")
 		"fullscreen":
 			InputSetup.toggle_fullscreen()
@@ -101,12 +109,16 @@ func value_text(id: String) -> String:
 			return "%d %%" % (SaveData.volume_step(id) * 10)
 		"shake":
 			return SHAKE_NAMES[SaveData.shake_level()]
+		"calm":
+			return "An" if SaveData.calm_effects() else "Aus"
 		"numbers":
 			return "An" if SaveData.numbers_enabled() else "Aus"
 		"rumble":
 			return "An" if SaveData.rumble_enabled() else "Aus"
 		"tips":
 			return "An" if SaveData.tips_enabled() else "Aus"
+		"autopause":
+			return "An" if SaveData.autopause_enabled() else "Aus"
 		"fullscreen":
 			return "An" if InputSetup.is_fullscreen() else "Aus"
 	return ""
@@ -114,7 +126,7 @@ func value_text(id: String) -> String:
 
 func draw(c: CanvasItem, view: Vector2) -> void:
 	c.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.78))
-	var row_height := 62.0
+	var row_height := 56.0
 	var panel := Rect2(Vector2(view.x * 0.5 - 400.0, 170.0), Vector2(800.0, ROWS.size() * row_height + 30.0))
 	UiKit.text(c, Vector2(0, 130), "OPTIONEN", 52, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	Art.panel(c, panel, Color(0.09, 0.11, 0.18), 18.0, Color(1, 1, 1, 0.28))
@@ -126,9 +138,9 @@ func draw(c: CanvasItem, view: Vector2) -> void:
 			Art.rrect(c, rect, Color(0.2, 0.25, 0.38), 12.0)
 			Art.rrect_line(c, rect, Color(0.4, 0.75, 1.0), 12.0, 2.0)
 		if row.kind == "back":
-			UiKit.text(c, rect.position + Vector2(0, 36), String(row.label), 24, Color.WHITE if selected else Color(0.8, 0.83, 0.93), HORIZONTAL_ALIGNMENT_CENTER, rect.size.x)
+			UiKit.text(c, rect.position + Vector2(0, rect.size.y * 0.5 + 9.0), String(row.label), 24, Color.WHITE if selected else Color(0.8, 0.83, 0.93), HORIZONTAL_ALIGNMENT_CENTER, rect.size.x)
 			continue
-		UiKit.text(c, rect.position + Vector2(22, 36), String(row.label), 24, Color.WHITE if selected else Color(0.8, 0.83, 0.93))
+		UiKit.text(c, rect.position + Vector2(22, rect.size.y * 0.5 + 9.0), String(row.label), 24, Color.WHITE if selected else Color(0.8, 0.83, 0.93))
 		var right := rect.end.x - 22.0
 		var value := value_text(String(row.id))
 		if row.kind == "volume":
@@ -138,9 +150,9 @@ func draw(c: CanvasItem, view: Vector2) -> void:
 				var height := 10.0 + k * 2.2
 				var cell := Rect2(Vector2(rect.end.x - 330.0 + k * 20.0, rect.position.y + rect.size.y * 0.5 + 14.0 - height), Vector2(14.0, height))
 				c.draw_rect(cell, Color(0.5, 0.9, 1.0) if k < steps else Color(1, 1, 1, 0.14))
-			UiKit.text(c, Vector2(rect.end.x - 120.0, rect.position.y + 36), value, 22, Color(1.0, 0.9, 0.5), HORIZONTAL_ALIGNMENT_RIGHT, 98.0)
+			UiKit.text(c, Vector2(rect.end.x - 120.0, rect.position.y + rect.size.y * 0.5 + 8.0), value, 22, Color(1.0, 0.9, 0.5), HORIZONTAL_ALIGNMENT_RIGHT, 98.0)
 		else:
 			if selected:
 				value = "<  %s  >" % value
-			UiKit.text(c, Vector2(right - 260.0, rect.position.y + 36), value, 24, Color(1.0, 0.9, 0.5), HORIZONTAL_ALIGNMENT_RIGHT, 260.0)
+			UiKit.text(c, Vector2(right - 260.0, rect.position.y + rect.size.y * 0.5 + 9.0), value, 24, Color(1.0, 0.9, 0.5), HORIZONTAL_ALIGNMENT_RIGHT, 260.0)
 	UiKit.text(c, Vector2(0, view.y - 40.0), "Hoch/Runter wählen, Links/Rechts ändern, Kreis zurück", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)

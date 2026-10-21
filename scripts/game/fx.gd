@@ -37,6 +37,8 @@ func number_text(pos: Vector2, text: String, color: Color, size := 22, life := 1
 
 
 func spark(pos: Vector2, color: Color, count := 6, speed := 260.0) -> void:
+	if SaveData.calm_effects():
+		count = maxi(1, count / 2)
 	for i in count:
 		if _items.size() >= MAX_ITEMS:
 			return

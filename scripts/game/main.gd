@@ -134,6 +134,7 @@ var wave_intro := 0.0
 ## Gewaehlte Team-Perks (id -> Anzahl) und das Banner nach der Wahl.
 var perks_taken := {}
 var _archive_timer := 0.0
+var _pads_at_start: Array = []
 var _heartbeat := 0.0
 ## Zaehler fuer Erfolge, gelten fuer den ganzen Lauf.
 var _run_chests := 0
@@ -198,6 +199,7 @@ func _ready() -> void:
 	pause_menu.main = self
 	add_child(pause_menu)
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
+	_pads_at_start = Input.get_connected_joypads()
 	_apply_sandbox()
 	_begin_wave_intro()
 	_refresh_chests()
@@ -340,7 +342,20 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _can_pause() -> bool:
-	return not (game_over or phase == Phase.VICTORY or phase == Phase.SHOP or levelup_menu.is_open or shop_menu.is_open or pause_menu.is_open())
+	return not (game_over or phase == Phase.VICTORY or phase == Phase.SHOP or levelup_menu.is_open or shop_menu.is_open or contract_menu.is_open or pause_menu.is_open())
+
+
+## Fenster im Hintergrund: Das Spiel pausiert von selbst (abschaltbar in den Optionen).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and SaveData.autopause_enabled():
+		_auto_pause("Fenster im Hintergrund")
+
+
+func _auto_pause(reason: String) -> void:
+	if pause_menu == null or not _can_pause():
+		return
+	pause_menu.note = reason
+	pause_menu.open_pause()
 
 
 func _grant_test_loadout() -> void:
@@ -701,6 +716,13 @@ func _cycle_weapon(index: int) -> void:
 
 func _on_joy_connection_changed(device: int, connected: bool) -> void:
 	print("Controller %d %s: %s" % [device, "verbunden" if connected else "getrennt", Input.get_joy_name(device)])
+	if connected:
+		if pause_menu != null and pause_menu.is_open() and pause_menu.note.begins_with("Controller"):
+			pause_menu.note = "Controller von Spieler %d wieder verbunden" % (device + 1)
+		return
+	# Ein Controller, der beim Start da war, ist weg: Pause, damit niemand unbemerkt ausfaellt.
+	if device < 2 and _pads_at_start.has(device) and SaveData.autopause_enabled():
+		_auto_pause("Controller von Spieler %d getrennt. Neu verbinden oder mit der Tastatur weiterspielen" % (device + 1))
 
 
 ## Gewaehlte Klassen bleiben ueber Neustarts erhalten (F4 / F5 wechseln sie).
@@ -863,7 +885,7 @@ func _spawn_players() -> void:
 
 ## Kurzer Stillstand bei harten Treffern (laeuft in Echtzeit, nicht in Spielzeit).
 func hitstop(duration: float) -> void:
-	if Engine.time_scale < 1.0 or game_over:
+	if Engine.time_scale < 1.0 or game_over or SaveData.calm_effects():
 		return
 	Engine.time_scale = 0.08
 	get_tree().create_timer(duration, true, false, true).timeout.connect(func() -> void: Engine.time_scale = 1.0)
@@ -1055,35 +1077,37 @@ func _refresh_chests() -> void:
 ## Die grosse Kiste kommt an den entlegensten, hoechsten Punkt der Karte (Belohnung fuers Erkunden).
 func _chest_spot(taken: Array[Vector2], large: bool, spacings: Array) -> Vector2:
 	var ground: Array = stage_layout.ground
-	# Erst mit grossem Abstand suchen, wird es eng, mit dem naechsten kleineren.
-	for spacing in spacings:
-		var best := Vector2.INF
-		var best_score := -INF
-		for k in 40:
-			var point: Vector2 = ground[randi() % ground.size()]
-			var ok := true
-			for other in taken:
-				if other.distance_to(point) < spacing:
-					ok = false
-			for player in players:
-				if player.global_position.distance_to(point) < 600.0:
-					ok = false
-			for start: Vector2 in stage_layout.starts:
-				if start.distance_to(point) < 500.0:
-					ok = false
-			if not ok:
-				continue
-			var score := randf() * 300.0
-			if large:
-				var start_distance := 0.0
+	# Erst mit grossen Abstaenden suchen. Wird es eng (enge Karte, Spieler mitten drin), erst kleinere Abstaende
+	# zueinander, dann zuletzt auch dichter an den Spielern: lieber eine Kiste nah als gar keine.
+	for player_gap in [600.0, 350.0, 150.0]:
+		for spacing in spacings:
+			var best := Vector2.INF
+			var best_score := -INF
+			for k in 50:
+				var point: Vector2 = ground[randi() % ground.size()]
+				var ok := true
+				for other in taken:
+					if other.distance_to(point) < spacing:
+						ok = false
+				for player in players:
+					if player.global_position.distance_to(point) < player_gap:
+						ok = false
 				for start: Vector2 in stage_layout.starts:
-					start_distance = maxf(start_distance, start.distance_to(point))
-				score += start_distance + (arena_size.y - point.y) * 0.6
-			if score > best_score:
-				best_score = score
-				best = point
-		if best != Vector2.INF:
-			return best
+					if start.distance_to(point) < 500.0:
+						ok = false
+				if not ok:
+					continue
+				var score := randf() * 300.0
+				if large:
+					var start_distance := 0.0
+					for start: Vector2 in stage_layout.starts:
+						start_distance = maxf(start_distance, start.distance_to(point))
+					score += start_distance + (arena_size.y - point.y) * 0.6
+				if score > best_score:
+					best_score = score
+					best = point
+			if best != Vector2.INF:
+				return best
 	return Vector2.INF
 
 
