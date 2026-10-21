@@ -15,6 +15,7 @@ const DATA := {
 	"aegis": {"title": "AEGIS", "text": "Sein Frontschild fängt Schüsse ab. Trefft ihn von hinten, von oben oder mit Sprengungen."},
 	"nest": {"title": "NEST", "text": "Setzt laufend Buzzer in die Welt. Zerstört das Nest, dann stürzen seine Buzzer mit ab."},
 	"reload": {"title": "MAGAZIN LEER", "text": "Die Waffe lädt von selbst nach. Mit Kreuz / T / B lädst du vorher nach, Feuer unterbricht ein angefangenes Nachladen."},
+	"combo": {"title": "ELEMENT-KOMBO", "text": "Zwei Elemente auf einem Gegner lösen eine Kombo aus. Vom Partner gesetzt, wirkt sie viel stärker."},
 	"elite": {"title": "ELITE", "text": "Größer, zäher und mit eigener Fähigkeit. Dafür dreifache Beute und oft eine Reparatur."},
 }
 

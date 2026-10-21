@@ -291,6 +291,7 @@ func _effect_burst(color: Color) -> void:
 
 func _combo(combo_name: String, coop: bool) -> void:
 	Achievements.combos_seen[combo_name] = true
+	Tips.request("combo")
 	if Fx.instance and is_instance_valid(target):
 		Fx.instance.combo(target.global_position, combo_name, coop)
 

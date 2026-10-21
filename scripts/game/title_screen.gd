@@ -522,3 +522,9 @@ func _draw_player_select(i: int, panel: Rect2) -> void:
 	UiKit.stat_bar(_ui, panel.position + Vector2(40, 579), 300.0, "Schwierigkeit", float(info.difficulty) / 5.0, Color(0.9, 0.5, 0.9))
 	UiKit.text(_ui, panel.position + Vector2(370, 500), "Fähigkeit (Quadrat):", 16, Color(1.0, 0.85, 0.4))
 	UiKit.text(_ui, panel.position + Vector2(370, 524), info.ability, 16, Color(0.88, 0.9, 0.98), HORIZONTAL_ALIGNMENT_LEFT, panel.size.x - 400.0, true)
+	# Die fünf Klassenwaffen (die erste ist die Startwaffe, die anderen gibt es im Shop).
+	var weapon_names: Array[String] = []
+	for weapon_id in Weapons.CLASS_SETS[class_id]:
+		weapon_names.append(String(Weapons.get_weapon(weapon_id).name))
+	UiKit.text(_ui, panel.position + Vector2(370, 582), "Waffen (Start: %s):" % weapon_names[0], 16, Color(1.0, 0.85, 0.4))
+	UiKit.text(_ui, panel.position + Vector2(370, 604), ", ".join(weapon_names.slice(1)), 14, Color(0.88, 0.9, 0.98), HORIZONTAL_ALIGNMENT_LEFT, panel.size.x - 380.0, true)

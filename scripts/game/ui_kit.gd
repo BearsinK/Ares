@@ -7,25 +7,25 @@ const CLASS_ORDER: Array[String] = ["roomba", "hexapod", "vending", "printer"]
 const CLASS_INFO := {
 	"roomba": {
 		"tags": ["Vacuum", "Support", "Agile"],
-		"blurb": "Flache Scheibe mit Roboterarm. Schwacher Dauerbeschuss, großer Sammelradius, saugt Beute und Gegner heran.",
+		"blurb": "Flache Scheibe mit Roboterarm. Kämpft nah und schnell mit Besen, Scheibe, Sog und Blitz, großer Sammelradius, saugt Beute und Gegner heran.",
 		"ability": "Vortex: zieht Gegner vor dich, betäubt sie und sprengt sie weg",
 		"damage": 3, "difficulty": 2,
 	},
 	"hexapod": {
 		"tags": ["Gunner", "Climber", "Turret"],
-		"blurb": "Klettert Wände und Decken wie eine Spinne und schießt schnell, geht dabei aber nur halb so schnell. Beim Schießen steckt er 20 % weniger ein.",
+		"blurb": "Klettert Wände und Decken wie eine Spinne, schießt präzise und legt Minen, geht dabei aber nur halb so schnell. Beim Schießen steckt er 20 % weniger ein.",
 		"ability": "Overwatch: kurz doppelte Feuerrate, auch voll beweglich",
 		"damage": 4, "difficulty": 4,
 	},
 	"vending": {
 		"tags": ["Tank", "AoE", "Heavy"],
-		"blurb": "Groß und robust. Wirft geschüttelte Dosen, die beim Aufprall explodieren.",
+		"blurb": "Groß und robust. Wirft geschüttelte Dosen, brennt Gegner nieder, schießt Münzen und stellt Geschütztürme auf.",
 		"ability": "Steamroller: rollt durch Gegner, macht Schaden und nimmt weniger",
 		"damage": 4, "difficulty": 2,
 	},
 	"printer": {
 		"tags": ["Swarm", "Utility", "Flex"],
-		"blurb": "Läuft auf gedruckten Beinen, druckt Drohnen als zusätzliche Waffen.",
+		"blurb": "Läuft auf gedruckten Beinen. Drohnen schießen für ihn, dazu Sprengdrohnen, Tonerwolken, Markierungen und Betäubung.",
 		"ability": "Drone Drop: zwei explosive Drohnen jagen Gegner",
 		"damage": 2, "difficulty": 3,
 	},
