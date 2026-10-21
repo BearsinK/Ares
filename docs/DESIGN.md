@@ -324,4 +324,5 @@ Grundlage: Klassen sollen sich nicht nur über Werte, sondern über die Art zu k
 - Elemente sichtbar: Spur am Geschoss, Treffer-Teilchen, Zustand am Gegner mit kurzer Meldung. Sechs Kombos, jedes Paar hat genau eine, jede mit Name, Ring, Teilchen und Klang, bei Koop mit goldener Zeile
 - Boden: Spieler und Bodengegner stellen sich auf Rampen parallel zur Fläche, Flieger bleiben frei. Nur die Zeichnung neigt sich, die Kollisionsform bleibt gleich (Physik unverändert)
 - Statuswirkungen aus Waffen sind begrenzt: Betäubung hat danach eine Immunitätszeit, Bosse nehmen nur die Markierung an, gefrorene Ziele sind spröde, damit Kontrolle nie zur Dauerlähmung wird
+- Balance per Messung: tests/weapon_bench.tscn misst den Schaden pro Sekunde je Waffe gegen ein Ziel und acht Ziele (Echtzeit, ohne Klassenfaktor). Erste Runde: Sweeper 22 Schaden, Sixpack-Explosion 20, Toner 14 pro Sekunde in der Wolke, Paperjam 5, Mine 60 Schaden bei Radius 120, Dispenser und Mine mit eigener Wurfkraft (Schlüssel lift). Streuung ist hoch, Werte nur zum Vergleichen
 

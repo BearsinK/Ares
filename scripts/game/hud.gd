@@ -355,9 +355,10 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 	var count_color := Color(1.0, 0.8, 0.3) if player.is_reloading() else (Color(1.0, 0.45, 0.35) if player.ammo_of(player.weapon_index) * 4 <= player.ammo_max_of(player.weapon_index) else Color(0.85, 0.92, 1.0))
 	var count_text := "Nachladen" if player.is_reloading() else "%d / %d" % [player.ammo_of(player.weapon_index), player.ammo_max_of(player.weapon_index)]
 	var held := Weapons.get_weapon(player.current_weapon_id())
-	if held.kind == "deploy" and not player.is_reloading():
-		count_text = "%d aktiv   %s" % [player.deployed_count(String(held.entity)), count_text]
 	_text(origin + Vector2(0, 85), count_text, 16, count_color, HORIZONTAL_ALIGNMENT_RIGHT, PANEL_WIDTH - 10.0)
+	# Minen und Tuerme in der Welt: eigene Zeile rechts unter den Chips, damit nichts ueberlappt.
+	if held.kind == "deploy" and not player.downed:
+		_text(origin + Vector2(0, 110), "%d aktiv" % player.deployed_count(String(held.entity)), 14, Color(0.6, 1.0, 0.78), HORIZONTAL_ALIGNMENT_RIGHT, PANEL_WIDTH - 10.0)
 
 	# Firmware.
 	var fw_parts: Array[String] = []

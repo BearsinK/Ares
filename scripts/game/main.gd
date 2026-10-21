@@ -1858,7 +1858,7 @@ func _fire_deploy(player: Player, weapon: Dictionary, origin: Vector2, direction
 		thing.owner_player = player
 		thing.kind = entity
 		thing.position = origin
-		thing.velocity = direction.rotated(_fan_offset(i, count, Perks.FAN_ANGLE * 2.0)) * float(weapon.get("throw", 300.0)) * sqrt(1.0 + float(player.mods.range)) + Vector2(0.0, -140.0)
+		thing.velocity = direction.rotated(_fan_offset(i, count, Perks.FAN_ANGLE * 2.0)) * float(weapon.get("throw", 300.0)) * sqrt(1.0 + float(player.mods.range)) + Vector2(0.0, -float(weapon.get("lift", 140.0)))
 		thing.life = float(weapon.life)
 		thing.color = color
 		thing.element = element

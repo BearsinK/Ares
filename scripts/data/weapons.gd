@@ -53,7 +53,7 @@ const DATA := {
 		"mag": 16, "reload": 1.3,
 		"name": "Sweeper", "kind": "sweep", "color": Color(0.55, 1.0, 0.75),
 		"tag": "Schwung im Nahbereich, räumt Schüsse ab",
-		"fire_rate": 3.0, "damage": 26.0, "range": 175.0, "arc": 1.9, "push": 3.4,
+		"fire_rate": 3.0, "damage": 22.0, "range": 175.0, "arc": 1.9, "push": 3.4,
 		"recoil": 0.0, "shake": 2.0, "sound": "sweep", "barrel": 10.0,
 	},
 	"disc": {
@@ -90,7 +90,7 @@ const DATA := {
 		"mag": 5, "reload": 2.4,
 		"name": "Proxy Mine", "kind": "deploy", "entity": "mine", "color": Color(1.0, 0.55, 0.25),
 		"tag": "Legt Minen, die bei Gegnern explodieren",
-		"fire_rate": 1.6, "damage": 70.0, "radius": 120.0, "trigger": 95.0, "arm": 0.5, "life": 25.0, "max_active": 4, "throw": 340.0,
+		"fire_rate": 1.6, "damage": 60.0, "radius": 120.0, "trigger": 95.0, "arm": 0.5, "life": 25.0, "max_active": 4, "throw": 560.0, "lift": 260.0,
 		"recoil": 0.0, "shake": 1.0, "sound": "mine_place", "barrel": 18.0, "dps": 60,
 	},
 	"silk": {
@@ -116,7 +116,7 @@ const DATA := {
 		"tag": "Sechs Dosen im Bogen, jede explodiert",
 		"fire_rate": 0.8, "damage": 6.0, "pellets": 6, "spread": 0.3,
 		"speed": 640.0, "lifetime": 3.0, "pierce": 0, "size": 6.0, "push": 0.6, "gravity": 1000.0,
-		"explosion_radius": 58.0, "explosion_damage": 15.0,
+		"explosion_radius": 58.0, "explosion_damage": 20.0,
 		"recoil": 140.0, "shake": 3.5, "sound": "volley", "barrel": 22.0,
 	},
 	"coinshot": {
@@ -131,7 +131,7 @@ const DATA := {
 		"mag": 3, "reload": 3.0,
 		"name": "Dispenser", "kind": "deploy", "entity": "sentry", "color": Color(0.6, 1.0, 0.75),
 		"tag": "Stellt einen Geschützturm auf",
-		"fire_rate": 0.8, "damage": 12.0, "life": 14.0, "max_active": 2, "range": 700.0, "rate": 2.4, "throw": 260.0,
+		"fire_rate": 0.8, "damage": 12.0, "life": 14.0, "max_active": 2, "range": 700.0, "rate": 2.4, "throw": 420.0, "lift": 200.0,
 		"recoil": 0.0, "shake": 1.0, "sound": "mine_place", "barrel": 18.0, "dps": 58,
 	},
 	"boomdrone": {
@@ -149,7 +149,7 @@ const DATA := {
 		"tag": "Tonerwolke, verletzt und verlangsamt",
 		"fire_rate": 0.9, "damage": 8.0, "pellets": 1, "spread": 0.02,
 		"speed": 620.0, "lifetime": 3.0, "pierce": 0, "size": 8.0, "push": 0.5, "gravity": 900.0,
-		"zone": {"radius": 115.0, "time": 4.5, "dps": 9.0, "status": "inked"}, "dps": 12,
+		"zone": {"radius": 115.0, "time": 4.5, "dps": 14.0, "status": "inked"}, "dps": 18,
 		"recoil": 0.0, "shake": 2.0, "sound": "toner_pop", "barrel": 18.0,
 	},
 	"label": {
@@ -165,7 +165,7 @@ const DATA := {
 		"mag": 5, "reload": 1.8,
 		"name": "Paper Jam", "kind": "projectile", "style": "paper", "color": Color(0.96, 0.96, 0.9),
 		"tag": "Papierwelle, betäubt kurz",
-		"fire_rate": 1.1, "damage": 4.0, "pellets": 7, "spread": 0.5,
+		"fire_rate": 1.1, "damage": 5.0, "pellets": 7, "spread": 0.5,
 		"speed": 760.0, "lifetime": 0.4, "pierce": 2, "size": 5.0, "push": 1.2,
 		"status": "stun", "status_time": 0.7,
 		"recoil": 0.0, "shake": 2.5, "sound": "paper_burst", "barrel": 18.0,
