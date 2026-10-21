@@ -41,7 +41,7 @@ static func _ensure() -> void:
 static func _defaults() -> Dictionary:
 	return {
 		"chips": 0, "levels": {}, "classes": [], "weapons": [],
-		"stats": {"runs": 0, "best_wave": 0, "kills": 0, "boss_kills": 0, "best_time": 0},
+		"stats": {"runs": 0, "best_wave": 0, "kills": 0, "boss_kills": 0, "best_time": 0, "endless_best": 0},
 		"fullscreen": false, "difficulty": 1,
 		"volume": {}, "shake": SHAKE_DEFAULT, "numbers": true, "rumble": true, "tips_on": true, "tips": [],
 		"archive": {"items": [], "weapons": [], "enemies": {}, "achievements": []},
@@ -279,6 +279,16 @@ static func set_fullscreen(enabled: bool) -> void:
 	_ensure()
 	_data.fullscreen = enabled
 	save()
+
+
+## Verbucht das Ende eines Endlos-Laufs: Rekord und Chips fuer jede Welle nach dem Boss. Gibt die Chips zurueck.
+static func record_endless(waves_cleared: int, boss_wave: int) -> int:
+	_ensure()
+	var s: Dictionary = _data.stats
+	s.endless_best = maxi(int(s.get("endless_best", 0)), waves_cleared)
+	var earned := maxi(0, waves_cleared - boss_wave) * Meta.ENDLESS_CHIPS_PER_WAVE
+	add_chips(earned)
+	return earned
 
 
 ## Verbucht einen Lauf und gibt die erhaltenen Chips zurueck.

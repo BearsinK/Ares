@@ -33,6 +33,7 @@ const DUMMY_RESPAWN_TIME := 4.0
 const RESULT_DELAY := 1.4
 const CLEAR_DELAY := 3.6
 ## Einstieg in eine Welle: Titel und Countdown, die Gegner kommen erst danach.
+const ENDLESS_WAVES := 100000
 const WAVE_INTRO := 3.2
 const HEALTH_DROP_CHANCE := 0.07
 const HEALTH_DROP_HEAL := 0.25
@@ -52,6 +53,11 @@ var wave_duration := 120.0
 var max_waves := 10
 ## Nach der letzten Welle folgt der Endboss. Ohne Boss endet der Lauf mit dem Sieg.
 var boss_enabled := true
+## Endlos: nach dem Sieg ueber den Smelter weiterspielen, Wellen und Waechter laufen im Kreis weiter, bis das Team faellt.
+var endless := false
+var _endless_pending := false
+var _endless_recorded := false
+var _boss_wave := 10
 ## Aufwind im Schacht (Tests schalten ihn ab, wenn sie Wandmechanik dort pruefen).
 var shaft_lift := true
 ## Sandbox-Lauf: keine Chips, Einstellung aus dem Titelbildschirm.
@@ -419,7 +425,7 @@ func _update_guardian() -> void:
 	if _guardian_spawned or not is_guardian_wave() or director.wave_progress < 0.35:
 		return
 	_guardian_spawned = true
-	guardian = director.spawn(String(EnemyTypes.GUARDIANS.get(wave, "brute")), null, true, "", true)
+	guardian = director.spawn(EnemyTypes.guardian_for(wave), null, true, "", true)
 	guardian_banner_time = 3.4
 	camera.add_shake(9.0)
 	Sfx.play("guardian", 0.0)
@@ -463,8 +469,12 @@ func _end_wave() -> void:
 	director.enabled = false
 	Sfx.play("fanfare", 0.0)
 	wave_kills = kills - _wave_kills_start
-	if wave >= 5:
+	if wave >= 5 and not endless:
 		_unlock("wave_5")
+	if endless and wave >= 15:
+		_unlock("endless_15")
+	if endless and wave >= 20:
+		_unlock("endless_20")
 	if wave >= 2 and not _hit_this_wave:
 		_unlock("no_hit")
 	if contract_bonus > 0.0:
@@ -507,6 +517,9 @@ func _end_wave() -> void:
 
 
 func _open_shop() -> void:
+	if _endless_pending:
+		_endless_pending = false
+		_leave_boss_arena()
 	if wave >= max_waves and not boss_enabled:
 		phase = Phase.VICTORY
 		_game_over_time = 0.0
@@ -603,9 +616,18 @@ func _record_run(victory: bool) -> void:
 	run_chips = SaveData.record_run(maxi(cleared, 0), kills, level, int(director.time), victory and boss != null and boss.dying)
 
 
+## Endlos-Lauf zu Ende: Rekord und Chips fuer die Wellen nach dem Boss, einmal.
+func _record_endless() -> void:
+	if not endless or _endless_recorded or sandbox:
+		return
+	_endless_recorded = true
+	run_chips += SaveData.record_endless(wave - 1, _boss_wave)
+
+
 ## Wird beim Verlassen per Pausemenue aufgerufen, damit auch abgebrochene Laeufe zaehlen.
 func abandon_run() -> void:
 	_record_run(false)
+	_record_endless()
 
 
 func _on_boss_died() -> void:
@@ -620,6 +642,38 @@ func _on_boss_died() -> void:
 	for player in players:
 		if player.downed:
 			player.revive(0.5)
+
+
+## Endlos: Nach dem Sieg ueber den Smelter geht es weiter. Hinter den Toren wird die Boss-Halle abgebaut,
+## nach dem Shop kommt Welle 11 auf der naechsten Karte. Die Schwierigkeit waechst weiter.
+func continue_endless() -> void:
+	if endless or sandbox or phase != Phase.VICTORY:
+		return
+	endless = true
+	_boss_wave = max_waves
+	max_waves = ENDLESS_WAVES
+	boss_enabled = false
+	_endless_pending = true
+	game_over = false
+	phase = Phase.CLEARING
+	_clear_time = CLEAR_DELAY * 0.25
+	for player in players:
+		if player.downed:
+			player.revive(0.6)
+		else:
+			player.hp = minf(player.max_health(), player.hp + player.max_health() * 0.5)
+	Sfx.play("fanfare", 0.0)
+
+
+## Baut die Boss-Halle ab und die Karte fuer die Endlos-Wellen auf (laeuft hinter den geschlossenen Toren).
+func _leave_boss_arena() -> void:
+	if boss_arena != null and is_instance_valid(boss_arena):
+		boss_arena.queue_free()
+	boss_arena = null
+	boss = null
+	camera.bias = Vector2.ZERO
+	camera.max_zoom = 1.3
+	_change_stage()
 
 
 func _apply_modifier(forced := "") -> void:
@@ -844,6 +898,7 @@ func _on_player_down(_player: Player) -> void:
 	if gates != null:
 		gates.reset()
 	_record_run(false)
+	_record_endless()
 	Sfx.play("kill")
 
 

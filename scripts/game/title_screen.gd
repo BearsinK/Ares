@@ -428,7 +428,7 @@ func _draw_workshop(view: Vector2) -> void:
 	_ui.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.72))
 	UiKit.text(_ui, Vector2(0, 80), "GARAGE", 52, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var stats := SaveData.stats()
-	UiKit.text(_ui, Vector2(0, 112), "Läufe %d    Beste Welle %d    Boss besiegt %d" % [int(stats.runs), int(stats.best_wave), int(stats.boss_kills)], 17, Color(0.7, 0.74, 0.88), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(0, 112), "Läufe %d    Beste Welle %d    Boss besiegt %d%s" % [int(stats.runs), int(stats.best_wave), int(stats.boss_kills), ("    Endlos-Rekord %d" % int(stats.endless_best)) if int(stats.get("endless_best", 0)) > 0 else ""], 17, Color(0.7, 0.74, 0.88), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var chips_rect := Rect2(Vector2(view.x * 0.5 - 130.0, 128.0), Vector2(260, 44))
 	Art.rrect(_ui, chips_rect, Color(0.08, 0.14, 0.2), 14.0)
 	Art.rrect_line(_ui, chips_rect, Color(0.5, 0.9, 1.0, 0.7), 14.0, 2.0)

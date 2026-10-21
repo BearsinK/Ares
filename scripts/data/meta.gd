@@ -46,6 +46,8 @@ static func difficulty_data() -> Dictionary:
 
 
 # Freischaltungen: Klassen und Waffen, die im Shop erscheinen duerfen.
+## Chips pro geschaffter Welle im Endlosmodus nach dem Boss (vor dem Schwierigkeitsfaktor).
+const ENDLESS_CHIPS_PER_WAVE := 12
 const CLASS_UNLOCKS := {"vending": 50, "printer": 80}
 const WEAPON_UNLOCKS := {"shotgun": 30, "rocket": 40, "beam": 40, "sniper": 60}
 

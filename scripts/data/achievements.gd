@@ -22,6 +22,8 @@ const DATA := {
 	"boss": {"name": "Ofen aus", "text": "Besiege den Smelter.", "chips": 100},
 	"speedrun": {"name": "Schnellschmelze", "text": "Besiege den Smelter in unter 15 Minuten.", "chips": 60},
 	"boss_hard": {"name": "Hardcore-Held", "text": "Besiege den Smelter auf Hardcore.", "chips": 200},
+	"endless_15": {"name": "Immer weiter", "text": "Schaffe im Endlosmodus Welle 15.", "chips": 100},
+	"endless_20": {"name": "Unaufhaltsam", "text": "Schaffe im Endlosmodus Welle 20.", "chips": 250},
 }
 
 const SPEEDRUN_SECONDS := 900.0

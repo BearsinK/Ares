@@ -91,6 +91,12 @@ const DATA := {
 const GUARDIANS := {3: "brute", 6: "charger", 9: "mortar"}
 
 
+## Waechtertyp einer Welle (Vielfaches von drei); im Endlosmodus wiederholt sich die Reihenfolge.
+static func guardian_for(wave: int) -> String:
+	var order: Array = GUARDIANS.values()
+	return String(order[((maxi(wave, 3) / 3) - 1) % order.size()])
+
+
 ## Elite-Arten: jede hat eine eigene Farbe, einen Namen und eine Mechanik (siehe Enemy._update_elite).
 const ELITE_KINDS := {
 	"fire": {"name": "INFERNO", "color": Color(1.0, 0.5, 0.15), "text": "legt Feuerherde"},

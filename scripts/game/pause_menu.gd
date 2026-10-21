@@ -8,6 +8,8 @@ enum Page { MAIN, CONTROLS, CONFIRM, OPTIONS }
 
 const PAUSE_ITEMS: Array[String] = ["Weiter", "Optionen", "Steuerung", "Neustart", "Hauptmenü"]
 const RESULT_ITEMS: Array[String] = ["Neustart", "Hauptmenü"]
+## Nach dem Sieg ueber den Smelter kommt der Endlosmodus als erste Wahl dazu.
+const VICTORY_ITEMS: Array[String] = ["Endlos weiter", "Neustart", "Hauptmenü"]
 const INPUT_GRACE := 0.5
 
 var main: Node = null
@@ -65,7 +67,11 @@ func _reset() -> void:
 
 
 func _items() -> Array[String]:
-	return PAUSE_ITEMS if mode == Mode.PAUSE else RESULT_ITEMS
+	if mode == Mode.PAUSE:
+		return PAUSE_ITEMS
+	if victory and main != null and not main.endless and not main.sandbox:
+		return VICTORY_ITEMS
+	return RESULT_ITEMS
 
 
 func _process(delta: float) -> void:
@@ -105,6 +111,9 @@ func _update_main() -> void:
 	match items[cursor]:
 		"Weiter":
 			close()
+		"Endlos weiter":
+			close()
+			main.continue_endless()
 		"Optionen":
 			page = Page.OPTIONS
 			options.cursor = 0
@@ -168,7 +177,9 @@ func _draw_menu() -> void:
 		return
 	var items := _items()
 	for i in items.size():
-		var rect := Rect2(Vector2(view.x * 0.5 - 160.0, top + i * 70.0), Vector2(320, 56))
+		# Mit drei Eintraegen (Ergebnis nach dem Sieg) etwas enger, damit nichts den Hinweis darunter ueberdeckt.
+		var compact := items.size() > 5 or (mode == Mode.RESULT and items.size() > 2)
+		var rect := Rect2(Vector2(view.x * 0.5 - 160.0, top + i * (62.0 if compact else 70.0)), Vector2(320, 50 if compact else 56))
 		UiKit.button(_canvas, rect, items[i], i == cursor)
 	UiKit.text(_canvas, Vector2(0, view.y - 40.0), "Hoch/Runter wählen, Kreuz oder Enter bestätigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
@@ -189,11 +200,13 @@ func _draw_result(view: Vector2) -> void:
 	UiKit.text(_canvas, Vector2(0, 190), title, 84, color, HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	if victory:
 		UiKit.text(_canvas, Vector2(0, 232), "Der Smelter ist erledigt. Die Fabrik steht still.", 22, Color(0.85, 0.9, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+		if not main.endless and not main.sandbox:
+			UiKit.text(_canvas, Vector2(0, 256), "Endlos weiter: noch mehr Wellen, immer härter, mit Rekord und Chips pro Welle", 17, Color(1.0, 0.9, 0.55), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	var seconds := int(main.director.time)
 	var panel := Rect2(Vector2(view.x * 0.5 - 420.0, 270.0), Vector2(840, 250))
 	Art.panel(_canvas, panel, Color(0.09, 0.11, 0.18), 18.0, Color(1, 1, 1, 0.25))
 	var stats: Array = [
-		["Welle", ("Boss" if main.boss != null else "%d / %d" % [main.wave, main.max_waves])],
+		["Welle", ("Boss" if main.boss != null else ("%d Endlos" % main.wave if main.endless else "%d / %d" % [main.wave, main.max_waves]))],
 		["Zeit", "%02d:%02d" % [seconds / 60, seconds % 60]],
 		["Stufe", "%d" % main.level],
 		["Besiegt", "%d" % main.kills],

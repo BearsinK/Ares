@@ -299,6 +299,7 @@ Grundlage: Was ein Spiel von einem Prototyp trennt, ist selten ein Feature, sond
 - Rückmeldung über Klang: Jede neue Mechanik hat einen eigenen Klang (Kiste, Ablehnen statt Schadens-Sound, Altäre, Wächter-Horn, Medic, Zündschnur, Vertrag, Tore, Countdown, Fanfare, Abpraller am Schild). Ein Test prüft, dass jeder Klang im Code existiert und nicht übersteuert
 - Gründe wiederzukommen: Archiv (Items, Gegner, Waffen entdecken, Zähler besiegter Gegner, Meldung bei Neuem) und 18 Erfolge mit einmaliger Chips-Belohnung. Erfolge belohnen Spielweise statt Grind (Welle ohne Treffer, Zangengriff, Boss auf Hardcore, Speedrun, Kisten und Altäre)
 - Gegnervielfalt über Konter statt Zahlen: Aegis zwingt zu Position und Zusammenspiel (Zangengriff, Sprengungen, von oben, durchdashen), Nest zwingt zur Priorität (Quelle zerstören statt Nachschub bekämpfen)
+- Wiederspielwert über das Ende hinaus: Endlosmodus nach dem Boss mit Rekord, Chips je Welle und zwei Erfolgen
 - Feinschliff: Überblendungen zwischen Szenen, Versionsnummer, Credits mit Godot-Lizenzhinweis, Icon
 
 Messung statt Bauchgefühl bei Leistung: Das Gegner-Skript kostet bei 60 Gegnern rund 1,5 ms pro Frame, der Rest ist Engine-Grundlast, daher keine Umbauten.
@@ -306,4 +307,4 @@ Messung statt Bauchgefühl bei Leistung: Das Gegner-Skript kostet bei 60 Gegnern
 Offene Punkte:
 - Balance der neuen Gegner und der Erfolgs-Belohnungen ist geschätzt
 - Englische Texte fehlen (alle Texte stehen im Code, ein Übersetzungs-Layer wäre eine eigene Aufgabe)
-- Kein Endlosmodus nach dem Boss
+- Endlosmodus nutzt dieselbe Gegnerkurve weiter (kein eigener Schwierigkeitsdeckel), ein Gegnerlimit von 200 und die Leistung dort sind ungeprüft über Welle 20

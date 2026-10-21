@@ -403,7 +403,7 @@ func _draw_boss_bar(view: Vector2, boss: Boss) -> void:
 
 
 func _draw_top_center(view: Vector2) -> void:
-	var title := "Welle %d / %d" % [main.wave, main.max_waves]
+	var title := "Welle %d   ENDLOS" % main.wave if main.endless else "Welle %d / %d" % [main.wave, main.max_waves]
 	if main.wave_modifier != "normal":
 		title += "  " + String(WaveModifiers.DATA[main.wave_modifier].name)
 	var remaining := int(ceil(maxf(main.wave_time_left, 0.0)))
