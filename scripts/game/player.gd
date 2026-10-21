@@ -49,7 +49,8 @@ const STANCE_HOLD := 0.12
 ## Staerkste Neigung der Zeichnung auf schraegem Boden (rad, etwa 49 Grad).
 const SLOPE_MAX := 0.85
 # Ebene 8: unsichtbare Waende, die nur Spieler aufhalten (z.B. vor dem Boss), Geschosse fliegen durch.
-const WORLD_MASK := (1 << 0) | (1 << 5) | (1 << 7)
+## Welt, Stege, unsichtbare Begrenzung und die Kisten des Endbosses (Ebene 9, nur Spieler stossen daran).
+const WORLD_MASK := (1 << 0) | (1 << 5) | (1 << 7) | (1 << 8)
 
 var player_index := 1
 ## Wie oft dieser Spieler gedasht hat (fuer den Dash-Hinweis nach dem ersten Treffer).
@@ -619,7 +620,7 @@ func _update_timers(delta: float) -> void:
 	_wall_lock = maxf(0.0, _wall_lock - delta)
 	_hook_cooldown = maxf(0.0, _hook_cooldown - delta)
 	_drop_time = maxf(0.0, _drop_time - delta)
-	collision_mask = ((1 << 0) | (1 << 7)) if _drop_time > 0.0 else WORLD_MASK
+	collision_mask = ((1 << 0) | (1 << 7) | (1 << 8)) if _drop_time > 0.0 else WORLD_MASK
 	_switch_cooldown = maxf(0.0, _switch_cooldown - delta)
 	_art_time += delta
 	_fire_flash = maxf(0.0, _fire_flash - delta * 6.0)

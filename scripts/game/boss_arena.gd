@@ -12,6 +12,8 @@ const BOSS_WALL_X := 2740.0
 ## Schredder vor dem Boss: Streifen direkt an der Wand, in dem man gefressen wird.
 const MAW_WIDTH := 80.0
 const MAW_DAMAGE := 40.0
+## Hier wird ein Hindernis gefressen (die Mitte), noch vor dem Schredder, damit keine Kiste Spieler an die Wand quetscht.
+const EAT_X := BOSS_WALL_X - MAW_WIDTH - 80.0
 ## Hindernisse rollen etwas schneller als das Band, damit sie die Spieler erreichen.
 const OBSTACLE_BOOST := 140.0
 ## So weit links vom linkesten Spieler rollen neue Hindernisse ein (ausserhalb des Bildes).
@@ -56,7 +58,7 @@ func spawn_obstacle(kind: String) -> void:
 	obstacle.speed = belt_speed + OBSTACLE_BOOST
 	obstacle.damage = 20.0 * Boss.damage_scale()
 	obstacle.players = players
-	obstacle.end_x = BOSS_WALL_X - 30.0
+	obstacle.end_x = EAT_X
 	obstacle.position.x = _spawn_x()
 	add_child(obstacle)
 	Sfx.play("telegraph")
@@ -69,8 +71,8 @@ func spawn_drop(x: float) -> void:
 	drop.speed = belt_speed + OBSTACLE_BOOST * 0.6
 	drop.damage = 20.0 * Boss.damage_scale()
 	drop.players = players
-	drop.end_x = BOSS_WALL_X - 30.0
-	drop.position.x = clampf(x, 120.0, BOSS_WALL_X - 140.0)
+	drop.end_x = EAT_X
+	drop.position.x = clampf(x, 120.0, EAT_X - 60.0)
 	add_child(drop)
 	Sfx.play("telegraph")
 

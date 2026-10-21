@@ -95,6 +95,8 @@ func _run() -> void:
 
 	# Das Band wird mit der Zeit schneller, aber nur begrenzt.
 	boss._delay = 0.0
+	boss._attack = "idle"
+	boss._attack_time = 9999.0
 	await _frames(60)
 	_check(arena.belt_speed > arena.base_speed, "Das Band zieht von selbst an (%.1f auf %.1f)" % [arena.base_speed, arena.belt_speed])
 	arena._creep = BossArena.BELT_CREEP_MAX
@@ -106,6 +108,7 @@ func _run() -> void:
 	boss._delay = 0.0
 	boss._attack = "idle"
 	boss._attack_time = 9999.0
+	# Kisten blocken nur: kein Schaden, aber man kommt nicht durch.
 	var crate := BeltObstacle.new()
 	crate.kind = "crate"
 	crate.speed = 0.0
@@ -115,14 +118,49 @@ func _run() -> void:
 	crate._age = 1.0
 	p1.iframes = 0.0
 	p1.hp = p1.max_health()
-	p1.global_position = Vector2(1700.0, 1225.0)
+	p1.global_position = Vector2(1650.0, 1225.0)
 	p1.velocity = Vector2.ZERO
-	await _frames(2)
-	crate.position.x = p1.global_position.x
-	await _frames(2)
-	_check(p1.hp < p1.max_health(), "Kiste auf dem Band verletzt")
+	arena.base_speed = 0.0
+	arena._creep = 0.0
+	await _frames(20)
+	Input.action_press("p1_right")
+	await _frames(60)
+	Input.action_release("p1_right")
+	var gap := crate.global_position.x - 56.0 - (p1.global_position.x + float(p1.stats.size.x) * 0.5)
+	_check(p1.hp == p1.max_health(), "Eine Kiste verletzt nicht")
+	_check(gap > -4.0 and p1.global_position.x < 1800.0, "Die Kiste blockt den Weg (Abstand %d)" % gap)
+	_check(crate.world_rect().size.x >= 100.0, "Kisten sind gross (%d breit)" % crate.world_rect().size.x)
+	# Die Kiste schiebt einen mit, wenn sie von links kommt.
+	crate.speed = 300.0
+	crate.position.x = p1.global_position.x - 140.0
+	await _frames(1)
+	var push_start := p1.global_position.x
+	await _frames(40)
+	_check(p1.global_position.x > push_start + 40.0 and p1.hp == p1.max_health(), "Eine anrollende Kiste schiebt einen vor sich her (%d px)" % (p1.global_position.x - push_start))
+	# Man kann auf der Kiste stehen und faehrt mit.
 	crate.queue_free()
 	await _frames(2)
+	crate = BeltObstacle.new()
+	crate.kind = "crate"
+	crate.speed = 0.0
+	crate.players = main.players
+	crate.position.x = 1200.0
+	arena.add_child(crate)
+	await _frames(2)
+	var half_height := float(p1.stats.size.y) * 0.5
+	p1.global_position = Vector2(1200.0, 1250.0 - 112.0 - half_height - 3.0)
+	p1.velocity = Vector2.ZERO
+	await _frames(15)
+	crate.speed = 240.0
+	await _frames(2)
+	var ride_x := p1.global_position.x
+	await _frames(40)
+	var on_top := p1.is_on_floor() and p1.global_position.y + half_height < 1250.0 - 100.0
+	_check(on_top and p1.global_position.x > ride_x + 40.0, "Auf der Kiste steht man und faehrt mit (%d px)" % (p1.global_position.x - ride_x))
+	crate.queue_free()
+	await _frames(2)
+	arena.base_speed = Boss.BELT_SPEEDS[0]
+	p1.iframes = 9999.0
 	var fresh := BeltObstacle.new()
 	fresh.kind = "crate"
 	fresh.speed = 0.0
@@ -321,7 +359,8 @@ func _dodge(player: Player, kind: String) -> void:
 			break
 	Input.action_release("p1_left")
 	Input.action_release("p1_jump")
-	_check(jumped and player.hp == player.max_health(), "%s ist mit Anlauf und Sprung machbar" % kind)
+	var passed := is_instance_valid(obstacle) and obstacle.global_position.x > player.global_position.x + 60.0
+	_check(jumped and passed and player.hp == player.max_health(), "%s ist mit Anlauf und Sprung machbar" % kind)
 	if is_instance_valid(obstacle):
 		obstacle.queue_free()
 	await _frames(2)
