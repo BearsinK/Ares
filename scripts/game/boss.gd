@@ -127,6 +127,8 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 	amount *= statuses.damage_factor()
 	amount *= 1.0 if open else ARMOR
 	amount *= float(WEAK.get(element, 1.0))
+	if source is Player:
+		source.damage_dealt += minf(amount, maxf(hp, 0.0))
 	hp -= amount
 	_flash = 0.06
 	Sfx.play("hit")

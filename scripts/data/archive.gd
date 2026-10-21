@@ -93,7 +93,11 @@ static func _build(kind: String) -> Array[Dictionary]:
 		"weapons":
 			for id in Weapons.ALL_IDS:
 				var weapon: Dictionary = Weapons.DATA[id]
-				var stats: Array = [Weapons.summary(id), "Feuerrate %s pro Sekunde" % ("%.1f" % float(weapon.fire_rate)).trim_suffix(".0")]
+				var stats: Array = [
+					Weapons.summary(id),
+					"Feuerrate %s pro Sekunde" % ("%.1f" % float(weapon.fire_rate)).trim_suffix(".0"),
+					"Magazin %d, Nachladen %s s" % [int(weapon.mag), ("%.1f" % float(weapon.reload)).trim_suffix(".0")],
+				]
 				var tag := "WAFFE"
 				if Weapons.owner_of(id) != "":
 					tag = "NUR %s" % String(RobotClasses.get_stats(Weapons.owner_of(id)).name).to_upper()

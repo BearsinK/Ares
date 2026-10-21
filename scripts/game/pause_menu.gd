@@ -191,6 +191,13 @@ func _draw_menu() -> void:
 	UiKit.text(_canvas, Vector2(0, view.y - 40.0), "Hoch/Runter wählen, Kreuz oder Enter bestätigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
+## Grosse Zahlen kurz: 12345 wird 12,3k.
+func _compact(value: float) -> String:
+	if value < 10000.0:
+		return "%d" % int(value)
+	return ("%.1fk" % (value / 1000.0)).replace(".", ",")
+
+
 ## Eine Zeile mit Neuem aus diesem Lauf: Erfolge und Archiv-Eintraege.
 func _news_line() -> String:
 	var parts: Array[String] = []
@@ -233,7 +240,7 @@ func _draw_result(view: Vector2) -> void:
 		var x := panel.position.x + 50.0 + i * 380.0
 		_canvas.draw_rect(Rect2(Vector2(x, panel.position.y + 150.0), Vector2(60, 4)), accent)
 		UiKit.text(_canvas, Vector2(x, panel.position.y + 188.0), "P%d  %s" % [i + 1, player.stats.name], 22, accent)
-		UiKit.text(_canvas, Vector2(x, panel.position.y + 220.0), "Gold %d    Waffen %d    Firmware %d" % [player.gold, player.weapons.size(), player.firmware_count()], 16, Color(0.85, 0.88, 0.97))
+		UiKit.text(_canvas, Vector2(x, panel.position.y + 220.0), "Gold %d    Schaden %s    Firmware %d" % [player.gold, _compact(player.damage_dealt), player.firmware_count()], 16, Color(0.85, 0.88, 0.97))
 		# Gesammelte Items als Symbole mit Zaehler.
 		var item_x := x + 14.0
 		var shown := 0

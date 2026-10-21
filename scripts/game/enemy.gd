@@ -160,6 +160,8 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 			if Fx.instance:
 				Fx.instance.ring(global_position, radius() + 20.0, Color(0.5, 0.85, 1.0))
 			Sfx.play("freeze")
+	if source is Player:
+		source.damage_dealt += minf(amount, maxf(hp, 0.0))
 	hp -= amount
 	_flash = 0.08
 	_hurt_time = 0.25

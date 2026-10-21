@@ -62,6 +62,8 @@ var weapon_index := 0
 var modules: Array[String] = []
 var hp := 100.0
 var gold := 0
+## Summe des verursachten Schadens (nur echter Lebensverlust der Ziele), fuer die Ergebnisanzeige.
+var damage_dealt := 0.0
 var downed := false
 var revive_progress := 0.0
 var partner: Player = null

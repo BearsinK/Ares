@@ -147,5 +147,23 @@ func _run() -> void:
 	p2.take_hit(9999.0, Vector2(900.0, 1210.0))
 	_check(main.game_over, "Game Over, wenn beide am Boden liegen")
 
+	# Schadensstatistik: zaehlt echten Lebensverlust, ein Ueberschuss beim Todesstoss zaehlt nicht
+	await _clear_enemies()
+	_reset(p1, Vector2(1000.0, 1210.0))
+	_reset(p2, Vector2(300.0, 1210.0))
+	var target: Enemy = director.spawn("walker", Vector2(1400.0, 1230.0))
+	await _frames(5)
+	p1.damage_dealt = 0.0
+	var before := target.hp
+	target.take_damage(10.0, p1, Vector2.RIGHT, "", true)
+	_check(is_equal_approx(p1.damage_dealt, 10.0), "Schaden wird dem Schuetzen gutgeschrieben (%.1f)" % p1.damage_dealt)
+	p1.damage_dealt = 0.0
+	var remaining := target.hp
+	target.take_damage(99999.0, p1, Vector2.RIGHT, "", true)
+	_check(is_equal_approx(p1.damage_dealt, remaining) and remaining < before, "Ueberschuss beim Todesstoss zaehlt nicht (%.1f von %.1f)" % [p1.damage_dealt, remaining])
+	p2.damage_dealt = 0.0
+	await _frames(3)
+	_check(is_zero_approx(p2.damage_dealt), "Der Partner bekommt nichts gutgeschrieben")
+
 	print("Fertig, Fehler: ", failures)
 	get_tree().quit(failures)
