@@ -101,14 +101,15 @@ func _in_game() -> void:
 	var hud: Hud = main.hud
 	await _until(func() -> bool: return SaveData.archive_has("weapons", p1.weapons[0]))
 	_check(SaveData.archive_has("weapons", p1.weapons[0]), "Startwaffe ist im Archiv")
-	_check(hud._notices.size() >= 1, "Neuer Eintrag meldet sich im HUD")
-	_check(hud._notices.size() <= 3, "Hoechstens drei Meldungen gleichzeitig")
+	_check(hud._notices.is_empty(), "Die Startausruestung meldet sich nicht")
 
 	p1.add_item("frenzy")
 	var medic: Enemy = main.director.spawn("medic", p1.global_position + Vector2(600.0, 0.0))
 	var elite: Enemy = main.director.spawn("walker", p1.global_position + Vector2(-600.0, 0.0), true)
 	var walker: Enemy = main.director.spawn("walker", p1.global_position + Vector2(800.0, 0.0))
 	await _until(func() -> bool: return SaveData.archive_has("items", "frenzy") and SaveData.archive_has("enemies", "walker") and SaveData.archive_has("enemies", "elite"))
+	_check(hud._notices.size() >= 1, "Neuer Eintrag meldet sich im HUD")
+	_check(hud._notices.size() <= 3, "Hoechstens drei Meldungen gleichzeitig")
 	_check(SaveData.archive_has("items", "frenzy"), "Neues Item wird eingetragen")
 	_check(SaveData.archive_has("enemies", "medic"), "Gesehener Medic wird eingetragen")
 	_check(SaveData.archive_has("enemies", "elite") and not SaveData.archive_has("enemies", "guardian"), "Elite zaehlt als eigener Eintrag")

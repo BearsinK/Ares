@@ -128,6 +128,8 @@ var wave_intro := 0.0
 ## Gewaehlte Team-Perks (id -> Anzahl) und das Banner nach der Wahl.
 var perks_taken := {}
 var _archive_timer := 0.0
+## Beim ersten Durchlauf (Startausruestung) gibt es keine Meldungen.
+var _archive_primed := false
 var perk_banner_id := ""
 var perk_banner_time := 0.0
 var wave_go := 0.0
@@ -212,10 +214,11 @@ func _update_archive(delta: float) -> void:
 			_discover("enemies", archive_id(enemy))
 	if boss != null and is_instance_valid(boss):
 		_discover("enemies", "boss")
+	_archive_primed = true
 
 
 func _discover(kind: String, id: String) -> void:
-	if SaveData.archive_discover(kind, id) and hud != null:
+	if SaveData.archive_discover(kind, id) and hud != null and _archive_primed:
 		hud.notice(kind, id)
 
 
