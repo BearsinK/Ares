@@ -61,6 +61,7 @@ func _process(delta: float) -> void:
 	_time += delta
 	_camera.position.x = 1600.0 + sin(_time * 0.12) * 500.0
 	Music.set_layer_level(0.3)
+	Music.set_mood(1.0)
 	match state:
 		State.MAIN:
 			_update_main()

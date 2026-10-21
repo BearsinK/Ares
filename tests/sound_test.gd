@@ -30,6 +30,15 @@ func _run() -> void:
 			for i in range(0, stream.data.size(), 2):
 				peak = maxi(peak, absi(stream.data.decode_s16(i)))
 			_check(peak > 3000 and peak < 32767, "Klang %s ist hoerbar und uebersteuert nicht (Spitze %d)" % [name, peak])
+	Music.set_mood(0.5)
+	_check(is_equal_approx(Music.mood, 0.8), "Stimmung der Musik wird auf 0,8 begrenzt")
+	Music.set_mood(1.07)
+	_check(is_equal_approx(Music.mood, 1.07), "Stimmung laesst sich setzen")
+	Music.set_mood(1.0)
+	var moods := {}
+	for id in ["basin", "caverns", "zigzag"]:
+		moods[id] = float(Stages.build(id).mood)
+	_check(moods.basin == 1.0 and moods.caverns < 1.0 and moods.zigzag > 1.0, "Karten haben eigene Tonhoehe (%s)" % str(moods))
 	# Alle Sfx.play("name")-Aufrufe im Code muessen einen vorhandenen Klang meinen.
 	var regex := RegEx.new()
 	regex.compile("Sfx\\.play\\(\"([a-z_]+)\"")

@@ -173,6 +173,16 @@ func _draw_menu() -> void:
 	UiKit.text(_canvas, Vector2(0, view.y - 40.0), "Hoch/Runter wählen, Kreuz oder Enter bestätigen", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
+## Eine Zeile mit Neuem aus diesem Lauf: Erfolge und Archiv-Eintraege.
+func _news_line() -> String:
+	var parts: Array[String] = []
+	if not main.run_achievements.is_empty():
+		parts.append("Erfolge: %s" % ", ".join(main.run_achievements))
+	if not main.run_discoveries.is_empty():
+		parts.append("%d neu im Archiv" % main.run_discoveries.size())
+	return "     ".join(parts)
+
+
 func _draw_result(view: Vector2) -> void:
 	var title := "GESCHAFFT!" if victory else "GAME OVER"
 	var color := Color(0.5, 1.0, 0.6) if victory else Color(1.0, 0.4, 0.4)
@@ -194,6 +204,9 @@ func _draw_result(view: Vector2) -> void:
 		UiKit.text(_canvas, Vector2(x, panel.position.y + 105.0), stats[i][1], 40, Color.WHITE)
 	var chips_text := "+%d Chips   (Vorrat %d)" % [main.run_chips, SaveData.chips()]
 	UiKit.text(_canvas, Vector2(0, panel.end.y + 36.0), chips_text, 26, Color(0.6, 0.95, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	var news := _news_line()
+	if news != "":
+		UiKit.text(_canvas, Vector2(0, panel.end.y + 62.0), news, 17, Color(1.0, 0.9, 0.55), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	for i in 2:
 		var player: Player = main.players[i]
 		var accent: Color = RobotClasses.PLAYER_COLORS[i]
@@ -206,10 +219,10 @@ func _draw_result(view: Vector2) -> void:
 		var shown := 0
 		for id in player.items:
 			if shown >= 9:
-				UiKit.text(_canvas, Vector2(item_x - 10.0, panel.end.y + 90.0), "+%d" % (player.items.size() - shown), 18, Color(0.85, 0.88, 0.97))
+				UiKit.text(_canvas, Vector2(item_x - 10.0, panel.end.y + 104.0), "+%d" % (player.items.size() - shown), 18, Color(0.85, 0.88, 0.97))
 				break
-			PerkArt.draw(_canvas, id, Vector2(item_x, panel.end.y + 82.0), 30.0)
+			PerkArt.draw(_canvas, id, Vector2(item_x, panel.end.y + 98.0), 30.0)
 			if int(player.items[id]) > 1:
-				UiKit.text(_canvas, Vector2(item_x + 8.0, panel.end.y + 102.0), "x%d" % int(player.items[id]), 14, Color(1.0, 0.95, 0.6))
+				UiKit.text(_canvas, Vector2(item_x + 8.0, panel.end.y + 118.0), "x%d" % int(player.items[id]), 14, Color(1.0, 0.95, 0.6))
 			item_x += 38.0
 			shown += 1

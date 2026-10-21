@@ -28,6 +28,9 @@ var _layer := PackedFloat32Array()
 var _events: Array = []
 var _cursor := 0
 var _noise_seed := 12345
+## Tonhoehe der Musik je nach Karte und Kampf (1 = normal), wird weich ueberblendet.
+var mood := 1.0
+var _mood_tween: Tween
 
 
 func _ready() -> void:
@@ -62,6 +65,22 @@ func save_wav(path: String, mixed := true) -> void:
 		data[i] = _base[i] * 0.7 + (_layer[i] * 0.4 if mixed else 0.0)
 	var stream := _make_stream(data)
 	stream.save_to_wav(path)
+
+
+## Stimmung: leicht tiefer und langsamer (unter 1) oder schneller und heller (ueber 1), blendet ueber zwei Sekunden.
+func set_mood(pitch: float) -> void:
+	pitch = clampf(pitch, 0.8, 1.2)
+	if is_equal_approx(pitch, mood):
+		return
+	mood = pitch
+	if _base_player == null:
+		return
+	if _mood_tween != null:
+		_mood_tween.kill()
+	_mood_tween = create_tween().set_parallel(true)
+	_mood_tween.set_ignore_time_scale(true)
+	_mood_tween.tween_property(_base_player, "pitch_scale", pitch, 2.0)
+	_mood_tween.tween_property(_layer_player, "pitch_scale", pitch, 2.0)
 
 
 ## Uebernimmt die gespeicherte Lautstaerke (nach Aenderung in den Optionen).

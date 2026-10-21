@@ -136,6 +136,9 @@ var _run_rescues := 0
 var _hit_this_wave := false
 ## Beim ersten Durchlauf (Startausruestung) gibt es keine Meldungen.
 var _archive_primed := false
+## Fuer den Ergebnisbildschirm: was in diesem Lauf neu ins Archiv kam und welche Erfolge fielen.
+var run_discoveries: Array[String] = []
+var run_achievements: Array[String] = []
 var perk_banner_id := ""
 var perk_banner_time := 0.0
 var wave_go := 0.0
@@ -226,8 +229,10 @@ func _update_archive(delta: float) -> void:
 
 func _discover(kind: String, id: String) -> void:
 	if SaveData.archive_discover(kind, id):
-		if hud != null and _archive_primed:
-			hud.notice(kind, id)
+		if _archive_primed:
+			run_discoveries.append(Archive.entry_name(kind, id))
+			if hud != null:
+				hud.notice(kind, id)
 		var progress := Archive.collection_progress()
 		if progress.x * 2 >= progress.y:
 			_unlock("archive_half")
@@ -238,6 +243,7 @@ func _unlock(id: String) -> void:
 	if sandbox or not Achievements.DATA.has(id) or not SaveData.archive_discover("achievements", id):
 		return
 	SaveData.add_chips(int(Achievements.DATA[id].chips))
+	run_achievements.append(String(Achievements.DATA[id].name))
 	if hud != null:
 		hud.notice("achievements", id)
 
@@ -267,6 +273,7 @@ func _physics_process(delta: float) -> void:
 	stage_banner_time = maxf(0.0, stage_banner_time - delta)
 	_apply_tether()
 	Music.set_layer_level(1.0 if phase == Phase.BOSS else clampf(0.2 + 0.08 * float(wave), 0.2, 0.9))
+	Music.set_mood(1.05 if phase == Phase.BOSS else float(stage_layout.get("mood", 1.0)))
 	_check_level_up()
 	_update_archive(delta)
 	_update_wave(delta)
