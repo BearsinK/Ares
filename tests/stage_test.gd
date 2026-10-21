@@ -226,7 +226,7 @@ func _run() -> void:
 	main.phase = main.Phase.SHOP
 	main._on_shop_closed()
 	await _frames(5)
-	_check(main.wave == 4 and main.stage_layout.id != old_id, "Nach Welle 3 wechselt die Karte (%s -> %s)" % [old_id, main.stage_layout.id])
+	_check(main.wave == 4 and (Stages.IDS.size() < 2 or main.stage_layout.id != old_id), "Nach Welle 3 wechselt die Karte (%s -> %s)" % [old_id, main.stage_layout.id])
 	var start_pos: Vector2 = main.stage_layout.starts[0]
 	_check(p1.global_position.distance_to(start_pos) < 200.0, "Spieler stehen am Start der neuen Karte (%d)" % p1.global_position.distance_to(start_pos))
 

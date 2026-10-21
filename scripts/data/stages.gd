@@ -21,10 +21,11 @@ extends RefCounted
 const SIZE := Vector2(6400.0, 2200.0)
 ## Massstab der gebauten Karten: weniger leerer Raum, Gegner sind schneller bei den Spielern.
 const STAGE_SCALE := 0.55
-const IDS: Array[String] = ["basin", "caverns", "zigzag"]
-const NAMES := {"basin": "Rostbecken", "caverns": "Kavernen", "zigzag": "Zickzack", "classic": "Halle"}
+const IDS: Array[String] = ["arena"]
+const NAMES := {"arena": "Werkhalle", "basin": "Rostbecken", "caverns": "Kavernen", "zigzag": "Zickzack", "classic": "Halle"}
 ## Charakter jeder Karte: Kurztext fuers Banner, Tonhoehe der Musik (mood) und Gewichte, mit denen der Director Gegnertypen bevorzugt.
 const INFO := {
+	"arena": {"text": "Offene Halle, Plattformen auf drei Ebenen", "mood": 1.0, "bias": {}},
 	"basin": {"text": "Weite Hallen, viele Bodengegner", "mood": 1.0, "bias": {"walker": 1.4, "charger": 1.6, "brute": 1.2, "bomber": 1.2, "aegis": 1.4}},
 	"caverns": {"text": "Enge Gänge, viele Flieger und Sprengis", "mood": 0.94, "bias": {"flyer": 1.9, "bomber": 1.5, "shooter": 0.8, "nest": 1.4}},
 	"zigzag": {"text": "Lange Rampen, Schützen und Mörser", "mood": 1.07, "bias": {"shooter": 1.7, "mortar": 1.7, "medic": 1.4, "walker": 0.8, "aegis": 1.2}},
@@ -38,6 +39,8 @@ const WAVES_PER_STAGE := 3
 static func build(id: String, mirrored := false) -> Dictionary:
 	var layout := _empty(id)
 	match id:
+		"arena":
+			_arena(layout)
 		"basin":
 			_basin(layout)
 		"caverns":
@@ -45,7 +48,7 @@ static func build(id: String, mirrored := false) -> Dictionary:
 		"zigzag":
 			_zigzag(layout)
 		_:
-			_basin(layout)
+			_arena(layout)
 	_scale(layout, STAGE_SCALE)
 	_add_ground_points(layout)
 	if mirrored:
@@ -104,6 +107,42 @@ static func _frame(l: Dictionary) -> void:
 	_solid(l, -200.0, -400.0, 200.0, size.y + 800.0)
 	_solid(l, size.x, -400.0, 200.0, size.y + 800.0)
 	_solid(l, -200.0, -400.0, size.x + 400.0, 400.0)
+
+
+# ---------------------------------------------------------------- Werkhalle
+
+## Eine offene Halle: durchgehender Boden mit zwei sanften Huegeln (nur Wellen, keine Wand), Stege auf drei Ebenen
+## (je 140 Pixel hoeher) und oben ein langer Steg mit Seilen. Alles ist zu Fuss, per Sprung oder Seil erreichbar,
+## nichts trennt die Halle in Abschnitte.
+static func _arena(l: Dictionary) -> void:
+	_frame(l)
+	_solid(l, 0.0, 1900.0, 6400.0, 300.0)
+	# Sanfte Huegel (120 hoch, 400 lang pro Flanke).
+	_ramp(l, 1900.0, 1900.0, 2300.0, 1780.0, 1900.0)
+	_solid(l, 2300.0, 1780.0, 400.0, 120.0)
+	_ramp(l, 2700.0, 1780.0, 3100.0, 1900.0, 1900.0)
+	_ramp(l, 3300.0, 1900.0, 3700.0, 1780.0, 1900.0)
+	_solid(l, 3700.0, 1780.0, 400.0, 120.0)
+	_ramp(l, 4100.0, 1780.0, 4500.0, 1900.0, 1900.0)
+	# Ebene 1 (y 1760): nicht ueber den Huegeln.
+	for x in [300.0, 1000.0, 3000.0 - 160.0, 5000.0, 5800.0]:
+		_platform(l, x, 1760.0, 320.0)
+	# Ebene 2 (y 1620).
+	for x in [650.0, 1500.0, 3040.0, 4700.0, 5450.0]:
+		_platform(l, x, 1620.0, 340.0)
+	# Ebene 3 (y 1480).
+	for x in [1000.0, 2350.0, 3750.0, 5100.0]:
+		_platform(l, x, 1480.0, 380.0)
+	# Oben ein langer Steg, erreichbar ueber zwei Seile.
+	_platform(l, 1700.0, 1260.0, 3000.0)
+	_rope(l, 1800.0, 1260.0, 1900.0)
+	_rope(l, 3200.0, 1260.0, 1900.0)
+	_rope(l, 4600.0, 1260.0, 1900.0)
+	l.starts.append(Vector2(3100.0, 1900.0))
+	l.starts.append(Vector2(3220.0, 1900.0))
+	l.air.append(Rect2(300.0, 400.0, 5800.0, 1000.0))
+	l.steam.append(Vector2(1500.0, 1900.0))
+	l.steam.append(Vector2(4900.0, 1900.0))
 
 
 # ---------------------------------------------------------------- Rostbecken

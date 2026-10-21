@@ -342,3 +342,9 @@ Grundlage: Klassen sollen sich nicht nur über Werte, sondern über die Art zu k
 - Zielstrahl der Spieler ist deutlich blasser und wird beim Schießen noch blasser, damit man die Schüsse sieht
 - Karten kompakter: Die Entwürfe (6400 x 2200) werden beim Bau mit STAGE_SCALE 0,55 verkleinert, Stege behalten ihre Dicke und Seile ihre Breite. Abstände für Kisten, Altäre, Bodenpunkte und Startabstand folgen dem Maßstab, ein paar Stege mehr füllen die langen leeren Strecken (Rostbecken über den Rampen, Zickzack im unteren Gang). Zum Nachstellen genügt die eine Zahl
 - Boss-Kisten blocken nur: 112 px breit statt 72, kein Kontaktschaden, eigene Kollisionsebene 9 (nur Spieler stoßen daran, Geschosse und Gegner nicht). Sie schieben Spieler vor sich her, wer oben steht, fährt mit. Schaden machen im Bosskampf nur Sägen, Träger, der Einschlag einer fallenden Last und der Schredder. Gefressen werden Hindernisse schon vor dem Schredder, damit keine Kiste jemanden an die Wand quetscht
+
+## Runde Eine Karte, langsamer, lesbarer
+
+- Es gibt nur noch eine Karte (Werkhalle): durchgehender Boden, zwei sanfte Hügel statt Wänden, Stege auf drei Ebenen und ein langer oberer Steg mit drei Seilen. Nichts trennt die Halle in Abschnitte. Die alten Entwürfe (Rostbecken, Kavernen, Zickzack) bleiben im Code, sind aber nicht in IDS
+- Tempo rund 20 Prozent niedriger (Spieler, Gegner, Gegnergeschosse, Dash, Band), Kamera zoomt höchstens 1,0 statt 1,3, damit alles kleiner wirkt und man ausweichen muss
+- Schützen zeigen den Schussweg bis zur ersten Wand mit Endmarke

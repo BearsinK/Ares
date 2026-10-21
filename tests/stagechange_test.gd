@@ -44,7 +44,7 @@ func _run() -> void:
 			if p.global_position.y > 2210.0 or not p.is_on_floor():
 				bad += 1
 				print("   schlecht: Runde %d Karte %s P%d bei %s Boden %s" % [round, main.stage_layout.id, p.player_index, str(p.global_position), str(p.is_on_floor())])
-	_check(maps.size() == 3, "Alle drei Karten wurden gebaut (%s)" % str(maps.keys()))
+	_check(maps.size() == Stages.IDS.size(), "Alle Karten wurden gebaut (%s)" % str(maps.keys()))
 	_check(bad == 0, "Nach 48 Kartenwechseln stehen alle Spieler auf dem Boden (%d schlechte Faelle)" % bad)
 	_check(main._arena_root != null and main._arena_root.is_inside_tree(), "Die neue Welt steht im Baum")
 	print("Fertig, Fehler: ", failures)

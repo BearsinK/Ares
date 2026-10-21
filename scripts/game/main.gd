@@ -706,7 +706,7 @@ func _leave_boss_arena() -> void:
 	boss_arena = null
 	boss = null
 	camera.bias = Vector2.ZERO
-	camera.max_zoom = 1.3
+	camera.max_zoom = 1.0
 	_change_stage()
 
 

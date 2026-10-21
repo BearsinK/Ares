@@ -6,7 +6,7 @@ extends Camera2D
 
 @export var margin := Vector2(360.0, 230.0)
 @export var min_zoom := 0.45
-@export var max_zoom := 1.3
+@export var max_zoom := 1.0
 
 var targets: Array[Node2D] = []
 ## Verschiebt den Bildmittelpunkt, z.B. nach rechts im Bosskampf.

@@ -20,7 +20,7 @@ static func damage_scale() -> float:
 const ARMOR := 0.25
 const START_DELAY := 3.5
 const TRANSITION_TIME := 2.2
-const BELT_SPEEDS := [100.0, 130.0, 160.0]
+const BELT_SPEEDS := [80.0, 105.0, 130.0]
 const VENT_TIMES := [7.0, 6.0, 5.0]
 const GAPS := [1.4, 1.0, 0.7]
 const MUZZLE := Vector2(-250.0, -333.0)

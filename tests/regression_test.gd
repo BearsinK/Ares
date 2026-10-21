@@ -166,7 +166,7 @@ func _run() -> void:
 	p1.global_position = Vector2(2500.0, 1215.0)
 	p1.velocity = Vector2.ZERO
 	Input.action_press("p1_right")
-	await _frames(150)
+	await _frames(220)
 	Input.action_release("p1_right")
 	_check(p1.global_position.x > 2950.0, "Man kommt durch den Schacht auf die andere Seite (x=%.0f)" % p1.global_position.x)
 	p1.global_position = Vector2(2740.0, 1200.0)

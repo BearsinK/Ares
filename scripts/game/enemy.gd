@@ -796,6 +796,14 @@ func _draw_alert(r: float, progress: float) -> void:
 	draw_rect(Rect2(c + Vector2(-1.2, 3.5), Vector2(2.4, 2.4)), Color(0.08, 0.04, 0.1))
 
 
+## Wie weit ein Schuss in Zielrichtung kommt: bis zur ersten Wand.
+func _shot_reach() -> float:
+	var maximum := float(data.projectile_speed) * 3.8
+	var query := PhysicsRayQueryParameters2D.create(global_position, global_position + _aim * maximum, 1)
+	var hit := get_world_2d().direct_space_state.intersect_ray(query)
+	return maximum if hit.is_empty() else global_position.distance_to(hit.position)
+
+
 func _draw_telegraph(r: float) -> void:
 	if _state != State.WINDUP:
 		return
@@ -822,12 +830,16 @@ func _draw_telegraph(r: float) -> void:
 		draw_rect(Rect2(plus + Vector2(-3, -9), Vector2(6, 18)), Color(0.4, 1.0, 0.55))
 	elif data.attack == "ranged":
 		# Schusslinie in der Farbe der Geschosse: wird kraeftiger, kurz vor dem Schuss weiss (Ziel verriegelt).
-		var length := minf(float(data.range), 900.0)
+		var length := minf(float(data.projectile_speed) * 3.8, _shot_reach())
 		var locked := _state_time <= float(data.get("lock_time", 0.0))
 		var alpha := 0.3 + 0.6 * progress
 		var line_color := Color(1.0, 0.18, 0.5, alpha) if not locked else Color(1.0, 0.85, 0.9, 1.0)
 		draw_line(_aim * r, _aim * length, Color(0.05, 0.02, 0.08, 0.45 * alpha), 5.0 + 3.0 * progress, true)
 		draw_line(_aim * r, _aim * length, line_color, 2.0 + 3.0 * progress, true)
+		# Endpunkt: bis hierhin fliegt das Geschoss (Wand oder Reichweite).
+		draw_arc(_aim * length, 12.0, 0.0, TAU, 16, Color(line_color, alpha), 3.0, true)
+		draw_line(_aim * length + Vector2(-8, -8), _aim * length + Vector2(8, 8), Color(line_color, alpha), 3.0, true)
+		draw_line(_aim * length + Vector2(-8, 8), _aim * length + Vector2(8, -8), Color(line_color, alpha), 3.0, true)
 		# Laufende Pfeilspitzen zeigen die Flugrichtung.
 		var offset := fposmod(_time * 260.0, 70.0)
 		var d := r + 14.0 + offset
