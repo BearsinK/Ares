@@ -185,7 +185,7 @@ func _reroll_price(i: int) -> int:
 func _say(i: int, text: String) -> void:
 	_messages[i] = text
 	_message_time[i] = 1.5
-	Sfx.play("hurt")
+	Sfx.play("deny")
 
 
 func _finish() -> void:

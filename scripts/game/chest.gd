@@ -80,13 +80,13 @@ func _reviving(player: Player) -> bool:
 func _try_open(player: Player) -> void:
 	if not bounty and not can_afford(player):
 		_deny = 1.0
-		Sfx.play("hurt", 0.05)
+		Sfx.play("deny", 0.05)
 		return
 	if not bounty:
 		player.gold -= price
 	is_open = true
 	_age = 0.0
-	Sfx.play("deploy", 0.05)
+	Sfx.play("chest_open", 0.03)
 	opened.emit(self, player)
 
 
@@ -96,7 +96,7 @@ func force_open(player: Player) -> void:
 		return
 	is_open = true
 	_age = 0.0
-	Sfx.play("deploy", 0.05)
+	Sfx.play("chest_open", 0.03)
 	opened.emit(self, player)
 
 

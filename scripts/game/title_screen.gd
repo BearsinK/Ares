@@ -176,7 +176,7 @@ func _workshop_say(text: String, good := false) -> void:
 	workshop_message_time = 1.6
 	workshop_good = good
 	if not good:
-		Sfx.play("hurt")
+		Sfx.play("deny")
 
 
 func _update_select(delta: float) -> void:
@@ -212,7 +212,7 @@ func _update_select(delta: float) -> void:
 					locked[i] = true
 					Sfx.play("pickup")
 				else:
-					Sfx.play("hurt")
+					Sfx.play("deny")
 		elif Input.is_action_just_pressed(prefix + "interact"):
 			locked[i] = false
 	if nobody_ready and (Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("p1_interact") or Input.is_action_just_pressed("p2_interact")):

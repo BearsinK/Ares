@@ -23,7 +23,7 @@ func can_afford(player: Player) -> bool:
 func _try_open(player: Player) -> void:
 	if not can_afford(player):
 		_deny = 1.0
-		Sfx.play("hurt", 0.05)
+		Sfx.play("deny", 0.05)
 		return
 	if kind == "blood":
 		player.pay_health(player.max_health() * HP_COST)
@@ -31,7 +31,7 @@ func _try_open(player: Player) -> void:
 		player.gold -= price
 	uses_left -= 1
 	_flash = 1.0
-	Sfx.play("deploy", 0.05)
+	Sfx.play("altar_blood" if kind == "blood" else "altar_chance", 0.03)
 	opened.emit(self, player)
 	if uses_left <= 0:
 		is_open = true

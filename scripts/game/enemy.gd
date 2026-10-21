@@ -393,7 +393,7 @@ func _update_attack(delta: float) -> void:
 				_state = State.WINDUP
 				_state_time = float(data.windup)
 				_aim = (_target.global_position - global_position).normalized()
-				Sfx.play("telegraph")
+				Sfx.play("fuse" if data.get("suicide", false) else "telegraph")
 		State.WINDUP:
 			_state_time -= delta
 			# Zielrichtung folgt dem Spieler, friert aber kurz vor dem Angriff ein.
@@ -531,7 +531,7 @@ func _nearest_wounded(max_distance: float) -> Enemy:
 func _execute_attack() -> void:
 	var damage := float(data.damage) * damage_scale
 	if data.attack == "heal":
-		Sfx.play("revive")
+		Sfx.play("heal")
 		_fire_flash = 1.0
 		for ally in _wounded_allies():
 			var amount := ally.max_hp * float(data.heal_amount) * (0.35 if ally.champion else 1.0)

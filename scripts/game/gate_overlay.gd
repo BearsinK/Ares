@@ -35,7 +35,7 @@ func close() -> void:
 	_target = 1.0
 	_speed = 1.0 / CLOSE_TIME
 	visible = true
-	Sfx.play("deploy", 0.0)
+	Sfx.play("gate", 0.0)
 
 
 func open() -> void:
@@ -45,7 +45,7 @@ func open() -> void:
 	_speed = 1.0 / OPEN_TIME
 	is_closed = false
 	visible = true
-	Sfx.play("deploy", 0.0)
+	Sfx.play("gate", 0.0)
 
 
 ## Sofort offen (Tests, Neustart).

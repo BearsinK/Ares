@@ -266,9 +266,9 @@ func _update_intro(delta: float) -> void:
 	if beat != _intro_beat and beat <= 3:
 		_intro_beat = beat
 		if beat > 0:
-			Sfx.play("switch")
+			Sfx.play("count", 0.0)
 		else:
-			Sfx.play("ability")
+			Sfx.play("go", 0.0)
 			camera.add_shake(6.0)
 			if Fx.instance:
 				for player in players:
@@ -325,7 +325,7 @@ func _update_guardian() -> void:
 	guardian = director.spawn(String(EnemyTypes.GUARDIANS.get(wave, "brute")), null, true, "", true)
 	guardian_banner_time = 3.4
 	camera.add_shake(9.0)
-	Sfx.play("levelup")
+	Sfx.play("guardian", 0.0)
 	if Fx.instance:
 		Fx.instance.ring(guardian.global_position, 240.0, Color(1.0, 0.4, 0.3))
 
@@ -363,7 +363,7 @@ func _end_wave() -> void:
 	phase = Phase.CLEARING
 	_clear_time = CLEAR_DELAY
 	director.enabled = false
-	Sfx.play("levelup")
+	Sfx.play("fanfare", 0.0)
 	wave_kills = kills - _wave_kills_start
 	# Bonus fuer die geschaffte Welle, fuer jeden Spieler.
 	wave_bonus = 4 + 2 * wave
@@ -432,6 +432,7 @@ func _on_shop_closed() -> void:
 
 
 func _on_contract_chosen(contract_id: String) -> void:
+	Sfx.play("contract", 0.0)
 	_begin_new_wave(contract_id)
 
 
@@ -940,7 +941,7 @@ func _on_altar_used(altar: Altar, player: Player) -> void:
 		if roll < CHANCE_ODDS:
 			_grant_item(player, altar.global_position, Perks.RARE_IDS if randf() < 0.25 else Perks.DATA.keys(), 3.2)
 		else:
-			Sfx.play("hurt", 0.05)
+			Sfx.play("altar_lose", 0.03)
 			if Fx.instance:
 				Fx.instance.number_text(at, "Niete", Color(0.7, 0.7, 0.78), 26, 2.0)
 				Fx.instance.spark(altar.global_position + Vector2(0.0, -56.0), Color(0.6, 0.55, 0.7), 8, 200.0)
@@ -963,7 +964,7 @@ func _grant_item(player: Player, from: Vector2, pool: Array, life: float) -> voi
 		Fx.instance.perk_icon(at + Vector2(0.0, -46.0), id)
 		Fx.instance.number_text(at, String(Perks.DATA[id].name), color, 30, life)
 		Fx.instance.number_text(at + Vector2(0.0, 26.0), Perks.describe(id, player.class_id), Color(0.92, 0.94, 1.0), 17, life)
-	Sfx.play("levelup")
+	Sfx.play("item", 0.0)
 
 
 func _on_chest_opened(chest: Chest, player: Player) -> void:
