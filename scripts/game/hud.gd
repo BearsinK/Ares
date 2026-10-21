@@ -358,8 +358,12 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 	var held := Weapons.get_weapon(player.current_weapon_id())
 	_text(origin + Vector2(0, 85), count_text, 16, count_color, HORIZONTAL_ALIGNMENT_RIGHT, PANEL_WIDTH - 10.0)
 	# Minen und Tuerme in der Welt: eigene Zeile rechts unter den Chips, damit nichts ueberlappt.
-	if held.kind == "deploy" and not player.downed:
+	if (held.kind == "deploy" or held.kind == "summon") and not player.downed:
 		_text(origin + Vector2(0, 110), "%d aktiv" % player.deployed_count(String(held.entity)), 14, Color(0.6, 1.0, 0.78), HORIZONTAL_ALIGNMENT_RIGHT, PANEL_WIDTH - 10.0)
+	# Printbot: die selbst gedruckten Printlinge.
+	if bool(player.stats.get("summoner", false)) and not player.downed:
+		var auto_kind := String(Minions.AUTO_PRINT.kind)
+		_text(origin + Vector2(0, 110), "Printlinge %d / %d" % [player.deployed_count(auto_kind), player.minion_cap(auto_kind)], 14, Color(1.0, 0.8, 0.45))
 
 	# Firmware.
 	var fw_parts: Array[String] = []

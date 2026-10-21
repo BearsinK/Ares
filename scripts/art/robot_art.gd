@@ -714,6 +714,13 @@ static func _printer(c: CanvasItem, s: Dictionary) -> void:
 	if progress >= 1.0 and launch < 0.0:
 		Art.led(c, Vector2(-6, -21) + sh, 1.8, Color(0.4, 1.0, 0.5), lights_on and fmod(t, 0.8) < 0.5)
 	var la := _local_aim(s)
+	# Druckkopf: Duese oben in der Mitte, dreht sich zum Ziel. Aus ihr kommen alle Schuesse (Mitte, nicht von den Seiten).
+	var head := Vector2(0, -23) + sh
+	if down < 0.5:
+		_nozzle(c, head, la, 15.0 - 4.0 * recoil, 9.0, Color(0.32, 0.34, 0.42), s.weapon_color, firing)
+	Art.disc(c, head, 7.0, Color(0.1, 0.1, 0.14))
+	Art.disc(c, head, 4.6, Color(0.95, 0.5, 0.12))
+	Art.disc(c, head, 2.0, Color(0.14, 0.14, 0.19))
 	Art.face(c, Vector2(21, -13) + sh, Vector2(11, 11), s.eye_color, la, s.mood, t)
 
 	# Rauch bei wenig Leben, Funken kurz vor dem Ausfall.

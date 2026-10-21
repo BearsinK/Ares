@@ -22,6 +22,9 @@ const ELITE_SCALE := 1.35
 const CHAMPION_HP_MULT := 5.0
 const CHAMPION_SCALE := 1.9
 const FROST_RADIUS := 230.0
+## Diener des Printbots ziehen Gegner in dieser Naehe auf sich.
+const BAIT_RANGE := 340.0
+const BAIT_HEIGHT := 150.0
 ## Anteil des Schadens, der durch einen Frontschild kommt.
 const BLOCK_PASS := 0.2
 
@@ -59,7 +62,7 @@ var grid: EnemyGrid = null
 var _state := State.CHASE
 var _state_time := 0.0
 var _cooldown := 0.0
-var _target: Player = null
+var _target: Node2D = null
 var _aim := Vector2.RIGHT
 var _flash := 0.0
 var _phase := 0.0
@@ -72,7 +75,7 @@ var _walk_phase := 0.0
 var _charge_dir := 1.0
 var _elite_timer := 2.0
 var _elite_warn := 0.0
-var _charge_hit: Array[Player] = []
+var _charge_hit: Array[Node2D] = []
 var _hurt_time := 0.0
 var _fire_flash := 0.0
 var _squash := 0.0
@@ -381,6 +384,20 @@ func _pick_target() -> void:
 		if distance < best:
 			best = distance
 			_target = player
+	# Diener des Printbots lenken ab: ein naher Diener wird bevorzugt angegriffen (Bodengegner nur, wenn er in Reichweite schwebt).
+	for minion in Minion.active:
+		if minion.is_dead():
+			continue
+		var gap := global_position.distance_squared_to(minion.global_position)
+		if gap > BAIT_RANGE * BAIT_RANGE or gap > best * 0.64:
+			continue
+		if data.movement != "fly":
+			# Bodengegner lassen sich nur von Dienern ablenken, die sie auch erreichen koennen (sonst stuenden sie unten und warteten).
+			var limit := BAIT_HEIGHT if (data.attack == "ranged" or data.attack == "strike") else reach() + 10.0
+			if absf(minion.global_position.y - global_position.y) > limit:
+				continue
+		best = gap
+		_target = minion
 
 
 ## Bodengegner stellen sich auf schraegem Boden parallel zur Flaeche (Flieger bewegen sich frei). Der Kollisionskreis liegt
@@ -560,6 +577,12 @@ func _update_charge(delta: float) -> void:
 		if absf(offset.x) <= radius() + float(player.stats.size.x) * 0.5 + 4.0 and absf(offset.y) <= radius() + float(player.stats.size.y) * 0.5:
 			_charge_hit.append(player)
 			player.take_hit(damage, global_position)
+	for minion in Minion.active:
+		if minion.is_dead() or _charge_hit.has(minion):
+			continue
+		if minion.global_position.distance_to(global_position) <= radius() + minion.radius() + 4.0:
+			_charge_hit.append(minion)
+			minion.take_hit(damage, global_position)
 	if Fx.instance and fmod(_time, 0.06) < delta:
 		Fx.instance.spark(global_position + Vector2(-_charge_dir * radius(), radius() * 0.8), Color(1.0, 0.7, 0.3), 2, 160.0)
 	# Gegen eine Wand zu laufen beendet den Ansturm sofort.
@@ -636,7 +659,7 @@ func _execute_attack() -> void:
 	if data.attack == "strike":
 		Sfx.play("enemy_shoot")
 		# Zielt leicht vor den Spieler, damit stehenbleiben bestraft wird.
-		var lead := _target.velocity * 0.35 if _target != null else Vector2.ZERO
+		var lead: Vector2 = Vector2(_target.get("velocity")) * 0.35 if _target != null else Vector2.ZERO
 		var spot := (_target.global_position if _target != null else global_position + _aim * 300.0) + Vector2(lead.x, 0.0)
 		strike_requested.emit(self, spot, float(data.strike_radius), float(data.strike_delay), damage)
 		_fire_flash = 1.0
@@ -658,6 +681,14 @@ func _execute_attack() -> void:
 		var in_front: bool = data.melee_shape == "circle" or _aim.dot(to_player.normalized()) > 0.2
 		if in_reach and in_front:
 			player.take_hit(damage, global_position)
+	for minion in Minion.active:
+		if minion.is_dead():
+			continue
+		var to_minion := minion.global_position - global_position
+		var minion_reach := to_minion.length() <= reach() + minion.radius()
+		var minion_front: bool = data.melee_shape == "circle" or _aim.dot(to_minion.normalized()) > 0.2
+		if minion_reach and minion_front:
+			minion.take_hit(damage, global_position)
 	if Fx.instance:
 		Fx.instance.ring(global_position + _aim * 20.0, reach(), Color(data.color, 0.9))
 	if bool(data.get("suicide", false)):

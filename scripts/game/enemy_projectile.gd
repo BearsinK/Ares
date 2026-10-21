@@ -37,7 +37,13 @@ func _physics_process(delta: float) -> void:
 	lifetime -= delta
 	if lifetime <= 0.0:
 		queue_free()
-	elif get_overlapping_bodies().size() > 0:
+		return
+	for minion in Minion.active:
+		if not minion.is_dead() and minion.global_position.distance_to(global_position) <= RADIUS + minion.radius():
+			if minion.take_hit(damage, global_position):
+				queue_free()
+				return
+	if get_overlapping_bodies().size() > 0:
 		# Faengt Faelle ab, in denen ein Spieler nach den Iframes im Geschoss steht.
 		for body in get_overlapping_bodies():
 			_on_body_entered(body)

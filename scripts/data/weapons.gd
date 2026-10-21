@@ -8,6 +8,7 @@ extends RefCounted
 ## kind "stream": Sog-Kegel, der Gegner zu einem Punkt vor dem Spieler zieht und schwach verletzt
 ## kind "chain": Kettenblitz, springt von Gegner zu Gegner
 ## kind "deploy": legt etwas ab (entity "mine" oder "sentry")
+## kind "summon": druckt Diener (entity aus Minions.DATA, "pellets" = Anzahl je Schuss, "life" Lebensdauer, "max_active" Hoechstzahl)
 ## Jede Waffe hat ein Magazin ("mag" Schuss) und eine Nachladezeit ("reload" Sekunden). Optional "ammo_cost" (Standard 1).
 ## Optional: "element" (fester Standard-Effekt, ein Modul ersetzt ihn), "burst" (Schuesse pro Druck) und "burst_gap",
 ## "status" und "status_time" (Zustand beim Treffer), "gravity" (Bogenflug), "bounces", "boomerang" (Sekunden bis zur Umkehr),
@@ -18,7 +19,7 @@ const OWNER := {
 	"dust": "roomba", "sweeper": "roomba", "disc": "roomba", "vacuum": "roomba", "zapper": "roomba",
 	"turret": "hexapod", "sniper": "hexapod", "burst": "hexapod", "mine": "hexapod", "silk": "hexapod",
 	"can": "vending", "flamer": "vending", "sixpack": "vending", "coinshot": "vending", "dispenser": "vending",
-	"dronegun": "printer", "boomdrone": "printer", "toner": "printer", "label": "printer", "paperjam": "printer",
+	"dronegun": "printer", "boomdrone": "printer", "toner": "printer", "label": "printer", "swarm": "printer",
 }
 
 ## Die fuenf Waffen jeder Klasse, in Anzeigereihenfolge (Klassenwaffe zuerst).
@@ -26,10 +27,10 @@ const CLASS_SETS := {
 	"roomba": ["dust", "sweeper", "disc", "vacuum", "zapper"],
 	"hexapod": ["turret", "sniper", "burst", "mine", "silk"],
 	"vending": ["can", "flamer", "sixpack", "coinshot", "dispenser"],
-	"printer": ["dronegun", "boomdrone", "toner", "label", "paperjam"],
+	"printer": ["dronegun", "boomdrone", "swarm", "toner", "label"],
 }
 
-const ALL_IDS: Array[String] = ["dust", "sweeper", "disc", "vacuum", "zapper", "turret", "sniper", "burst", "mine", "silk", "can", "flamer", "sixpack", "coinshot", "dispenser", "dronegun", "boomdrone", "toner", "label", "paperjam", "rapid", "shotgun", "rocket", "beam"]
+const ALL_IDS: Array[String] = ["dust", "sweeper", "disc", "vacuum", "zapper", "turret", "sniper", "burst", "mine", "silk", "can", "flamer", "sixpack", "coinshot", "dispenser", "dronegun", "boomdrone", "toner", "label", "swarm", "rapid", "shotgun", "rocket", "beam"]
 
 
 ## Klasse, der die Waffe gehoert ("" = darf jeder).
@@ -161,14 +162,12 @@ const DATA := {
 		"status": "tagged", "status_time": 6.0,
 		"recoil": 0.0, "shake": 0.5, "sound": "label_shot", "barrel": 18.0,
 	},
-	"paperjam": {
-		"mag": 5, "reload": 1.8,
-		"name": "Paper Jam", "kind": "projectile", "style": "paper", "color": Color(0.96, 0.96, 0.9),
-		"tag": "Papierwelle, betäubt kurz",
-		"fire_rate": 1.1, "damage": 5.0, "pellets": 7, "spread": 0.5,
-		"speed": 760.0, "lifetime": 0.4, "pierce": 2, "size": 5.0, "push": 1.2,
-		"status": "stun", "status_time": 0.7,
-		"recoil": 0.0, "shake": 2.5, "sound": "paper_burst", "barrel": 18.0,
+	"swarm": {
+		"mag": 6, "reload": 2.2,
+		"name": "Gnat Swarm", "kind": "summon", "entity": "gnat", "color": Color(1.0, 0.85, 0.3),
+		"tag": "Druckt Gnats, die Gegner anfallen",
+		"fire_rate": 1.0, "damage": 4.0, "pellets": 3, "life": 7.0, "max_active": 6, "throw": 360.0,
+		"recoil": 0.0, "shake": 1.0, "sound": "drone_launch", "barrel": 14.0, "dps": 45,
 	},
 	"dronegun": {
 		"mag": 24, "reload": 1.2,

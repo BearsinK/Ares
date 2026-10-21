@@ -171,9 +171,10 @@ var _down_amount := 0.0
 ## Neigung des Koerpers auf schraegem Boden (rad, weich nachgefuehrt) und die Verschiebung, mit der die Fuesse auf der Flaeche bleiben.
 var _slope_tilt := 0.0
 var _slope_shift := Vector2.ZERO
-## Begleitdrohnen des Druckers: aus ihnen kommen die Schüsse.
-var escorts: Array[Drone] = []
-var _escort_turn := 0
+## Auto-Druck (Printbot): Sekunden bis der naechste Printling fertig ist, und Nachleuchten der Druckkammer nach dem Start eines Dieners.
+var _print_timer := 0.0
+var _launch_flash := 0.0
+var _summon_serial := 0
 
 var ability: Ability
 
@@ -422,8 +423,9 @@ func _ready() -> void:
 	ability = Ability.new()
 	add_child(ability)
 	ability.setup(self)
-	if int(stats.get("escort_drones", 0)) > 0:
-		_spawn_escorts.call_deferred()
+	if bool(stats.get("summoner", false)):
+		_print_timer = float(Minions.AUTO_PRINT.interval)
+		_start_minions.call_deferred()
 	var shape := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
 	rect.size = stats.size
@@ -603,6 +605,7 @@ func _update_timers(delta: float) -> void:
 	_art_time += delta
 	_fire_flash = maxf(0.0, _fire_flash - delta * 6.0)
 	_reload_flash = maxf(0.0, _reload_flash - delta * 4.0)
+	_update_auto_print(delta)
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	_happy_timer = maxf(0.0, _happy_timer - delta)
 	var arm_target := 1.0 if (Input.is_action_pressed(_prefix + "fire") or _fire_flash > 0.05) and not downed else 0.0
@@ -1103,13 +1106,70 @@ func refill_ammo() -> void:
 		_reload_left[i] = 0.0
 
 
-## Wie viele Minen oder Tuerme dieser Art von diesem Spieler gerade in der Welt liegen.
+## Wie viele Minen, Tuerme oder Diener dieser Art von diesem Spieler gerade in der Welt sind.
 func deployed_count(entity: String) -> int:
+	if Minions.DATA.has(entity):
+		return Minion.count_of(self, entity)
 	var count := 0
 	for node in get_tree().get_nodes_in_group("deployables"):
 		if node.owner_player == self and node.kind == entity and not node.is_queued_for_deletion():
 			count += 1
 	return count
+
+
+## Hoechstzahl gleichzeitiger Diener einer Art (Split Barrel erhoeht sie).
+func minion_cap(kind: String) -> int:
+	return int(Minions.DATA[kind].cap) + int(mods.proj)
+
+
+## Druckt einen Diener am Druckkopf (oder an at). damage ist der fertige Schaden je Schuss oder Biss, -1 nimmt den Grundwert.
+## Ist die Hoechstzahl erreicht, verglueht der aelteste Diener der Art.
+func summon_minion(kind: String, damage := -1.0, life := -1.0, at := Vector2.INF, cap := -1) -> Minion:
+	var info: Dictionary = Minions.DATA[kind]
+	var limit := cap if cap > 0 else minion_cap(kind)
+	while Minion.count_of(self, kind) >= limit:
+		var oldest := Minion.oldest_of(self, kind)
+		if oldest == null:
+			break
+		oldest._expire()
+	var minion := Minion.new()
+	minion.setup(kind, self, damage if damage >= 0.0 else float(info.damage) * damage_mult(), life)
+	minion.slot = _summon_serial % 6
+	_summon_serial += 1
+	get_parent().add_child(minion)
+	minion.global_position = at if at != Vector2.INF else global_position + Vector2(-6.0 * facing, -20.0)
+	_launch_flash = 0.7
+	return minion
+
+
+## Beim Start druckt der Printbot sofort einen Printling, den Rest druckt er nach.
+func _start_minions() -> void:
+	if not downed and Minion.count_of(self, String(Minions.AUTO_PRINT.kind)) == 0:
+		summon_minion(String(Minions.AUTO_PRINT.kind))
+
+
+## Auto-Druck: alle paar Sekunden ein Printling, solange die Hoechstzahl nicht erreicht ist.
+func _update_auto_print(delta: float) -> void:
+	_launch_flash = maxf(0.0, _launch_flash - delta)
+	if not bool(stats.get("summoner", false)) or downed:
+		return
+	var kind := String(Minions.AUTO_PRINT.kind)
+	var interval := float(Minions.AUTO_PRINT.interval) * maxf(0.4, 1.0 - float(mods.ability_cd))
+	if Minion.count_of(self, kind) >= minion_cap(kind):
+		_print_timer = interval
+		return
+	_print_timer -= delta
+	if _print_timer <= 0.0:
+		_print_timer = interval
+		summon_minion(kind)
+
+
+## Fortschritt des naechsten Printlings (0 bis 1) fuer die Lampen am Drucker.
+func print_progress() -> float:
+	var interval := float(Minions.AUTO_PRINT.interval) * maxf(0.4, 1.0 - float(mods.ability_cd))
+	if Minion.count_of(self, String(Minions.AUTO_PRINT.kind)) >= minion_cap(String(Minions.AUTO_PRINT.kind)):
+		return 1.0
+	return clampf(1.0 - _print_timer / interval, 0.0, 1.0)
 
 
 ## Von Hand nachladen (Kreuz / T / B): die aktive Waffe, wenn das Magazin nicht voll ist und sie nicht gerade geworfen wird.
@@ -1227,8 +1287,7 @@ func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 		_lob_charging = false
 		_fire_cooldown = 1.0 / (float(weapon.fire_rate) * fire_rate_mult())
 		var origin := _fire_origin(float(weapon.barrel))
-		if escorts.is_empty():
-			velocity -= aim_dir * float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
+		velocity -= aim_dir * float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
 		var thrown_charge := shake_charge
 		shake_charge = 0.0
 		_fire_flash = 1.0
@@ -1238,7 +1297,6 @@ func _handle_lob(weapon_id: String, weapon: Dictionary, delta: float) -> void:
 			Fx.instance.spark(origin, Color(1.0, 1.0, 1.0, 0.9), 4 + int(8.0 * thrown_charge), 220.0)
 		fired.emit(self, weapon_id, origin, aim_dir, thrown_charge)
 		_spend_ammo(weapon_index, weapon)
-		_after_shot()
 	elif not held:
 		shake_charge = 0.0
 
@@ -1297,10 +1355,10 @@ func _shoot(weapon_id: String, weapon: Dictionary) -> void:
 	var origin := _fire_origin(float(weapon.barrel))
 	# Rueckstoss: am Boden schwaecher, in der Luft staerker. Drohnenschuesse stossen den Koerper nicht.
 	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
-	if not (float(stats.get("fire_slow", 1.0)) < 1.0 and is_class_weapon(weapon_id)) and escorts.is_empty():
+	if not (float(stats.get("fire_slow", 1.0)) < 1.0 and is_class_weapon(weapon_id)):
 		velocity -= aim_dir * kick
 	_fire_flash = 1.0
-	_recoil = 1.0 if escorts.is_empty() else 0.0
+	_recoil = 1.0
 	_heat = minf(1.0, _heat + 0.2)
 	if class_id == "hexapod":
 		# Huelse fliegt seitlich aus dem Gehaeuse.
@@ -1308,7 +1366,6 @@ func _shoot(weapon_id: String, weapon: Dictionary) -> void:
 			Fx.instance.spark(global_position + Vector2(-5.0 * facing, -14.0), Color(1.0, 0.82, 0.4), 1, 150.0)
 	fired.emit(self, weapon_id, origin, aim_dir, 0.0)
 	_spend_ammo(weapon_index, weapon)
-	_after_shot()
 
 
 ## Folgeschuesse einer Salve. Ein Waffenwechsel, Boden oder leeres Magazin brechen sie ab.
@@ -1347,13 +1404,8 @@ func _art_state() -> Dictionary:
 		mood = "focus"
 	elif _happy_timer > 0.0:
 		mood = "happy"
-	var print_progress := 0.6
-	var launch := -1.0
-	if ability != null and ability.id() == "print":
-		print_progress = ability.readiness()
-		var since_use := ability.cooldown_total - ability.cooldown
-		if ability.cooldown > 0.0 and since_use < 0.7:
-			launch = since_use / 0.7
+	var printed := print_progress()
+	var launch := (0.7 - _launch_flash) / 0.7 if _launch_flash > 0.0 else -1.0
 	var squash := Vector2.ONE
 	if _land_squash > 0.0:
 		squash = Vector2(1.0 + 0.2 * _land_squash, 1.0 - 0.24 * _land_squash)
@@ -1375,7 +1427,7 @@ func _art_state() -> Dictionary:
 		"squash": squash, "deploy": _deploy_amount, "recoil": _recoil, "heat": _heat, "climb": _climb_phase,
 		"hurt": _hurt_timer / 0.45, "downed": downed, "overdrive": 1.0 if ability.is_active() else 0.0,
 		"coin": _coin_flash, "low": clampf((0.3 - hp / max_health()) / 0.3, 0.0, 1.0) if not downed else 0.0, "tilt": tilt,
-		"print": print_progress, "launch": launch,
+		"print": printed, "launch": launch,
 		"facing": facing, "aim": aim_dir, "t": _art_time, "vx": 0.0 if downed else velocity.x,
 		"walk": _walk_phase, "grounded": is_on_floor(), "clinging": _clinging, "cling_dir": _cling_dir,
 		"planted": is_deployed(), "slope": _slope_tilt, "slope_shift": _slope_shift,
@@ -1534,48 +1586,13 @@ func _draw_lob_preview(size: Vector2) -> void:
 		draw_circle(pos, 3.0, Color(ring_color, 0.55))
 
 
-## Position des Waffenansatzes relativ zum Koerpermittelpunkt (beruecksichtigt die Blickrichtung).
-func _spawn_escorts() -> void:
-	for i in int(stats.escort_drones):
-		var drone := Drone.new()
-		drone.escort = true
-		drone.owner_player = self
-		drone.slot = i
-		get_parent().add_child(drone)
-		drone.global_position = global_position + Vector2(0.0, -30.0)
-		escorts.append(drone)
-
-
-## Drohne, aus der der nächste Schuss kommt (abwechselnd), oder null.
-func _escort_gun() -> Drone:
-	for i in escorts.size():
-		var drone := escorts[(_escort_turn + i) % escorts.size()]
-		if is_instance_valid(drone):
-			return drone
-	return null
-
-
-## Mündung des nächsten Schusses. Steckt die Begleitdrohne hinter einer Wand, kommt der Schuss aus dem Körper.
+## Mündung des nächsten Schusses.
 func _fire_origin(barrel: float) -> Vector2:
-	var offset := _muzzle_offset()
-	if not escorts.is_empty():
-		var query := PhysicsRayQueryParameters2D.create(global_position, global_position + offset + aim_dir * barrel, 1)
-		if not get_world_2d().direct_space_state.intersect_ray(query).is_empty():
-			offset = Vector2(0.0, -10.0)
-	return global_position + offset + aim_dir * barrel
+	return global_position + _muzzle_offset() + aim_dir * barrel
 
 
-func _after_shot() -> void:
-	var drone := _escort_gun()
-	if drone != null:
-		drone.kick()
-		_escort_turn = (_escort_turn + 1) % escorts.size()
-
-
+## Position des Waffenansatzes relativ zum Koerpermittelpunkt (beruecksichtigt die Blickrichtung).
 func _muzzle_offset() -> Vector2:
-	var gun := _escort_gun()
-	if gun != null:
-		return gun.global_position - global_position
 	var muzzle: Vector2 = stats.muzzle
 	var local := Vector2(muzzle.x * facing, muzzle.y)
 	if _ceiling:

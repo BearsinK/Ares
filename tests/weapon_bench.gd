@@ -75,7 +75,7 @@ func _distance_for(id: String) -> float:
 			reach = 500.0
 		"sweep", "stream", "chain":
 			reach = float(weapon.range)
-		"deploy":
+		"deploy", "summon":
 			reach = 420.0
 		_:
 			if weapon.has("boomerang"):

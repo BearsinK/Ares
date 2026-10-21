@@ -87,6 +87,8 @@ func _clear() -> void:
 			enemy.free()
 	for bullet in main.enemy_projectiles.get_children():
 		bullet.free()
+	for minion in Minion.active.duplicate():
+		minion.free()
 
 
 func _ownership() -> void:
@@ -477,29 +479,36 @@ func _printer_set() -> void:
 	_check(absf((hp - marked.hp) - 130.0) < 1.0, "Auch der Partner macht 30 Prozent mehr Schaden (%.0f)" % (hp - marked.hp))
 	_clear()
 
-	# Paper Jam: Welle betaeubt, danach kurz immun.
-	p1.weapons = ["paperjam"]
-	p1.modules = [""]
-	p1.weapon_index = 0
+	# Betaeubung (Status "stun"): wirkt kurz, danach ist das Ziel eine Weile immun.
 	p1.global_position = Vector2(500.0, 1200.0)
 	await _frames(3)
 	var close := _dummy("brute", Vector2(650.0, p1.global_position.y - 8.0))
-	_fire(p1, "paperjam")
-	var sheets := 0
-	for child in main.projectiles.get_children():
-		if child is Projectile and child.style == "paper":
-			sheets += 1
-	_check(sheets == 7, "Sieben Blaetter in der Welle (%d)" % sheets)
-	var stunned := await _until(func() -> bool: return close.stunned_time > 0.0, 60)
-	_check(stunned, "Ein Gegner in der Naehe wird betaeubt")
+	close.apply_status("stun", 0.7)
+	_check(close.stunned_time > 0.0, "Betaeubung wirkt auf einen Gegner")
 	close.stunned_time = 0.0
-	_clear()
-	close = _dummy("brute", Vector2(650.0, p1.global_position.y - 8.0))
-	close._stun_immunity = 1.0
-	await _frames(2)
-	_fire(p1, "paperjam")
-	await _frames(40)
+	close.apply_status("stun", 0.7)
 	_check(close.stunned_time == 0.0, "Direkt nach einer Betaeubung ist er immun")
+	_clear()
+
+	# Gnat Swarm: druckt drei Gnats, Hoechstzahl sechs, sie beissen Gegner.
+	p1.weapons = ["swarm"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	p1.refill_ammo()
+	p1.global_position = Vector2(500.0, 1200.0)
+	await _frames(3)
+	var bitten := _dummy("brute", Vector2(800.0, 1192.0))
+	var gnats_before := Minion.count_of(p1, "gnat")
+	_fire(p1, "swarm")
+	await _frames(2)
+	_check(Minion.count_of(p1, "gnat") - gnats_before == 3, "Ein Schuss druckt drei Gnats (%d)" % (Minion.count_of(p1, "gnat") - gnats_before))
+	var bit := await _until(func() -> bool: return bitten.hp < 5000.0, 240)
+	_check(bit, "Die Gnats fliegen den Gegner an und beissen (%.0f Schaden)" % (5000.0 - bitten.hp))
+	for k in 4:
+		p1._fire_cooldown = 0.0
+		_fire(p1, "swarm")
+		await _frames(2)
+	_check(Minion.count_of(p1, "gnat") <= 6, "Hoechstens sechs Gnats gleichzeitig (%d)" % Minion.count_of(p1, "gnat"))
 	_clear()
 
 

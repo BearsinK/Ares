@@ -5,14 +5,14 @@ extends Node
 ##   suck: Roomba zieht Gegner und Beute zu einem Brennpunkt vor sich, betaeubt sie und sprengt sie am Ende weg.
 ##   overwatch: Hexapod schiesst mit doppelter Rate, auch in Bewegung.
 ##   roll: Automat rollt als Walze, schneller, nimmt weniger Schaden und rammt Gegner.
-##   print: Drucker druckt zwei Drohnen, die automatisch Gegner beschiessen.
+##   print: Drucker druckt drei Kampfdrohnen (Warbots), die Gegner beschiessen und ablenken, aber zerstoerbar sind und vergluehen.
 
 const SUCK_RADIUS := 560.0
 const SUCK_BITE_RADIUS := 150.0
 const VORTEX_DISTANCE := 190.0
 const BURST_DAMAGE := 22.0
 const TICK := 0.2
-const DRONES := 2
+const SQUAD := 3
 
 var player: Player
 var data: Dictionary = {}
@@ -167,15 +167,9 @@ func _update_roll(delta: float) -> void:
 
 
 func _spawn_drones() -> void:
-	var main := player.get_parent()
-	for i in DRONES:
-		var drone := Drone.new()
-		drone.owner_player = player
-		drone.slot = i
-		drone.life = float(data.duration)
-		main.add_child(drone)
-		# Die Drohnen starten aus der Druckkammer und fliegen von dort zu ihrer Bahn.
-		drone.global_position = player.global_position + Vector2(-6.0 * player.facing, -20.0)
+	# Die Kampfdrohnen starten aus der Druckkammer und fliegen von dort zu ihrer Bahn.
+	for i in SQUAD:
+		player.summon_minion("warbot")
 
 
 # ---------------------------------------------------------------- Zeichnen

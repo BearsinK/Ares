@@ -148,43 +148,41 @@ func _vending_and_printer() -> void:
 	await _frames(40)
 	_check(brute.hp < brute_hp - 15.0, "Walze verletzt Gegner im Weg (%d -> %d)" % [brute_hp, brute.hp])
 
-	# Drucker: zwei Drohnen schiessen auf Gegner.
+	# Drucker: drei Kampfdrohnen schiessen auf Gegner und vergluehen nach Ablauf.
 	var target := _enemy("brute", p2.global_position + Vector2(380.0, 20.0))
 	var target_hp := target.hp
 	await _tap("p2_ability")
 	var state := p2._art_state()
-	_check(float(state.launch) >= 0.0 and float(state.print) < 0.2, "Nach dem Druck geht die Tür auf und der Druck beginnt neu")
-	var drones := get_tree().get_nodes_in_group("drones")
-	_check(p2.ability.is_active("print") and drones.size() == 2, "L2 druckt zwei Drohnen (%d)" % drones.size())
+	_check(float(state.launch) >= 0.0, "Nach dem Druck geht die Tür auf")
+	_check(p2.ability.is_active("print") and Minion.count_of(p2, "warbot") == 3, "L2 druckt drei Kampfdrohnen (%d)" % Minion.count_of(p2, "warbot"))
 	await _frames(120)
-	_check(target.hp < target_hp - 10.0, "Drohnen beschiessen Gegner (%d -> %d)" % [target_hp, target.hp])
-	for d in drones:
-		d.life = 0.05
+	_check(target.hp < target_hp - 10.0, "Kampfdrohnen beschiessen Gegner (%d -> %d)" % [target_hp, target.hp])
+	for m in Minion.active:
+		if m.kind == "warbot":
+			m.life = 0.05
 	await _frames(10)
-	_check(get_tree().get_nodes_in_group("drones").is_empty(), "Drohnen verschwinden nach Ablauf")
+	_check(Minion.count_of(p2, "warbot") == 0, "Kampfdrohnen verschwinden nach Ablauf")
 
-	# Der Drucker schiesst nur ueber seine Begleitdrohnen und wird dabei nicht zurueckgestossen.
-	_check(p2.escorts.size() == 2 and get_tree().get_nodes_in_group("escorts").size() == 2, "Drucker hat zwei Begleitdrohnen")
+	# Der Drucker schiesst aus der Mitte (Druckkopf oben) und wird dabei nicht zurueckgestossen.
 	await _frames(40)
 	p2.velocity = Vector2.ZERO
 	var origins: Array[Vector2] = []
-	p2.fired.connect(func(_p: Player, _w: String, origin: Vector2, _d: Vector2, _c: float) -> void:
-		origins.append(origin))
+	var aims: Array[Vector2] = []
+	p2.fired.connect(func(_p: Player, _w: String, origin: Vector2, direction: Vector2, _c: float) -> void:
+		origins.append(origin)
+		aims.append(direction))
 	Input.action_press("p2_fire", 1.0)
 	await _frames(20)
 	Input.action_release("p2_fire")
 	_check(origins.size() >= 2, "Drucker feuert (%d Schuesse)" % origins.size())
-	var from_drone := origins.size() >= 2
-	for origin in origins:
-		var near := false
-		for drone in p2.escorts:
-			if origin.distance_to(drone.global_position) < 60.0:
-				near = true
-		from_drone = from_drone and near
-	_check(from_drone, "Schuesse kommen aus den Drohnen")
-	_check(absf(p2.velocity.x) < 1.0, "Drohnenschuesse stossen den Drucker nicht zurueck (%.1f)" % p2.velocity.x)
+	var central := origins.size() >= 2
+	for k in origins.size():
+		var head: Vector2 = p2.global_position + Vector2(0.0, float(p2.stats.muzzle.y))
+		central = central and absf(origins[k].distance_to(head) - float(Weapons.get_weapon("dronegun").barrel)) < 4.0
+	_check(central, "Schuesse kommen aus dem Druckkopf in der Mitte")
+	_check(absf(p2.velocity.x) < 1.0, "Schuesse stossen den Drucker nicht zurueck (%.1f)" % p2.velocity.x)
 
-	# Druckbot: Kills verkuerzen die Abklingzeit, Drohnen erben das Modul.
+	# Druckbot: Kills verkuerzen die Abklingzeit, Kampfdrohnen erben das Modul.
 	var cd_before: float = p2.ability.cooldown
 	var victim := _enemy("brute", p2.global_position + Vector2(60.0, 0.0))
 	victim.take_damage(9999.0, p2, Vector2.RIGHT, "")
@@ -193,8 +191,12 @@ func _vending_and_printer() -> void:
 	p2.set_module("fire")
 	p2.ability.cooldown = 0.0
 	await _tap("p2_ability")
-	var fire_drone: Drone = get_tree().get_nodes_in_group("drones")[0]
-	_check(fire_drone._tint() == Elements.COLORS["fire"], "Drohne zeigt Modulfarbe")
-	for d in get_tree().get_nodes_in_group("drones"):
-		d.life = 0.05
+	var fire_drone: Minion = null
+	for m in Minion.active:
+		if m.kind == "warbot":
+			fire_drone = m
+	_check(fire_drone != null and fire_drone._tint() == Elements.COLORS["fire"], "Drohne zeigt Modulfarbe")
+	for m in Minion.active:
+		if m.kind == "warbot":
+			m.life = 0.05
 	await _frames(10)

@@ -154,11 +154,11 @@ Alle starten mit demselben Grundkit, unterscheiden sich in Hauptangriff, Klassen
 - Raupenboost-Firmware ist der Startknopf der Walze (Vorschlag)
 
 ### 3D-Drucker
-- Archetyp: Schwarm, viele Pfade, Utility
-- Zwei Drohnen schweben über ihm als versetzte Waffen
-- Druckt explodierende Drohnen, die sich selbst zerstören
-- Pfade: Blitzdrohnen, Bomber, Feuer
-- Gut für Item-Procs, weil Drohnen zusätzliche Quellen sind
+- Archetyp: Beschwörer (Schwarm, Utility)
+- Schuss kommt aus dem Druckkopf in der Mitte (früher aus zwei seitlichen Begleitdrohnen, das machte Zielen schwer)
+- Diener (scripts/data/minions.gd): Printling (druckt sich alle 6 s nach, bis 3, schießt), Gnat (Beißer, 7 s, von der Waffe Gnat Swarm), Warbot (Kampfdrohne, 13 s, von der Fähigkeit). Alle haben Leben und eine Lebensdauer und sterben durch Gegnertreffer oder Ablauf
+- Diener lenken Gegner ab: ein naher Diener wird bevorzugt angegriffen, Bodengegner aber nur, wenn sie ihn erreichen können (sonst stünden sie darunter und warteten)
+- Pfade: Blitzdrohnen, Bomber, Feuer. Drohnen übernehmen das Element-Modul und zählen als zusätzliche Quellen für Item-Procs
 
 ### Roomba mit Arm
 - Archetyp: Sauger mit Fähigkeitskopie (Kirby-Prinzip)
@@ -320,7 +320,7 @@ Grundlage: Klassen sollen sich nicht nur über Werte, sondern über die Art zu k
 - Klassensets: Jede Klasse hat genau fünf eigene Waffen, die sonst niemand benutzen darf. Die Sets folgen der Rolle: Roomba nah und schnell (Schwung, Scheibe, Sog, Blitz), Hexapod Position und Fallen (Geschütz, Sniper, Salve, Minen, Gespinst), Vendor Wucht (Flammen, Dosen, Münzen, Turm), Printbot Unterstützung (Sprengdrohnen, Tonerwolke, Markierung, Betäubung). Vier allgemeine Waffen bleiben für alle, damit ein Wechsel der Rolle möglich ist
 - Neue Waffenarten statt neuer Zahlen: Schwung, Sog, Kettenblitz, Boomerang, Salve, ablegbare Minen und Türme, Wolken. Jede Art hat eigene Lesbarkeit (Bogen, Kegel, Blitzlinie, Kontrollring) und mindestens einen Konter-Gedanken (Sweeper gegen Aegis, Sog gegen Gruppen, Labeler für Teamschaden)
 - Magazin statt Dauerfeuer: Jede Waffe hat Magazin und Nachladezeit, damit Waffenwechsel und Upgrades (Magazin, Nachladen, Eco Chip) Entscheidungen werden. Nachladen ist automatisch (leer, oder nach kurzer Pause) und von Hand möglich, Feuer unterbricht ein Teil-Nachladen
-- Upgrades für alles: Jede Waffeneigenschaft hat ein Item. Zusatzprojektile zählen zu 60 Prozent zum Gesamtschaden. Die Wirkung ist je Waffenart sinnvoll übersetzt (Sweeper: breiterer Bogen, Zapper: mehr Sprünge, Mine: mehr Minen, Strahlen: Fächer und Zielhilfe)
+- Upgrades für alles: Jede Waffeneigenschaft hat ein Item. Zusatzprojektile zählen zu 60 Prozent zum Gesamtschaden (beim Printbot geben sie mehr Diener). Die Wirkung ist je Waffenart sinnvoll übersetzt (Sweeper: breiterer Bogen, Zapper: mehr Sprünge, Mine: mehr Minen, Strahlen: Fächer und Zielhilfe)
 - Elemente sichtbar: Spur am Geschoss, Treffer-Teilchen, Zustand am Gegner mit kurzer Meldung. Sechs Kombos, jedes Paar hat genau eine, jede mit Name, Ring, Teilchen und Klang, bei Koop mit goldener Zeile
 - Boden: Spieler und Bodengegner stellen sich auf Rampen parallel zur Fläche, Flieger bleiben frei. Nur die Zeichnung neigt sich, die Kollisionsform bleibt gleich (Physik unverändert)
 - Statuswirkungen aus Waffen sind begrenzt: Betäubung hat danach eine Immunitätszeit, Bosse nehmen nur die Markierung an, gefrorene Ziele sind spröde, damit Kontrolle nie zur Dauerlähmung wird

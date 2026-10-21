@@ -40,7 +40,7 @@ const WEAPON_TEXT := {
 	"sniper": "Langsames Gewehr mit sehr hohem Schaden. Trifft sofort und durchschlägt mehrere Gegner.",
 	"can": "Wirft Dosen. Feuer halten schüttelt sie auf, beim Aufprall explodieren sie, und je länger geschüttelt, desto größer.",
 	"turret": "Präzise Kanone des Hexapods: schnelle Schüsse, die Gegner in einer Linie durchschlagen.",
-	"dronegun": "Die Begleitdrohnen des Printbots feuern leichte Impulsschüsse. Allein schwach, mit Upgrades und Markierungen stark.",
+	"dronegun": "Leichte Impulsschüsse aus dem Druckkopf des Printbots, genau in Zielrichtung. Allein schwach, mit Upgrades und Markierungen stark.",
 	"sweeper": "Roomba schwingt seinen Besen: trifft alle Gegner vor ihm, schleudert sie weg und fegt gegnerische Schüsse aus der Luft.",
 	"disc": "Wurfscheibe, die sich durch Gegner schneidet, umkehrt und auf dem Rückweg erneut trifft.",
 	"vacuum": "Saugkegel, der Gegner vor dem Roomba zu einem Punkt zusammenzieht. Wenig Schaden, aber ideal für Explosionen des Partners.",
@@ -54,7 +54,7 @@ const WEAPON_TEXT := {
 	"boomdrone": "Startet zwei kleine Sprengdrohnen, die sich einen Gegner suchen und beim Aufprall explodieren. Verbraucht zwei Schuss.",
 	"toner": "Wirft eine Tonerbombe. Am Aufprall bleibt eine dunkle Wolke liegen, die Gegner darin verletzt und stark bremst.",
 	"label": "Klebt Etiketten auf Gegner: Markierte Ziele nehmen von allen sechs Sekunden lang ein Drittel mehr Schaden.",
-	"paperjam": "Breite Welle aus Papierblättern auf kurze Distanz. Betäubt getroffene Gegner kurz, danach sind sie eine Weile immun.",
+	"swarm": "Druckt drei Gnats pro Schuss. Sie fliegen Gegner an und beißen, sind aber zerbrechlich und halten nur sieben Sekunden. Höchstens sechs gleichzeitig.",
 	"zapper": "Kettenblitz: trifft den Gegner am Fadenkreuz und springt auf bis zu drei weitere. Nasse Gegner erleiden den vollen Volt-Effekt.",
 }
 

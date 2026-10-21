@@ -1562,6 +1562,8 @@ func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direct
 			_fire_chain(player, weapon, origin, direction, damage, element, color)
 		"deploy":
 			_fire_deploy(player, weapon, origin, direction, damage, element, color)
+		"summon":
+			_fire_summon(player, weapon, origin, direction, damage, color)
 		_:
 			_fire_projectiles(player, weapon, origin, direction, damage, element, color)
 
@@ -1671,13 +1673,13 @@ func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, dire
 		projectiles.add_child(bullet)
 
 
-## Explosivgeschoss einer Drucker-Drohne.
-func spawn_drone_shot(player: Player, origin: Vector2, direction: Vector2) -> void:
+## Schuss eines Dieners des Printbots (damage ist der fertige Wert des Dieners).
+func spawn_drone_shot(player: Player, origin: Vector2, direction: Vector2, damage := 4.0) -> void:
 	var bullet := Projectile.new()
 	bullet.position = origin
 	bullet.direction = direction
 	bullet.speed = 750.0
-	bullet.damage = 4.0 * player.damage_mult()
+	bullet.damage = damage
 	bullet.lifetime = 1.0
 	bullet.size = 4.0
 	bullet.color = Color(1.0, 0.65, 0.25)
@@ -1687,7 +1689,7 @@ func spawn_drone_shot(player: Player, origin: Vector2, direction: Vector2) -> vo
 		bullet.color = Elements.COLORS[element]
 	bullet.shooter = player
 	bullet.explosion_radius = 50.0
-	bullet.explosion_damage = 6.0 * player.damage_mult()
+	bullet.explosion_damage = damage * 1.5
 	bullet.hit.connect(_on_projectile_hit)
 	projectiles.add_child(bullet)
 
@@ -1866,6 +1868,21 @@ func _fire_deploy(player: Player, weapon: Dictionary, origin: Vector2, direction
 		thing.element = element
 		thing.knock = 1.0 + float(player.mods.knock)
 		projectiles.add_child(thing)
+
+
+## Druckt Diener (Gnats): sie starten aus dem Druckkopf in Zielrichtung und fliegen dann selbststaendig los.
+func _fire_summon(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, color: Color) -> void:
+	var kind := String(weapon.entity)
+	var count := _shot_count(player, weapon)
+	var cap := int(weapon.max_active) + int(player.mods.proj)
+	# Bei Crits zaehlt der Mehrschaden nicht fuer jeden Biss, daher der Grundschaden.
+	var bite := damage / maxf(_crit_mult, 1.0)
+	for i in count:
+		var minion := player.summon_minion(kind, bite, float(weapon.life), origin, cap)
+		minion.velocity = direction.rotated(_fan_offset(i, count, Perks.FAN_ANGLE * 2.0)) * float(weapon.get("throw", 300.0))
+		minion.global_position += minion.velocity.normalized() * 6.0
+		if Fx.instance:
+			Fx.instance.spark(origin, color, 3, 120.0)
 
 
 ## Schuss eines Geschuetzturms: laeuft durch dieselbe Schusserzeugung wie die Waffen des Spielers (Upgrades gelten).

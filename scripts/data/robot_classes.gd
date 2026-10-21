@@ -77,7 +77,7 @@ const DATA := {
 		"eye_color": Color(1.0, 0.55, 0.2),
 		"radius": 29.0,
 		"size": Vector2(58, 74),
-		"muzzle": Vector2(0, -40),
+		"muzzle": Vector2(0, -33),
 		"speed": 300.0,
 		"accel": 2400.0,
 		"air_accel": 1700.0,
@@ -86,12 +86,12 @@ const DATA := {
 		"tips_over": true,
 		"step": "step",
 		"kill_cooldown": 0.15,
-		"escort_drones": 2,
+		"summoner": true,
 		"dash_charges": 2,
 		"dash_cooldown": 1.3,
 		"weapons": ["dronegun"],
 		"damage_mult": 0.9,
-		"ability": {"id": "print", "name": "Drone Drop", "cooldown": 20.0, "duration": 7.0},
+		"ability": {"id": "print", "name": "Drone Drop", "cooldown": 20.0, "duration": 5.0},
 	},
 }
 

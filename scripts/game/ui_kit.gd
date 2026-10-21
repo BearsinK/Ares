@@ -24,9 +24,9 @@ const CLASS_INFO := {
 		"damage": 4, "difficulty": 2,
 	},
 	"printer": {
-		"tags": ["Swarm", "Utility", "Flex"],
-		"blurb": "Läuft auf gedruckten Beinen. Drohnen schießen für ihn, dazu Sprengdrohnen, Tonerwolken, Markierungen und Betäubung.",
-		"ability": "Drone Drop: zwei explosive Drohnen jagen Gegner",
+		"tags": ["Summoner", "Swarm", "Utility"],
+		"blurb": "Beschwörer auf gedruckten Beinen. Druckt Drohnen und Gnats, die für ihn kämpfen und Gegner ablenken, aber sterben können und verglühen. Dazu Sprengdrohnen, Tonerwolken und Markierungen.",
+		"ability": "Drone Drop: druckt drei Kampfdrohnen für 13 Sekunden",
 		"damage": 2, "difficulty": 3,
 	},
 }
