@@ -83,7 +83,7 @@ func _run() -> void:
 	var spaced := true
 	for i in chests.size():
 		for j in range(i + 1, chests.size()):
-			if chests[i].position.distance_to(chests[j].position) < 699.0:
+			if chests[i].position.distance_to(chests[j].position) < 699.0 * Stages.STAGE_SCALE:
 				spaced = false
 	_check(spaced, "Kisten liegen weit auseinander")
 	var on_ground := true

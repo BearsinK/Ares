@@ -154,7 +154,7 @@ func _run() -> void:
 
 	# Aufbau in der Hauptszene.
 	await _start_main("", ["roomba", "hexapod"])
-	_check(not main.stage_layout.is_empty() and main.arena_size == Stages.SIZE, "Hauptszene baut die Karte (%s)" % main.stage_layout.name)
+	_check(not main.stage_layout.is_empty() and main.arena_size == Stages.SIZE * Stages.STAGE_SCALE, "Hauptszene baut die Karte (%s)" % main.stage_layout.name)
 	var p1: Player = main.players[0]
 	var p2: Player = main.players[1]
 	_check(p1.is_on_floor() and p2.is_on_floor(), "Beide Spieler stehen am Start auf dem Boden")

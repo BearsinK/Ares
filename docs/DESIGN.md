@@ -340,3 +340,4 @@ Grundlage: Klassen sollen sich nicht nur über Werte, sondern über die Art zu k
 - Unsichtbare Begrenzungen (Ebene 8) zählen nicht als Wand: Klettern und Wandsprung gehen nur an sichtbaren Wänden
 - Rote Pfeile am Bildrand zeigen Gegner außerhalb des Bildes (bis 1700 px, höchstens zehn, nahe Gegner in einer Richtung teilen sich einen größeren Pfeil, Elites golden umrandet)
 - Zielstrahl der Spieler ist deutlich blasser und wird beim Schießen noch blasser, damit man die Schüsse sieht
+- Karten kompakter: Die Entwürfe (6400 x 2200) werden beim Bau mit STAGE_SCALE 0,55 verkleinert, Stege behalten ihre Dicke und Seile ihre Breite. Abstände für Kisten, Altäre, Bodenpunkte und Startabstand folgen dem Maßstab, ein paar Stege mehr füllen die langen leeren Strecken (Rostbecken über den Rampen, Zickzack im unteren Gang). Zum Nachstellen genügt die eine Zahl

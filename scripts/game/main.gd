@@ -1110,10 +1110,13 @@ func _refresh_chests() -> void:
 ## Die grosse Kiste kommt an den entlegensten, hoechsten Punkt der Karte (Belohnung fuers Erkunden).
 func _chest_spot(taken: Array[Vector2], large: bool, spacings: Array) -> Vector2:
 	var ground: Array = stage_layout.ground
+	# Alle Abstaende sind fuer die Entwurfsgroesse der Karten gedacht und folgen dem Kartenmassstab.
+	var unit := Stages.STAGE_SCALE
 	# Erst mit grossen Abstaenden suchen. Wird es eng (enge Karte, Spieler mitten drin), erst kleinere Abstaende
 	# zueinander, dann zuletzt auch dichter an den Spielern: lieber eine Kiste nah als gar keine.
-	for player_gap in [600.0, 350.0, 150.0]:
-		for spacing in spacings:
+	for player_gap in [600.0 * unit, 350.0 * unit, 150.0 * unit]:
+		for spacing_base in spacings:
+			var spacing: float = float(spacing_base) * unit
 			var best := Vector2.INF
 			var best_score := -INF
 			for k in 50:
@@ -1126,7 +1129,7 @@ func _chest_spot(taken: Array[Vector2], large: bool, spacings: Array) -> Vector2
 					if player.global_position.distance_to(point) < player_gap:
 						ok = false
 				for start: Vector2 in stage_layout.starts:
-					if start.distance_to(point) < 500.0:
+					if start.distance_to(point) < 500.0 * unit:
 						ok = false
 				if not ok:
 					continue

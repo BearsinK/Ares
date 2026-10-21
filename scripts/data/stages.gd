@@ -4,6 +4,9 @@ extends RefCounted
 ## Felsmassen, Rampen, Durchsprung-Plattformen und Seilen. Struktur fest, Variante zufaellig
 ## (Spiegelung). Koordinaten: Ursprung links oben, y waechst nach unten, Welt 6400 x 2200.
 ##
+## Die Karten sind im Entwurf 6400 x 2200 gross und werden beim Bau auf STAGE_SCALE verkleinert (Entwurf bleibt lesbar, Platz laesst sich
+## mit einer Zahl nachstellen). Stege behalten ihre Dicke, Seile ihre Breite.
+##
 ## Ein Layout ist ein Dictionary:
 ##   id, name, size
 ##   solids      Array[Rect2]   feste Bloecke (Ebene 1)
@@ -16,6 +19,8 @@ extends RefCounted
 ##   steam       Array[Vector2] Dampfauslaesse
 
 const SIZE := Vector2(6400.0, 2200.0)
+## Massstab der gebauten Karten: weniger leerer Raum, Gegner sind schneller bei den Spielern.
+const STAGE_SCALE := 0.55
 const IDS: Array[String] = ["basin", "caverns", "zigzag"]
 const NAMES := {"basin": "Rostbecken", "caverns": "Kavernen", "zigzag": "Zickzack", "classic": "Halle"}
 ## Charakter jeder Karte: Kurztext fuers Banner, Tonhoehe der Musik (mood) und Gewichte, mit denen der Director Gegnertypen bevorzugt.
@@ -41,6 +46,7 @@ static func build(id: String, mirrored := false) -> Dictionary:
 			_zigzag(layout)
 		_:
 			_basin(layout)
+	_scale(layout, STAGE_SCALE)
 	_add_ground_points(layout)
 	if mirrored:
 		_mirror(layout)
@@ -133,6 +139,9 @@ static func _basin(l: Dictionary) -> void:
 	_rope(l, 3760.0, 1260.0, 1900.0)
 	_platform(l, 2950.0, 1010.0, 500.0)
 	_rope(l, 2860.0, 1010.0, 1260.0)
+	# Stege ueber den Rampenansaetzen, damit die Hochebenen nicht leer wirken.
+	_platform(l, 850.0, 1290.0, 320.0)
+	_platform(l, 5230.0, 1290.0, 320.0)
 	l.starts.append(Vector2(2300.0, 1900.0))
 	l.starts.append(Vector2(2420.0, 1900.0))
 	l.air.append(Rect2(300.0, 350.0, 5800.0, 950.0))
@@ -204,8 +213,10 @@ static func _zigzag(l: Dictionary) -> void:
 	_rope(l, 580.0, 950.0, 1900.0)
 	_rope(l, 2300.0, 950.0, 1450.0)
 	_rope(l, 4100.0, 950.0, 1450.0)
-	# Ein Zwischensteg im Eingangsbereich.
+	# Ein Zwischensteg im Eingangsbereich, dazu zwei niedrige Stege im langen Gang der unteren Etage.
 	_platform(l, 150.0, 1700.0, 300.0)
+	_platform(l, 1500.0, 1760.0, 300.0)
+	_platform(l, 3100.0, 1760.0, 300.0)
 	l.starts.append(Vector2(500.0, 1900.0))
 	l.starts.append(Vector2(650.0, 1900.0))
 	l.air.append(Rect2(1200.0, 300.0, 4600.0, 600.0))
@@ -235,13 +246,13 @@ static func surfaces(l: Dictionary) -> Array[Dictionary]:
 	return result
 
 
-## Bodengegner-Startpunkte: auf allen Flaechen, die kein Steg und keine Insel sind, alle 260 Pixel.
+## Bodengegner-Startpunkte: auf allen Flaechen, die kein Steg und keine Insel sind, alle 260 Pixel (im Entwurfsmassstab).
 static func _add_ground_points(l: Dictionary) -> void:
 	for surface in surfaces(l):
 		if surface.kind == "platform" or surface.island:
 			continue
-		var x: float = surface.x0 + 90.0
-		while x <= float(surface.x1) - 90.0:
+		var x: float = surface.x0 + 90.0 * STAGE_SCALE
+		while x <= float(surface.x1) - 90.0 * STAGE_SCALE:
 			var t := 0.0 if absf(float(surface.x1) - float(surface.x0)) < 0.1 else (x - float(surface.x0)) / (float(surface.x1) - float(surface.x0))
 			var y: float = lerpf(float(surface.y0), float(surface.y1), t)
 			# Nicht dort, wo ein anderer Block darauf oder darueber sitzt.
@@ -254,7 +265,7 @@ static func _add_ground_points(l: Dictionary) -> void:
 					covered = true
 			if not covered:
 				l.ground.append(Vector2(x, y))
-			x += 260.0
+			x += 260.0 * STAGE_SCALE
 
 
 ## Liegt der Punkt in einem Block oder Keil (ohne Aussenrahmen)?
@@ -266,6 +277,40 @@ static func point_in_terrain(l: Dictionary, point: Vector2) -> bool:
 		if Geometry2D.is_point_in_polygon(point, points):
 			return true
 	return false
+
+
+## Verkleinert alle Koordinaten des Layouts um s. Stege behalten ihre Dicke (24), Seile ihre Breite.
+static func _scale(l: Dictionary, s: float) -> void:
+	l.size = Vector2(l.size) * s
+	var solids: Array[Rect2] = []
+	for rect in l.solids:
+		solids.append(Rect2(rect.position * s, rect.size * s))
+	l.solids = solids
+	var ramps: Array[PackedVector2Array] = []
+	for points in l.ramps:
+		var scaled := PackedVector2Array()
+		for point in points:
+			scaled.append(point * s)
+		ramps.append(scaled)
+	l.ramps = ramps
+	var platforms: Array[Rect2] = []
+	for rect in l.platforms:
+		platforms.append(Rect2(rect.position * s, Vector2(rect.size.x * s, rect.size.y)))
+	l.platforms = platforms
+	var ropes: Array[Rect2] = []
+	for rect in l.ropes:
+		var x: float = (rect.position.x + rect.size.x * 0.5) * s
+		ropes.append(Rect2(x - ROPE_WIDTH * 0.5, rect.position.y * s, ROPE_WIDTH, rect.size.y * s))
+	l.ropes = ropes
+	var air: Array[Rect2] = []
+	for rect in l.air:
+		air.append(Rect2(rect.position * s, rect.size * s))
+	l.air = air
+	for key in ["starts", "steam"]:
+		var points_list: Array[Vector2] = []
+		for point in l[key]:
+			points_list.append(point * s)
+		l[key] = points_list
 
 
 static func _mirror(l: Dictionary) -> void:
