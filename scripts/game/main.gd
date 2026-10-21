@@ -1531,6 +1531,8 @@ func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direct
 	if float(weapon.shake) >= 5.0:
 		InputSetup.rumble(player.player_index, 0.2, minf(0.3 + float(weapon.shake) * 0.05, 0.7), 0.12)
 	fx.muzzle(origin, direction, color)
+	if element != "":
+		fx.element_muzzle(origin, direction, element)
 	match String(weapon.kind):
 		"lob":
 			_fire_lob(player, weapon, origin, direction, damage, element, color, charge)
@@ -1916,7 +1918,12 @@ func _trace_ray(player: Player, weapon: Dictionary, origin: Vector2, direction: 
 			break
 		exclude.clear()
 	for i in points.size() - 1:
-		fx.tracer(points[i], points[i + 1], color, float(weapon.width), float(weapon.tracer_life))
+		if element == "lightning":
+			fx.zigzag(points[i], points[i + 1], color, float(weapon.width), float(weapon.tracer_life))
+		else:
+			fx.tracer(points[i], points[i + 1], color, float(weapon.width), float(weapon.tracer_life))
+		if element != "":
+			fx.element_beam(points[i], points[i + 1], element)
 
 
 func _on_projectile_hit(projectile: Projectile, pos: Vector2, _target: Node) -> void:
@@ -1949,6 +1956,8 @@ func _spawn_zone(projectile: Projectile, pos: Vector2) -> void:
 
 func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: Color, element := "", shake_amount := 10.0, knock := 1.0) -> void:
 	fx.explosion(pos, radius, color)
+	if element != "":
+		fx.element_hit(pos, element, 2.5)
 	camera.add_shake(shake_amount)
 	Sfx.play("explosion")
 	for enemy in get_tree().get_nodes_in_group("enemies"):

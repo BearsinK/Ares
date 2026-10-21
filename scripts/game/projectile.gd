@@ -43,6 +43,7 @@ var zone: Dictionary = {}
 var detonate_on_timeout := false
 
 var _returning := false
+var _element_timer := 0.0
 
 var _prev_pos := Vector2.ZERO
 var _life0 := 1.0
@@ -75,8 +76,13 @@ func _physics_process(delta: float) -> void:
 		_step_boomerang()
 	elif homing > 0.0:
 		_steer(delta)
-	if style in ["disc", "web", "flame", "coin", "drone", "canister", "paper"]:
+	if style in ["disc", "web", "flame", "coin", "drone", "canister", "paper"] or element != "":
 		queue_redraw()
+	if element != "" and Fx.instance:
+		_element_timer -= delta
+		if _element_timer <= 0.0:
+			_element_timer = 0.05
+			Fx.instance.element_trail(global_position, element)
 	_velocity.y += arc_gravity * delta
 	position += _velocity * delta
 	if arc_gravity > 0.0:
@@ -166,6 +172,39 @@ func _has_line_of_sight(target: Node2D) -> bool:
 
 
 func _draw() -> void:
+	_draw_body()
+	if element != "":
+		_draw_element()
+
+
+## Schein und Zacken in der Farbe des Elements ueber jedem Geschoss: Flackerhalo, Tropfen, Eiskristall oder Blitzzacken.
+func _draw_element() -> void:
+	var base := Elements.color_of(element)
+	var s := maxf(size, 3.0)
+	match element:
+		"fire":
+			var flicker := 0.7 + 0.3 * sin(_age * 40.0)
+			draw_circle(Vector2.ZERO, s * 2.4 * flicker, Color(base, 0.22))
+			draw_circle(Vector2.ZERO, s * 1.3, Color(1.0, 0.85, 0.4, 0.5))
+		"water":
+			draw_circle(Vector2.ZERO, s * 2.2, Color(base, 0.22))
+			for i in 2:
+				var a := _age * 9.0 + i * PI
+				draw_circle(Vector2(cos(a), sin(a)) * s * 1.7, 1.8, Color(0.7, 0.9, 1.0, 0.9))
+		"ice":
+			draw_circle(Vector2.ZERO, s * 2.1, Color(base, 0.2))
+			for i in 4:
+				var a := _age * 4.0 + TAU * i / 4.0
+				draw_line(Vector2.ZERO, Vector2(cos(a), sin(a)) * s * 2.0, Color(0.9, 1.0, 1.0, 0.85), 1.4, true)
+		"lightning":
+			draw_circle(Vector2.ZERO, s * 1.9, Color(base, 0.2))
+			for i in 3:
+				var a := randf() * TAU
+				var mid := Vector2(cos(a), sin(a)) * s * 1.3
+				draw_polyline(PackedVector2Array([Vector2.ZERO, mid + Vector2(randf_range(-3.0, 3.0), randf_range(-3.0, 3.0)), Vector2(cos(a), sin(a)) * s * 2.6]), Color(1.0, 0.98, 0.5, 0.95), 1.6, true)
+
+
+func _draw_body() -> void:
 	match style:
 		"rocket":
 			_draw_rocket()

@@ -120,6 +120,8 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 		return
 	if element != "" and not from_effect:
 		amount = statuses.process_hit(element, source, amount)
+		if Fx.instance:
+			Fx.instance.element_hit(global_position + Vector2(randf_range(-150.0, -60.0), randf_range(-380.0, -200.0)), element, 0.6)
 	amount *= statuses.damage_factor()
 	amount *= 1.0 if open else ARMOR
 	amount *= float(WEAK.get(element, 1.0))

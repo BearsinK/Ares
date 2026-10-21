@@ -15,7 +15,7 @@ const GAIN := {
 	"sweep": 0.5, "disc": 0.45, "suck_tick": 0.4, "zap_gun": 0.45,
 	"burst_shot": 0.35, "mine_place": 0.5, "mine_arm": 0.4, "web_shot": 0.4,
 	"flame": 0.3, "volley": 0.55, "coin_shot": 0.35,
-	"drone_launch": 0.4, "toner_pop": 0.5, "label_shot": 0.3, "paper_burst": 0.45,
+	"drone_launch": 0.4, "toner_pop": 0.5, "label_shot": 0.3, "paper_burst": 0.45, "combo_overload": 0.7, "combo_short": 0.6,
 }
 
 var _streams: Dictionary = {}
@@ -93,6 +93,8 @@ func _ready() -> void:
 	_streams["toner_pop"] = _layers([[240.0, 90.0, 0.12, "sine", 0.35, 0.3, 0.0], [700.0, 300.0, 0.18, "saw", 0.15, 0.9, 0.02]])
 	_streams["label_shot"] = _synth(2200.0, 1500.0, 0.03, "square", 0.14, 0.4)
 	_streams["paper_burst"] = _synth(2500.0, 900.0, 0.12, "saw", 0.22, 0.95)
+	_streams["combo_overload"] = _layers([[160.0, 40.0, 0.4, "saw", 0.5, 0.9, 0.0], [1500.0, 300.0, 0.18, "square", 0.3, 0.6, 0.0], [700.0, 200.0, 0.25, "saw", 0.25, 0.7, 0.05]])
+	_streams["combo_short"] = _layers([[1800.0, 400.0, 0.12, "square", 0.3, 0.7, 0.0], [2400.0, 1200.0, 0.06, "sine", 0.25, 0.1, 0.1], [600.0, 150.0, 0.22, "saw", 0.2, 0.8, 0.04]])
 	_streams["zap_gun"] = _synth(1800.0, 350.0, 0.1, "square", 0.2, 0.6)
 	_make_event_sounds()
 

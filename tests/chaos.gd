@@ -34,7 +34,7 @@ func _ready() -> void:
 	print("Chaos: ", Engine.get_meta("classes"), " ", seconds, " s")
 
 
-## CHAOS_ARSENAL=1: jeder Spieler bekommt drei zufaellige Waffen seiner Klasse (alle 15 s neu), damit alle Waffen Zufallseingaben sehen.
+## CHAOS_ARSENAL=1: jeder Spieler bekommt drei zufaellige Waffen seiner Klasse mit zufaelligen Modulen (alle 15 s neu), damit alle Waffen Zufallseingaben sehen.
 func _deal_weapons() -> void:
 	for player in main.players:
 		var pool: Array = Weapons.CLASS_SETS[player.class_id].duplicate()
@@ -44,7 +44,7 @@ func _deal_weapons() -> void:
 		player.modules.clear()
 		for id in pool.slice(0, 3):
 			player.weapons.append(id)
-			player.modules.append("")
+			player.modules.append(["", "fire", "water", "ice", "lightning"].pick_random())
 		player.weapon_index = 0
 	_next_deal = _elapsed + 15.0
 

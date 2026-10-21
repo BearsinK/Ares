@@ -143,6 +143,8 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 		amount *= source.hit_multiplier(self)
 	if element != "" and not from_effect:
 		amount = statuses.process_hit(element, source, amount)
+		if on_screen and Fx.instance:
+			Fx.instance.element_hit(global_position, element)
 		if _dead:
 			return
 	# Schild schluckt Schaden, bis er gebrochen ist.
@@ -250,6 +252,7 @@ func reach() -> float:
 
 func _die() -> void:
 	_dead = true
+	statuses.on_death()
 	for follower in _minions:
 		if is_instance_valid(follower) and not follower._dead:
 			follower._die()

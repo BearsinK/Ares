@@ -86,13 +86,123 @@ func tracer(from: Vector2, to: Vector2, color: Color, width: float, life: float)
 	_items.append({"type": "tracer", "from": from, "to": to, "t": life, "max": life, "color": color, "width": width})
 
 
+## Einzelnes Teilchen mit Bewegung (ember, drop, shard, puff). Alles kurzlebig, kein Eingriff in die Spielwelt.
+func _particle(type: String, pos: Vector2, vel: Vector2, life: float, color: Color, size: float) -> void:
+	if _items.size() >= MAX_ITEMS - 60:
+		return
+	_items.append({"type": type, "pos": pos, "vel": vel, "t": life, "max": life, "color": color, "size": size, "rot": randf() * TAU, "spin": randf_range(-12.0, 12.0)})
+
+
+func _calm_count(count: int) -> int:
+	return maxi(1, count / 2) if SaveData.calm_effects() else count
+
+
+## Eine Spur hinter einem Element-Geschoss: Glut steigt auf, Tropfen fallen, Eiskristalle funkeln, kleine Blitze zucken.
+func element_trail(pos: Vector2, element: String) -> void:
+	match element:
+		"fire":
+			_particle("ember", pos + Vector2(randf_range(-3.0, 3.0), randf_range(-3.0, 3.0)), Vector2(randf_range(-30.0, 30.0), randf_range(-130.0, -60.0)), randf_range(0.35, 0.6), Color(1.0, 0.55, 0.15), randf_range(2.0, 3.6))
+		"water":
+			_particle("drop", pos, Vector2(randf_range(-40.0, 40.0), randf_range(-30.0, 30.0)), randf_range(0.3, 0.5), Color(0.4, 0.7, 1.0), randf_range(2.0, 3.2))
+		"ice":
+			if _items.size() < MAX_ITEMS - 100:
+				_items.append({"type": "glint", "pos": pos + Vector2(randf_range(-5.0, 5.0), randf_range(-5.0, 5.0)), "t": 0.4, "max": 0.4, "color": Elements.COLORS.ice, "size": randf_range(5.0, 9.0), "phase": randf() * TAU})
+		"lightning":
+			var a := randf() * TAU
+			zigzag(pos, pos + Vector2(cos(a), sin(a)) * randf_range(14.0, 26.0), Elements.COLORS.lightning, 1.6, 0.07)
+
+
+## Treffer eines Elements: Glutfunken, Spritzer, Eisscherben oder kleine Blitzgabeln.
+func element_hit(pos: Vector2, element: String, strength := 1.0) -> void:
+	var count := _calm_count(int(round(6.0 * strength)))
+	for i in count:
+		var angle := randf() * TAU
+		var dir := Vector2(cos(angle), sin(angle))
+		match element:
+			"fire":
+				_particle("ember", pos + dir * 6.0, dir * randf_range(60.0, 220.0) + Vector2(0.0, -60.0), randf_range(0.35, 0.7), Color(1.0, 0.5, 0.12), randf_range(2.5, 4.5))
+			"water":
+				_particle("drop", pos + dir * 4.0, Vector2(dir.x * randf_range(60.0, 200.0), randf_range(-260.0, -80.0)), randf_range(0.35, 0.6), Color(0.4, 0.7, 1.0), randf_range(2.5, 4.0))
+			"ice":
+				_particle("shard", pos, dir * randf_range(120.0, 340.0), randf_range(0.3, 0.5), Color(0.8, 0.96, 1.0), randf_range(4.0, 7.0))
+			"lightning":
+				if i < 3:
+					zigzag(pos, pos + dir * randf_range(26.0, 56.0), Elements.COLORS.lightning, 2.0, 0.1)
+	if element == "water":
+		_items.append({"type": "ring", "pos": pos, "radius": 22.0 * minf(strength, 2.0), "t": 0.2, "max": 0.2, "color": Color(0.45, 0.75, 1.0)})
+
+
+## Muendungseffekt des Elements vor dem Lauf.
+func element_muzzle(pos: Vector2, dir: Vector2, element: String) -> void:
+	for i in _calm_count(4):
+		var spread := dir.rotated(randf_range(-0.5, 0.5))
+		match element:
+			"fire":
+				_particle("ember", pos, spread * randf_range(120.0, 260.0), randf_range(0.2, 0.4), Color(1.0, 0.55, 0.15), randf_range(2.5, 4.0))
+			"water":
+				_particle("drop", pos, spread * randf_range(120.0, 240.0), randf_range(0.25, 0.4), Color(0.4, 0.7, 1.0), randf_range(2.5, 3.5))
+			"ice":
+				_particle("shard", pos, spread * randf_range(150.0, 300.0), randf_range(0.2, 0.35), Color(0.8, 0.96, 1.0), randf_range(3.5, 6.0))
+			"lightning":
+				if i < 2:
+					zigzag(pos, pos + spread * randf_range(24.0, 44.0), Elements.COLORS.lightning, 2.0, 0.08)
+
+
+## Teilchen entlang eines Strahls (alle ca. 100 px eines): macht das Element auch bei Strahlwaffen sichtbar.
+func element_beam(from: Vector2, to: Vector2, element: String) -> void:
+	var length := from.distance_to(to)
+	var steps := int(length / 100.0)
+	for i in steps:
+		element_trail(from.lerp(to, (float(i) + randf()) / float(maxi(steps, 1))), element)
+
+
+## Aufsteigender Dampf oder Rauch.
+func puff(pos: Vector2, radius: float, color: Color, count := 6) -> void:
+	for i in _calm_count(count):
+		_particle("puff", pos + Vector2(randf_range(-radius, radius), randf_range(-radius, radius) * 0.5), Vector2(randf_range(-20.0, 20.0), randf_range(-70.0, -20.0)), randf_range(0.6, 1.0), color, randf_range(radius * 0.25, radius * 0.5))
+
+
+## Kombo-Meldung am Ziel: Name (bei Koop mit goldener Zeile), Ring und Teilchen der Kombo.
+func combo(pos: Vector2, combo_name: String, coop: bool) -> void:
+	var info: Dictionary = Elements.COMBOS[combo_name]
+	var color: Color = info.color
+	number_text(pos + Vector2(0.0, -78.0), String(info.text), color, 24 if coop else 20, 1.2)
+	if coop:
+		number_text(pos + Vector2(0.0, -102.0), "KOOP", Color(1.0, 0.85, 0.3), 16, 1.2)
+		_items.append({"type": "ring", "pos": pos, "radius": 100.0, "t": 0.3, "max": 0.3, "color": Color(1.0, 0.85, 0.3)})
+	_items.append({"type": "ring", "pos": pos, "radius": 72.0 if coop else 56.0, "t": 0.25, "max": 0.25, "color": color})
+	match combo_name:
+		"steam":
+			puff(pos, 55.0, Color(0.92, 0.95, 1.0, 0.85), 9)
+		"freeze":
+			element_hit(pos, "ice", 2.5)
+			puff(pos, 40.0, Color(0.8, 0.96, 1.0, 0.8), 4)
+		"shock":
+			element_hit(pos, "lightning", 2.0)
+			spark(pos, color, 10, 380.0)
+		"melt":
+			puff(pos, 40.0, Color(1.0, 0.8, 0.6, 0.8), 5)
+			element_hit(pos, "ice", 1.2)
+		"overload":
+			element_hit(pos, "fire", 3.0)
+			element_hit(pos, "lightning", 1.5)
+			spark(pos, color, 14, 460.0)
+		"short":
+			element_hit(pos, "ice", 1.5)
+			element_hit(pos, "lightning", 2.0)
+
+
 ## Schwung eines Nahkampf-Bogens: heller Halbmond vor dem Spieler (Sweeper).
 func slash(pos: Vector2, dir: Vector2, reach: float, arc: float, color: Color) -> void:
+	if _items.size() >= MAX_ITEMS:
+		return
 	_items.append({"type": "slash", "pos": pos, "dir": dir, "reach": reach, "arc": arc, "t": 0.16, "max": 0.16, "color": color})
 
 
 ## Gezackte Blitzlinie zwischen zwei Punkten (Kettenblitz). Die Zacken werden einmal ausgewuerfelt.
 func zigzag(from: Vector2, to: Vector2, color: Color, width := 3.0, life := 0.14) -> void:
+	if _items.size() >= MAX_ITEMS:
+		return
 	var points := PackedVector2Array([from])
 	var length := from.distance_to(to)
 	var segments := maxi(2, int(length / 32.0))
@@ -133,6 +243,20 @@ func _process(delta: float) -> void:
 			item.vel *= 0.9
 		elif item.type == "number":
 			item.pos.y -= 70.0 * delta
+		elif item.type == "ember":
+			item.vel.y -= 90.0 * delta
+			item.pos += item.vel * delta
+			item.vel.x *= 0.96
+		elif item.type == "drop":
+			item.vel.y += 1100.0 * delta
+			item.pos += item.vel * delta
+		elif item.type == "shard":
+			item.pos += item.vel * delta
+			item.vel *= 0.9
+			item.rot += item.spin * delta
+		elif item.type == "puff":
+			item.pos += item.vel * delta
+			item.vel *= 0.97
 		elif item.type == "icon":
 			# Steigt erst schnell, dann langsam.
 			item.pos.y -= (90.0 * item.t / item.max + 10.0) * delta
@@ -222,6 +346,28 @@ func _draw() -> void:
 				color.a = fade
 				draw_line(item.from, item.to, color, item.width * 2.2)
 				draw_line(item.from, item.to, Color(1, 1, 1, fade), item.width)
+			"ember":
+				var heat := 1.0 - fade
+				var glow := Color(1.0, 0.85 - 0.5 * heat, 0.3 - 0.2 * heat, fade)
+				draw_circle(item.pos, float(item.size) * (0.6 + 0.6 * fade), glow)
+				draw_circle(item.pos, float(item.size) * 0.4 * fade, Color(1.0, 1.0, 0.8, fade))
+			"drop":
+				color.a = fade
+				draw_circle(item.pos, float(item.size), color)
+				draw_line(item.pos, item.pos - item.vel.normalized() * float(item.size) * 2.2, Color(color, fade * 0.5), float(item.size) * 0.9)
+			"shard":
+				var axis := Vector2(cos(item.rot), sin(item.rot))
+				var side := axis.orthogonal()
+				var sz: float = item.size
+				var tri := PackedVector2Array([item.pos + axis * sz, item.pos - axis * sz * 0.5 + side * sz * 0.45, item.pos - axis * sz * 0.5 - side * sz * 0.45])
+				color.a = clampf(fade * 1.5, 0.0, 1.0)
+				draw_colored_polygon(tri, color)
+				tri.append(tri[0])
+				draw_polyline(tri, Color(1, 1, 1, color.a), 1.0, true)
+			"puff":
+				var grow: float = float(item.size) * (1.0 + 1.6 * (1.0 - fade))
+				color.a *= 0.45 * fade
+				draw_circle(item.pos, grow, color)
 			"slash":
 				# Halbmond: aeusserer Bogen blitzt auf und verblasst, der innere folgt.
 				var base_angle: float = item.dir.angle()

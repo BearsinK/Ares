@@ -89,9 +89,10 @@ Zwei getrennte Systeme, beide liefern Skills und Buffs.
 
 ## Elemente und Synergien
 
-Elemente kommen über Module in Waffen (siehe Waffen und Waffenrad), nicht über Klassen oder ein Rad.
+Elemente kommen über Module in Waffen (siehe Waffen und Waffenrad), nicht über Klassen oder ein Rad. Jedes Element ist an Geschoss, Treffer und Ziel sichtbar, jedes Elementpaar hat genau eine Kombo (siehe Elements.COMBOS und Kombos weiter unten).
 
 - Statuseffekte halten nur kurz (Startwert Vorschlag: etwa 2 bis 3 Sekunden, später tunen)
+- Sechs Kombos (je Paar eine): Dampf (Wasser+Feuer), Einfrieren (Wasser+Eis, spröde und Zersplittern), Stromschlag (Wasser+Blitz), Schmelze (Feuer+Eis), Überlast (Feuer+Blitz, Explosion), Kurzschluss (Eis+Blitz, Lähmung). Alle melden sich mit Namen, Ring und Teilchen am Ziel, bei Koop mit goldener Zeile
 - Coop-Bonus: Wird ein Gegner von zwei verschiedenen Spielern mit zwei Elementen behandelt, ist die Kombo deutlich stärker als wenn ein Spieler beide selbst setzt
 - Ziel: Zusammenarbeit lohnt sich, Solo-Kombos durch Waffenwechsel bleiben möglich, aber schwächer
 
@@ -254,7 +255,7 @@ Bosse sind nicht alle gleich. Neben Bullet-Hell-Musterbossen gibt es Umwelt-Boss
 Umgesetzt und automatisch getestet:
 - Bewegung (Laufen, variabler Sprung, Dash mit Iframes und Momentum), 2 Spieler, Controller und Tastatur
 - Sechs Waffentypen mit Rückstoß, Screenshake, Sounds; Waffenwechsel per Taste (bis 3 Waffen)
-- Elementmodule und Status (nass, brennend, verlangsamt, eingefroren) mit den vier Kombos; Coop-Bonus bei Status von einem und Auslöser von anderem Spieler
+- Elementmodule und Status (nass, brennend, verlangsamt, eingefroren) mit sechs Kombos; Coop-Bonus bei Status von einem und Auslöser von anderem Spieler
 - Vier Gegnertypen ohne Kontaktschaden, Angriffe mit Vorwarnung; Director mit steigender Menge und Stärke
 - Spieler-Leben, Iframes nach Treffer, Wiederbeleben durch Halten, Game Over
 - XP und Gold als Pickups, Level-Ups mit gemeinsamer Team-Perk-Wahl (klassenabhängige Wirkung)
