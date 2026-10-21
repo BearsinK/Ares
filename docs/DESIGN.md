@@ -254,7 +254,7 @@ Bosse sind nicht alle gleich. Neben Bullet-Hell-Musterbossen gibt es Umwelt-Boss
 
 Umgesetzt und automatisch getestet:
 - Bewegung (Laufen, variabler Sprung, Dash mit Iframes und Momentum), 2 Spieler, Controller und Tastatur
-- Sechs Waffentypen mit Rückstoß, Screenshake, Sounds; Waffenwechsel per Taste (bis 3 Waffen)
+- 24 Waffen (vier allgemeine, je fünf pro Klasse) mit Rückstoß, Screenshake, Sounds; Waffenwechsel per Taste (bis 3 Waffen); Magazin und Nachladen; zwölf Waffen-Upgrade-Items
 - Elementmodule und Status (nass, brennend, verlangsamt, eingefroren) mit sechs Kombos; Coop-Bonus bei Status von einem und Auslöser von anderem Spieler
 - Vier Gegnertypen ohne Kontaktschaden, Angriffe mit Vorwarnung; Director mit steigender Menge und Stärke
 - Spieler-Leben, Iframes nach Treffer, Wiederbeleben durch Halten, Game Over
@@ -269,7 +269,7 @@ Umgesetzt und automatisch getestet:
 - Endboss "Smelter" mit Laufband-Ofen, Hindernissen (Kiste, Stapel, Säge, Träger), Panzer/Kern-Mechanik, drei Phasen, Elementschwäche (Wasser, Eis)
 
 Noch offen:
-- Roomba saugt noch keine Beute-Kategorien (Müll als Munition), Drucker druckt noch keine Zusatzwaffen
+- Roomba saugt noch keine Beute-Kategorien (Müll als Munition)
 - Weitere Bosse für die Zwischenbereiche, Boss-Balance durch echte Spieltests, Elites mit Element und Mechanik (aktuell nur größer und zäher)
 - Item-System mit Procs und Stacking, Team-Items (Kabelbaum u.a.)
 - Perma-Progression und Meta-Menü, Musik
@@ -312,3 +312,16 @@ Offene Punkte:
 - Balance der neuen Gegner und der Erfolgs-Belohnungen ist geschätzt
 - Englische Texte fehlen (alle Texte stehen im Code, ein Übersetzungs-Layer wäre eine eigene Aufgabe)
 - Endlosmodus nutzt dieselbe Gegnerkurve weiter (kein eigener Schwierigkeitsdeckel), ein Gegnerlimit von 200 und die Leistung dort sind ungeprüft über Welle 20
+
+## Runde Waffen, Elemente und Boden (Klassensets, Magazin, Kombos, Neigung)
+
+Grundlage: Klassen sollen sich nicht nur über Werte, sondern über die Art zu kämpfen unterscheiden, und jedes Element muss man sehen, nicht nur im Text lesen.
+
+- Klassensets: Jede Klasse hat genau fünf eigene Waffen, die sonst niemand benutzen darf. Die Sets folgen der Rolle: Roomba nah und schnell (Schwung, Scheibe, Sog, Blitz), Hexapod Position und Fallen (Geschütz, Sniper, Salve, Minen, Gespinst), Vendor Wucht (Flammen, Dosen, Münzen, Turm), Printbot Unterstützung (Sprengdrohnen, Tonerwolke, Markierung, Betäubung). Vier allgemeine Waffen bleiben für alle, damit ein Wechsel der Rolle möglich ist
+- Neue Waffenarten statt neuer Zahlen: Schwung, Sog, Kettenblitz, Boomerang, Salve, ablegbare Minen und Türme, Wolken. Jede Art hat eigene Lesbarkeit (Bogen, Kegel, Blitzlinie, Kontrollring) und mindestens einen Konter-Gedanken (Sweeper gegen Aegis, Sog gegen Gruppen, Labeler für Teamschaden)
+- Magazin statt Dauerfeuer: Jede Waffe hat Magazin und Nachladezeit, damit Waffenwechsel und Upgrades (Magazin, Nachladen, Eco Chip) Entscheidungen werden. Nachladen ist automatisch (leer, oder nach kurzer Pause) und von Hand möglich, Feuer unterbricht ein Teil-Nachladen
+- Upgrades für alles: Jede Waffeneigenschaft hat ein Item. Zusatzprojektile zählen zu 60 Prozent zum Gesamtschaden. Die Wirkung ist je Waffenart sinnvoll übersetzt (Sweeper: breiterer Bogen, Zapper: mehr Sprünge, Mine: mehr Minen, Strahlen: Fächer und Zielhilfe)
+- Elemente sichtbar: Spur am Geschoss, Treffer-Teilchen, Zustand am Gegner mit kurzer Meldung. Sechs Kombos, jedes Paar hat genau eine, jede mit Name, Ring, Teilchen und Klang, bei Koop mit goldener Zeile
+- Boden: Spieler und Bodengegner stellen sich auf Rampen parallel zur Fläche, Flieger bleiben frei. Nur die Zeichnung neigt sich, die Kollisionsform bleibt gleich (Physik unverändert)
+- Statuswirkungen aus Waffen sind begrenzt: Betäubung hat danach eine Immunitätszeit, Bosse nehmen nur die Markierung an, gefrorene Ziele sind spröde, damit Kontrolle nie zur Dauerlähmung wird
+

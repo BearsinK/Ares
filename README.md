@@ -23,6 +23,7 @@ Beide Spieler können Controller und Tastatur gleichzeitig nutzen. Spieler 1 bek
 | Klassenfähigkeit | Quadrat | E | Komma |
 | Waffe wechseln | Dreieck | Q | M |
 | Haken (Firmware) | L2 | R | N |
+| Nachladen | Kreuz | T | B |
 | Menüs | Links/Rechts, Kreuz bestätigen, Kreis zurück | A/D, Enter | Pfeile, Num-Enter, Rechts-Shift oder Rechts-Alt |
 
 Interagieren (Kreis / G / L) belebt den Partner (halten). Die Klassenfähigkeit auf Quadrat (Taste E bzw. Komma) hat eine Abklingzeit, die Leiste im HUD zeigt sie. Escape oder Options öffnet die Pause.

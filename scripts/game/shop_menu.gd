@@ -281,7 +281,7 @@ func _draw_offer(i: int, slot: int, pos: Vector2, offer: Dictionary, font: Font)
 	UiKit.text(_canvas, pos + Vector2(12, 24), type_labels[offer.type], 13, accent)
 	_draw_offer_icon(offer, pos + Vector2(CARD_WIDTH * 0.5, 66.0), accent)
 	UiKit.text(_canvas, pos + Vector2(0, 124), offer.name, 19, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, CARD_WIDTH)
-	UiKit.text(_canvas, pos + Vector2(12, 150), offer.text, 14, Color(0.85, 0.86, 0.92), HORIZONTAL_ALIGNMENT_LEFT, CARD_WIDTH - 24.0, true)
+	UiKit.text_fit(_canvas, pos + Vector2(12, 150), offer.text, Color(0.85, 0.86, 0.92), CARD_WIDTH - 24.0, CARD_HEIGHT - 172.0)
 	var affordable: bool = players[i].gold >= offer.price
 	_canvas.draw_string(font, pos + Vector2(0, CARD_HEIGHT - 16), "%d Gold" % offer.price, HORIZONTAL_ALIGNMENT_CENTER, CARD_WIDTH, 22,
 		Color(1.0, 0.85, 0.3) if affordable else Color(0.6, 0.4, 0.4))

@@ -1099,6 +1099,23 @@ func refill_ammo() -> void:
 		_reload_left[i] = 0.0
 
 
+## Wie viele Minen oder Tuerme dieser Art von diesem Spieler gerade in der Welt liegen.
+func deployed_count(entity: String) -> int:
+	var count := 0
+	for node in get_tree().get_nodes_in_group("deployables"):
+		if node.owner_player == self and node.kind == entity and not node.is_queued_for_deletion():
+			count += 1
+	return count
+
+
+## Von Hand nachladen (Kreuz / T / B): die aktive Waffe, wenn das Magazin nicht voll ist und sie nicht gerade geworfen wird.
+func reload_now() -> void:
+	_sync_ammo()
+	if downed or _lob_charging or weapon_index >= ammo.size():
+		return
+	_start_reload(weapon_index)
+
+
 ## Gleicht Munition und Nachladen mit der Waffenliste ab: neue oder getauschte Waffen starten voll,
 ## groessere Magazine fuellen sich um den Zuwachs.
 func _sync_ammo() -> void:
@@ -1161,6 +1178,8 @@ func _spend_ammo(index: int, weapon: Dictionary) -> void:
 	ammo[index] = maxi(0, ammo[index] - int(weapon.get("ammo_cost", 1)))
 	if ammo[index] <= 0:
 		_start_reload(index)
+		if index == weapon_index:
+			Tips.request("reload")
 
 
 ## Kann die aktive Waffe feuern? Leer: trockenes Klicken beim Druecken, das Nachladen laeuft schon.
@@ -1233,6 +1252,8 @@ func heat_level() -> float:
 func _handle_fire(_delta: float) -> void:
 	if Input.is_action_just_pressed(_prefix + "weapon"):
 		_rotate_weapon()
+	if Input.is_action_just_pressed(_prefix + "reload"):
+		reload_now()
 	_process_burst(_delta)
 	var current := Weapons.get_weapon(current_weapon_id())
 	if Input.is_action_pressed(_prefix + "fire") and not downed and is_class_weapon(current_weapon_id()):

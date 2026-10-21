@@ -99,6 +99,26 @@ func _magazine() -> void:
 	var topped := await _until(func() -> bool: return p1.ammo_of(0) == 36, 300)
 	_check(topped, "Angebrochenes Magazin fuellt sich nach einer Pause")
 
+	# Von Hand nachladen: sofort, auch mit teilweise gefuelltem Magazin, und nur wenn es sich lohnt.
+	p1.ammo[0] = 12
+	p1._since_shot = 0.0
+	p1.reload_now()
+	_check(p1.is_reloading() and p1.ammo_of(0) == 12, "Nachladen von Hand startet sofort (ohne Pause)")
+	var manual := await _until(func() -> bool: return not p1.is_reloading(), 300)
+	_check(manual and p1.ammo_of(0) == 36, "und fuellt das Magazin")
+	p1.reload_now()
+	_check(not p1.is_reloading(), "Bei vollem Magazin passiert nichts")
+	Input.action_press("p1_reload")
+	await _frames(2)
+	Input.action_release("p1_reload")
+	_check(not p1.is_reloading(), "Die Taste tut bei vollem Magazin nichts")
+	p1.ammo[0] = 5
+	Input.action_press("p1_reload")
+	await _frames(2)
+	Input.action_release("p1_reload")
+	_check(p1.is_reloading(), "Die Nachladetaste loest es aus (Kreuz, T, B)")
+	await _until(func() -> bool: return not p1.is_reloading(), 300)
+
 	# Upgrades: Magazin waechst mit dem Item und fuellt um den Zuwachs auf.
 	p1.ammo[0] = 20
 	p1.add_item("extmag")

@@ -8,12 +8,12 @@ extends Node
 ##   Linker Stick: bewegen        Rechter Stick: zielen
 ##   L1: Sprung    R1: Dash       R2: Hauptangriff    L2: Haken
 ##   Quadrat: Klassenfaehigkeit   Dreieck: Waffe wechseln
-##   Kreis: Interagieren          Kreuz: Bestaetigen
+##   Kreis: Interagieren          Kreuz: Bestaetigen und im Spiel Nachladen
 
 const ACTIONS: Array[String] = [
 	"left", "right", "up", "down",
 	"aim_left", "aim_right", "aim_up", "aim_down",
-	"jump", "dash", "fire", "ability", "hook", "weapon", "interact", "confirm",
+	"jump", "dash", "fire", "ability", "hook", "weapon", "interact", "confirm", "reload",
 ]
 
 const STICK_DEADZONE := 0.2
@@ -132,6 +132,7 @@ func _bind_gamepad(player: int, device: int) -> void:
 	_pad_button(p + "weapon", device, JOY_BUTTON_Y)
 	_pad_button(p + "interact", device, JOY_BUTTON_B)
 	_pad_button(p + "confirm", device, JOY_BUTTON_A)
+	_pad_button(p + "reload", device, JOY_BUTTON_A)
 
 
 func _bind_keyboard_p1() -> void:
@@ -150,6 +151,7 @@ func _bind_keyboard_p1() -> void:
 	_key("p1_weapon", KEY_Q)
 	_key("p1_interact", KEY_G)
 	_key("p1_confirm", KEY_ENTER)
+	_key("p1_reload", KEY_T)
 
 
 func _bind_keyboard_p2() -> void:
@@ -165,6 +167,7 @@ func _bind_keyboard_p2() -> void:
 	_key("p2_hook", KEY_N)
 	_key("p2_weapon", KEY_M)
 	_key("p2_interact", KEY_L)
+	_key("p2_reload", KEY_B)
 	# Bestaetigen auch ohne Nummernblock (Laptop): Rechts-Shift oder Rechts-Alt.
 	_key("p2_confirm", KEY_KP_ENTER)
 	_key_right("p2_confirm", KEY_SHIFT)

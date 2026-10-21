@@ -145,7 +145,7 @@ const DATA := {
 	},
 	"toner": {
 		"mag": 6, "reload": 2.2,
-		"name": "Toner Bomb", "kind": "projectile", "style": "canister", "color": Color(0.35, 0.25, 0.55),
+		"name": "Toner Bomb", "kind": "projectile", "style": "canister", "color": Color(0.62, 0.48, 0.95),
 		"tag": "Tonerwolke, verletzt und verlangsamt",
 		"fire_rate": 0.9, "damage": 8.0, "pellets": 1, "spread": 0.02,
 		"speed": 620.0, "lifetime": 3.0, "pierce": 0, "size": 8.0, "push": 0.5, "gravity": 900.0,
@@ -263,7 +263,7 @@ static func summary(weapon_id: String) -> String:
 	var per_second := damage * burst * float(weapon.fire_rate)
 	if weapon.has("dps"):
 		per_second = float(weapon.dps)
-	return "%s, ca. %d Schaden/s" % [kind, int(round(per_second))]
+	return "%s, ca. %d DPS" % [kind, int(round(per_second))]
 
 
 ## Nicht waehlbare Waffenwerte fuer Dinge, die selbst schiessen (Geschuetzturm).

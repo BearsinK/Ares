@@ -39,6 +39,7 @@ const CONTROLS_LINES: Array[String] = [
 	"R2 / Linke Maustaste, F / Punkt: Schießen",
 	"Quadrat / E / Komma: Klassenfähigkeit",
 	"Dreieck / Q / M: Waffe wechseln",
+	"Kreuz / T / B: Nachladen (sonst lädt die Waffe von selbst nach)",
 	"L2 / R / N: Greifhaken (Firmware)",
 	"Kreis / G / L: Partner wiederbeleben (halten), im Menü zurück",
 	"Kreuz / Enter: Bestätigen im Menü",
@@ -76,6 +77,16 @@ static func text(c: CanvasItem, pos: Vector2, string: String, size: int, color: 
 		return
 	c.draw_string(font, pos + Vector2(2, 2), string, align, width, size, Color(0, 0, 0, 0.6))
 	c.draw_string(font, pos, string, align, width, size, color)
+
+
+## Mehrzeiliger Text, der sich verkleinert (bis min_size), bis er in max_height passt. So laufen lange Beschreibungen
+## nicht in darunterliegende Elemente.
+static func text_fit(c: CanvasItem, pos: Vector2, string: String, color: Color, width: float, max_height: float, start_size := 14, min_size := 10) -> void:
+	var font := ThemeDB.fallback_font
+	var size := start_size
+	while size > min_size and font.get_multiline_string_size(string, HORIZONTAL_ALIGNMENT_LEFT, width, size).y > max_height:
+		size -= 1
+	text(c, pos, string, size, color, HORIZONTAL_ALIGNMENT_LEFT, width, true)
 
 
 static func stat_bar(c: CanvasItem, pos: Vector2, width: float, label: String, fraction: float, color: Color) -> void:

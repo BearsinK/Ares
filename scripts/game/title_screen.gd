@@ -149,7 +149,7 @@ func workshop_rows() -> Array[Dictionary]:
 			"done": SaveData.class_unlocked(id), "cost": int(Meta.CLASS_UNLOCKS[id])})
 	for id in Meta.WEAPON_UNLOCKS:
 		rows.append({"kind": "weapon", "id": id, "name": "Waffe: %s" % Weapons.get_weapon(id).name,
-			"text": "Erscheint im Shop", "level": 0, "max": 1,
+			"text": "Erscheint im Shop" if Weapons.owner_of(id) == "" else "Erscheint im Shop (nur %s)" % String(RobotClasses.get_stats(Weapons.owner_of(id)).name), "level": 0, "max": 1,
 			"done": SaveData.weapon_unlocked(id), "cost": int(Meta.WEAPON_UNLOCKS[id])})
 	return rows
 
