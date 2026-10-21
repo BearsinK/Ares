@@ -884,6 +884,7 @@ func _apply_sandbox() -> void:
 func _spawn_players() -> void:
 	# Eine Klasse in der Liste heisst Solo, zwei heissen Koop.
 	var count := mini(2, (Engine.get_meta("classes", DEFAULT_CLASSES) as Array).size())
+	Perks.solo = count < 2
 	for i in count:
 		var player := Player.new()
 		player.setup(i + 1, _class_for(i))
@@ -1187,7 +1188,7 @@ func _on_altar_used(altar: Altar, player: Player) -> void:
 			if _run_gambles >= 3:
 				_unlock("gambler")
 			# Das Glueck lohnt: Seltenes zaehlt hier voll (jedes dritte Item) statt mit dem Kistengewicht.
-			_grant_item(player, altar.global_position, Perks.DATA.keys(), 3.2, 1.0)
+			_grant_item(player, altar.global_position, Perks.pool(), 3.2, 1.0)
 		else:
 			Sfx.play("altar_lose", 0.03)
 			if Fx.instance:
@@ -1228,7 +1229,7 @@ func _on_chest_opened(chest: Chest, player: Player) -> void:
 		_run_chests += 1
 		if _run_chests >= 5:
 			_unlock("chests_5")
-	var pool: Array = Perks.RARE_IDS if chest.large else Perks.DATA.keys()
+	var pool: Array = Perks.RARE_IDS if chest.large else Perks.pool()
 	_grant_item(player, chest.global_position, pool, 3.2)
 	camera.add_shake(7.0 if chest.large else 4.0)
 	_update_chest_prices()

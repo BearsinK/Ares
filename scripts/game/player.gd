@@ -627,6 +627,9 @@ func _update_timers(delta: float) -> void:
 	_update_auto_print(delta)
 	if is_on_floor() or on_rope or _clinging or _ceiling:
 		_jet_fuel = minf(1.0, _jet_fuel + delta * 2.5)
+	# Der Schub endet, sobald etwas anderes die Bewegung uebernimmt (Seil, Wand, Dash, Haken, Ausfall).
+	if downed or on_rope or _clinging or _ceiling or _dash_time_left > 0.0 or hook_active:
+		jet_active = false
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	_happy_timer = maxf(0.0, _happy_timer - delta)
 	var arm_target := 1.0 if (Input.is_action_pressed(_prefix + "fire") or _fire_flash > 0.05) and not downed else 0.0
@@ -1524,7 +1527,7 @@ func _draw() -> void:
 		_draw_speed_lines()
 	if _slamming:
 		_draw_slam_streaks(size)
-	if jet_active:
+	if jet_active and not downed:
 		_draw_jet(size)
 	if fw("jet") > 0 and _jet_fuel < 0.99 and not downed:
 		var gauge := Rect2(Vector2(-14.0, size.y * 0.5 + 6.0), Vector2(28.0, 3.0))

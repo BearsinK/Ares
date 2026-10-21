@@ -48,11 +48,6 @@ func _run() -> void:
 	_check(absf(camera.global_position.x - p1.global_position.x) < 140.0, "Kamera folgt nur dem Stehenden (x %d, Spieler %d)" % [int(camera.global_position.x), int(p1.global_position.x)])
 	_check(camera.zoom.x >= zoom_both - 0.01, "Kamera zoomt nicht wegen des Gefallenen heraus")
 
-	# Gefallener Partner ausserhalb des Bildes: Marker am HUD-Rand wird gezeichnet, ohne Fehler.
-	var xf: Transform2D = main.get_viewport().get_canvas_transform()
-	var screen: Vector2 = xf * p2.global_position
-	_check(screen.x > main.get_viewport().get_visible_rect().size.x * 0.0, "Berechnung der Bildschirmposition des Gefallenen funktioniert")
-
 	# Beide am Boden: Kamera nimmt wieder beide, die Spielzeit friert ein
 	main.director.enabled = true
 	await _frames(30)

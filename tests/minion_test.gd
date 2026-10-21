@@ -109,6 +109,20 @@ func _run() -> void:
 	_check(bait_ref.get_ref() == null and Minion.count_of(p2, "printling") == 0, "Tote Diener verschwinden aus der Liste")
 	_clear()
 
+	# Medic und Nest ignorieren Diener, der Ansturm-Gegner (Rammtank) lenkt sich nur auf erreichbare ab
+	_clear()
+	await _frames(2)
+	var near := p2.summon_minion("printling")
+	near.global_position = Vector2(1500.0, 1160.0)
+	near.set_physics_process(false)
+	var medic: Enemy = main.director.spawn("medic", Vector2(1560.0, 1190.0))
+	var nest: Enemy = main.director.spawn("nest", Vector2(1620.0, 1190.0))
+	var rammer: Enemy = main.director.spawn("charger", Vector2(1680.0, 1190.0))
+	await _frames(6)
+	_check(medic._target != near and nest._target != near, "Medic und Nest lassen sich nicht ablenken")
+	_check(rammer._target == near, "Der Rammtank greift den nahen Diener an")
+	_clear()
+
 	# Gegnerschuesse treffen Diener
 	var target_minion: Minion = p2.summon_minion("printling")
 	target_minion.global_position = Vector2(1500.0, 1150.0)

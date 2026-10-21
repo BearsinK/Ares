@@ -385,6 +385,9 @@ func _pick_target() -> void:
 			best = distance
 			_target = player
 	# Diener des Printbots lenken ab: ein naher Diener wird bevorzugt angegriffen (Bodengegner nur, wenn er in Reichweite schwebt).
+	if data.attack == "heal" or data.attack == "spawn":
+		# Medic und Nest haben keinen Angriff auf Ziele: kein Diener lenkt sie ab.
+		return
 	for minion in Minion.active:
 		if minion.is_dead():
 			continue
@@ -393,7 +396,7 @@ func _pick_target() -> void:
 			continue
 		if data.movement != "fly":
 			# Bodengegner lassen sich nur von Dienern ablenken, die sie auch erreichen koennen (sonst stuenden sie unten und warteten).
-			var limit := BAIT_HEIGHT if (data.attack == "ranged" or data.attack == "strike") else reach() + 10.0
+			var limit := BAIT_HEIGHT if (data.attack == "ranged" or data.attack == "strike") else (110.0 if data.attack == "charge" else reach() + 10.0)
 			if absf(minion.global_position.y - global_position.y) > limit:
 				continue
 		best = gap

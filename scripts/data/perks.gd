@@ -386,9 +386,22 @@ static func describe(perk_id: String, class_id: String) -> String:
 	return ", ".join(parts)
 
 
-static func random_ids(count: int) -> Array[String]:
+## Solo: Perks, die nur mit Partner wirken, werden nicht angeboten (Main setzt das Flag beim Spawn der Spieler).
+static var solo := false
+const PARTNER_ONLY: Array[String] = ["cablelink"]
+
+
+## Alle Perk-Ids, die im aktuellen Modus sinnvoll sind.
+static func pool() -> Array[String]:
 	var ids: Array[String] = []
 	for id in DATA:
+		if solo and PARTNER_ONLY.has(id):
+			continue
 		ids.append(id)
+	return ids
+
+
+static func random_ids(count: int) -> Array[String]:
+	var ids: Array[String] = pool()
 	ids.shuffle()
 	return ids.slice(0, count)

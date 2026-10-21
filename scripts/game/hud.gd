@@ -362,15 +362,25 @@ func _draw_player_panel(player: Player, origin: Vector2) -> void:
 	# Minen und Tuerme in der Welt: eigene Zeile rechts unter den Chips, damit nichts ueberlappt.
 	if (held.kind == "deploy" or held.kind == "summon") and not player.downed:
 		_text(origin + Vector2(0, 110), "%d aktiv" % player.deployed_count(String(held.entity)), 14, Color(0.6, 1.0, 0.78), HORIZONTAL_ALIGNMENT_RIGHT, PANEL_WIDTH - 10.0)
-	# Printbot: die selbst gedruckten Printlinge.
+	# Printbot: die selbst gedruckten Printlinge als Punkte in der Kopfzeile (gefuellt = lebt).
 	if bool(player.stats.get("summoner", false)) and not player.downed:
 		var auto_kind := String(Minions.AUTO_PRINT.kind)
-		_text(origin + Vector2(0, 110), "Printlinge %d / %d" % [player.deployed_count(auto_kind), player.minion_cap(auto_kind)], 14, Color(1.0, 0.8, 0.45))
+		var alive := player.deployed_count(auto_kind)
+		var cap := player.minion_cap(auto_kind)
+		for k in cap:
+			var pip := origin + Vector2(168.0 + k * 14.0, 12.0)
+			if k < alive:
+				_canvas.draw_circle(pip, 5.0, Color(1.0, 0.8, 0.45))
+			else:
+				_canvas.draw_arc(pip, 4.5, 0.0, TAU, 12, Color(1.0, 0.8, 0.45, 0.5), 1.5, true)
 
 	# Firmware.
 	var fw_parts: Array[String] = []
 	for id in player.firmware:
 		var count: int = player.firmware[id]
+		if fw_parts.size() == 6:
+			fw_parts[5] = "+%d" % (player.firmware.size() - 5)
+			continue
 		fw_parts.append(Firmware.SHORT[id] + (" x%d" % count if count > 1 else ""))
 	if not fw_parts.is_empty():
 		var fw_text := "  ".join(fw_parts)

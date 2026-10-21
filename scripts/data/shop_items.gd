@@ -94,7 +94,8 @@ static func _random_offer(player: Player, wave: int) -> Dictionary:
 				"text": "%s\n%s" % [Weapons.summary(weapon_id), slot_text], "price": price_for("weapon", wave, player.purchases), "bought": false,
 				"color": Weapons.get_weapon(weapon_id).color}
 		_:
-			var perk_id: String = Perks.DATA.keys()[randi() % Perks.DATA.size()]
+			var perk_pool := Perks.pool()
+			var perk_id: String = perk_pool[randi() % perk_pool.size()]
 			return {"type": "perk", "id": perk_id, "name": Perks.DATA[perk_id].name,
 				"text": Perks.describe(perk_id, player.class_id), "price": price_for("perk", wave, player.purchases),
 				"bought": false, "color": Color(0.8, 0.8, 0.9)}
