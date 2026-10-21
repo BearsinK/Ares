@@ -6,6 +6,7 @@ extends LevelUpMenu
 
 func open_contracts(new_players: Array[Player], ids: Array[String], wave_number: int) -> void:
 	players = new_players
+	_solo = players.size() < 2
 	perk_ids = ids
 	_cursor = [0, 0]
 	_locked = [-1, -1]
@@ -13,7 +14,7 @@ func open_contracts(new_players: Array[Player], ids: Array[String], wave_number:
 	_split_time = 0.0
 	_roulette = false
 	_title = "NÄCHSTER AUFTRAG  Welle %d" % wave_number
-	_hint = "Sicher oder riskant? Beide wählen denselben Vertrag. Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück"
+	_hint = "Sicher oder riskant? Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück" if _solo else "Sicher oder riskant? Beide wählen denselben Vertrag. Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück"
 	is_open = true
 	visible = true
 	get_tree().paused = true

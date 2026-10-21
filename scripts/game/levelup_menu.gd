@@ -18,6 +18,8 @@ var perk_ids: Array[String] = []
 var is_open := false
 
 var _cursor := [0, 0]
+## Allein: der zweite Zeiger spiegelt den ersten, damit eine Wahl genuegt.
+var _solo := false
 var _locked := [-1, -1]
 var _age := 0.0
 var _split_time := 0.0
@@ -49,13 +51,14 @@ func _ready() -> void:
 func open(new_players: Array[Player], new_perk_ids: Array[String], level: int) -> void:
 	players = new_players
 	perk_ids = new_perk_ids
+	_solo = players.size() < 2
 	_cursor = [1, 1]
 	_locked = [-1, -1]
 	_age = 0.0
 	_split_time = 0.0
 	_roulette = false
 	_title = "LEVEL UP!  Stufe %d" % level
-	_hint = "Beide wählen dieselbe Karte. Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück"
+	_hint = "Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück" if _solo else "Beide wählen dieselbe Karte. Links/Rechts: wählen, Kreuz: bestätigen, Kreis: zurück"
 	is_open = true
 	visible = true
 	get_tree().paused = true
@@ -71,8 +74,11 @@ func _process(delta: float) -> void:
 		_canvas.queue_redraw()
 		return
 	if _age >= GRACE_TIME:
-		for i in 2:
+		for i in players.size():
 			_handle_player(i)
+		if _solo:
+			_cursor[1] = _cursor[0]
+			_locked[1] = _locked[0]
 		if _locked[0] != -1 and _locked[0] == _locked[1]:
 			_finish(perk_ids[_locked[0]])
 		elif _locked[0] != -1 and _locked[1] != -1:
@@ -216,7 +222,7 @@ func _draw_card(pos: Vector2, perk_id: String, index: int) -> void:
 	_draw_card_content(rect, perk_id)
 
 	# Cursor- und Sperr-Markierungen der Spieler.
-	for i in 2:
+	for i in players.size():
 		var marker_color: Color = RobotClasses.PLAYER_COLORS[i]
 		var x := pos.x + 20.0 + i * 120.0
 		var marker := Rect2(Vector2(x, pos.y + CARD_SIZE.y + 16.0), Vector2(100.0, 30.0))

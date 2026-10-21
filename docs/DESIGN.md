@@ -326,3 +326,10 @@ Grundlage: Klassen sollen sich nicht nur über Werte, sondern über die Art zu k
 - Statuswirkungen aus Waffen sind begrenzt: Betäubung hat danach eine Immunitätszeit, Bosse nehmen nur die Markierung an, gefrorene Ziele sind spröde, damit Kontrolle nie zur Dauerlähmung wird
 - Balance per Messung: tests/weapon_bench.tscn misst den Schaden pro Sekunde je Waffe gegen ein Ziel und acht Ziele (Echtzeit, ohne Klassenfaktor). Erste Runde: Sweeper 22 Schaden, Sixpack-Explosion 20, Toner 14 pro Sekunde in der Wolke, Paperjam 5, Mine 60 Schaden bei Radius 120, Dispenser und Mine mit eigener Wurfkraft (Schlüssel lift). Streuung ist hoch, Werte nur zum Vergleichen
 
+
+## Runde Solo, Beschwörer und Beweglichkeit
+
+- Solo: Ein Eintrag in der Klassenliste heißt Solo, zwei heißen Koop. Alles, was zwei Spieler voraussetzte, arbeitet mit der Zahl der Spieler (HUD, Shop, Level-Up mit gespiegeltem Zeiger, Ergebnis, Kamera). Ausgleich ohne Partner: 30 Leben mehr, 65 Prozent der Gegner-Punkte und 75 Prozent des Gegnerlimits im Director. Allein am Boden ist sofort Game Over
+- Kamera und Gefallene: Die Kamera folgt nur Stehenden und lässt Gefallene los. Ein Pfeil am Bildrand in der Farbe des Gefallenen zeigt, wohin man zum Wiederbeleben laufen muss, mit dem Fortschrittsring
+- Die Spielzeit friert bei Game Over ein, damit das Ergebnis den Moment des Ausfalls zeigt
+- Mobilität: Neue Firmware Jet Boots, Turbo Legs, Spring Legs, Blade Dash, Long Dash, dazu drei Stufen für Double Jump und Dash Cell. Jede hat eine eigene Wirkung statt eines reinen Zahlenbonus (Schub mit Tank, Schaden im Dash, weitere Sprünge). Firmware erscheint im Shop häufiger (35 Prozent in den ersten drei Wellen, danach 18)

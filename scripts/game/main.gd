@@ -4,6 +4,7 @@ extends Node2D
 ## Layout leicht anpassen laesst.
 
 const ARENA_SIZE := Vector2(3200.0, 1350.0)
+const SOLO_BONUS_HP := 30.0
 const FLOOR_Y := 1250.0
 ## Schacht rechts: Bereich des Aufwinds und seine Steiggeschwindigkeit.
 const SHAFT_LIFT := Rect2(2645.0, 610.0, 190.0, 640.0)
@@ -630,7 +631,7 @@ func _start_boss() -> void:
 	director.stage = {}
 	camera.bias = Vector2(350.0, -80.0)
 	camera.max_zoom = 1.0
-	camera.global_position = (players[0].global_position + players[1].global_position) * 0.5 + camera.bias
+	camera.global_position = _players_center() + camera.bias
 	Sfx.play("levelup")
 
 
@@ -744,6 +745,8 @@ func _class_for(index: int) -> String:
 
 func _switch_class(index: int) -> void:
 	var classes: Array = Engine.get_meta("classes", DEFAULT_CLASSES).duplicate()
+	if index >= classes.size():
+		return
 	classes[index] = ALL_CLASSES[(ALL_CLASSES.find(classes[index]) + 1) % ALL_CLASSES.size()]
 	Engine.set_meta("classes", classes)
 	get_tree().reload_current_scene()
@@ -800,7 +803,15 @@ func _change_stage() -> void:
 	director.stage = stage_layout
 	fx.floor_y = _ground_fallback()
 	stage_banner_time = 3.2
-	camera.global_position = (players[0].global_position + players[1].global_position) * 0.5
+	camera.global_position = _players_center()
+
+
+## Mitte zwischen allen Spielern (allein: der Spieler selbst).
+func _players_center() -> Vector2:
+	var sum := Vector2.ZERO
+	for player in players:
+		sum += player.global_position
+	return sum / float(players.size())
 
 
 func _place_at_start(player: Player, index: int) -> void:
@@ -871,7 +882,9 @@ func _apply_sandbox() -> void:
 
 
 func _spawn_players() -> void:
-	for i in 2:
+	# Eine Klasse in der Liste heisst Solo, zwei heissen Koop.
+	var count := mini(2, (Engine.get_meta("classes", DEFAULT_CLASSES) as Array).size())
+	for i in count:
 		var player := Player.new()
 		player.setup(i + 1, _class_for(i))
 		if test_loadout:
@@ -891,8 +904,12 @@ func _spawn_players() -> void:
 		player.gold = Meta.start_gold()
 		add_child(player)
 		players.append(player)
-	players[0].partner = players[1]
-	players[1].partner = players[0]
+	if players.size() > 1:
+		players[0].partner = players[1]
+		players[1].partner = players[0]
+	else:
+		# Allein gibt es kein Wiederbeleben: etwas mehr Leben als Ausgleich.
+		players[0].add_mods({"max_hp": SOLO_BONUS_HP})
 
 
 ## Kurzer Stillstand bei harten Treffern (laeuft in Echtzeit, nicht in Spielzeit).
@@ -946,6 +963,7 @@ func _on_player_down(_player: Player) -> void:
 
 func _setup_director() -> void:
 	director = Director.new()
+	director.solo = players.size() < 2
 	director.enabled = director_enabled
 	director.arena_size = arena_size
 	director.floor_y = FLOOR_Y
@@ -1523,7 +1541,7 @@ func _setup_camera() -> void:
 	for player in players:
 		camera.targets.append(player)
 	add_child(camera)
-	camera.global_position = (players[0].global_position + players[1].global_position) * 0.5
+	camera.global_position = _players_center()
 
 
 func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2, charge := 0.0) -> void:

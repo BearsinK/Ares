@@ -43,7 +43,7 @@ func _ready() -> void:
 func open(new_players: Array[Player], new_wave: int) -> void:
 	players = new_players
 	wave = new_wave
-	_offers = [ShopItems.make_offers(players[0], wave), ShopItems.make_offers(players[1], wave)]
+	_offers = [ShopItems.make_offers(players[0], wave), ShopItems.make_offers(players[1], wave) if players.size() > 1 else []]
 	_cursor = [0, 0]
 	_pick = [{}, {}]
 	_ready_flags = [false, false]
@@ -60,12 +60,15 @@ func _process(delta: float) -> void:
 	if not is_open:
 		return
 	_age += delta
-	for i in 2:
+	for i in players.size():
 		_message_time[i] = maxf(0.0, _message_time[i] - delta)
 	if _age >= GRACE_TIME:
-		for i in 2:
+		for i in players.size():
 			_handle_player(i)
-		if _ready_flags[0] and _ready_flags[1]:
+		var everyone_ready := true
+		for i in players.size():
+			everyone_ready = everyone_ready and _ready_flags[i]
+		if everyone_ready:
 			_finish()
 	_canvas.queue_redraw()
 
@@ -200,9 +203,13 @@ func _draw_menu() -> void:
 	var font := ThemeDB.fallback_font
 	_canvas.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.78))
 	UiKit.text(_canvas, Vector2(0, 110), ("LETZTER SHOP  vor dem Endboss" if before_boss else "SHOP  nach Welle %d" % wave), 48, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	UiKit.text(_canvas, Vector2(0, 144), "Pfeile oder Stick: wählen (runter: Reroll und Fertig), Kreuz: kaufen. Wenn beide FERTIG sind, geht es weiter.", 17, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	for i in 2:
-		_draw_player_column(i, Vector2(40.0 + i * (view.x * 0.5), 190.0), view.x * 0.5 - 80.0, font)
+	var hint := "Pfeile oder Stick: wählen (runter: Reroll und Fertig), Kreuz: kaufen. Wenn beide FERTIG sind, geht es weiter." if players.size() > 1 else "Pfeile oder Stick: wählen (runter: Reroll und Fertig), Kreuz: kaufen. FERTIG geht weiter."
+	UiKit.text(_canvas, Vector2(0, 144), hint, 17, Color(0.78, 0.8, 0.92), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	var column := view.x * 0.5 - 80.0
+	for i in players.size():
+		# Allein steht die Spalte in der Mitte.
+		var x := 40.0 + i * (view.x * 0.5) if players.size() > 1 else (view.x - column) * 0.5
+		_draw_player_column(i, Vector2(x, 190.0), column, font)
 
 
 func _draw_player_column(i: int, origin: Vector2, width: float, font: Font) -> void:

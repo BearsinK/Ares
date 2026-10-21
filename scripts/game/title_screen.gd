@@ -4,12 +4,14 @@ extends Node2D
 
 enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING, SANDBOX, OPTIONS, CREDITS, ARCHIVE }
 
-const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Archiv", "Schwierigkeit", "Steuerung", "Optionen", "Credits", "Beenden"]
+const MENU_ITEMS: Array[String] = ["Spielen", "Solo", "Sandbox", "Garage", "Archiv", "Schwierigkeit", "Steuerung", "Optionen", "Credits", "Beenden"]
 const COUNTDOWN := 1.1
 
 var state := State.MAIN
 var cursor := 0
 var picks: Array[int] = [0, 1]
+## Solo: ein Spieler (P1), Klassenwahl und Start nur fuer ihn.
+var solo_mode := false
 var locked: Array[bool] = [false, false]
 var start_timer := 0.0
 var workshop_cursor := 0
@@ -53,7 +55,7 @@ func _ready() -> void:
 	add_child(layer)
 	# Zuletzt gewaehlte Klassen vorbelegen.
 	var classes: Array = Engine.get_meta("classes", ["roomba", "hexapod"])
-	for i in 2:
+	for i in mini(2, classes.size()):
 		picks[i] = maxi(0, UiKit.CLASS_ORDER.find(classes[i]))
 
 
@@ -107,10 +109,17 @@ func _update_main() -> void:
 				state = State.SELECT
 				locked = [false, false]
 				sandbox_mode = false
+				solo_mode = false
+			"Solo":
+				state = State.SELECT
+				locked = [false, false]
+				sandbox_mode = false
+				solo_mode = true
 			"Sandbox":
 				state = State.SELECT
 				locked = [false, false]
 				sandbox_mode = true
+				solo_mode = false
 			"Garage":
 				state = State.WORKSHOP
 				workshop_cursor = 0
@@ -194,7 +203,7 @@ func _update_select(delta: float) -> void:
 		start_timer -= delta
 		if start_timer <= 0.0:
 			var classes: Array = []
-			for i in 2:
+			for i in (1 if solo_mode else 2):
 				classes.append(UiKit.CLASS_ORDER[picks[i]])
 			Engine.set_meta("classes", classes)
 			if sandbox_mode:
@@ -205,8 +214,8 @@ func _update_select(delta: float) -> void:
 			_leaving = true
 			Transition.go("res://scenes/main.tscn")
 		return
-	var nobody_ready := not locked[0] and not locked[1]
-	for i in 2:
+	var nobody_ready := not locked[0] and (solo_mode or not locked[1])
+	for i in (1 if solo_mode else 2):
 		var prefix := "p%d_" % (i + 1)
 		if not locked[i]:
 			if Input.is_action_just_pressed(prefix + "left"):
@@ -223,9 +232,9 @@ func _update_select(delta: float) -> void:
 					Sfx.play("deny")
 		elif Input.is_action_just_pressed(prefix + "interact"):
 			locked[i] = false
-	if nobody_ready and (Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("p1_interact") or Input.is_action_just_pressed("p2_interact")):
+	if nobody_ready and (Input.is_action_just_pressed("pause") or Input.is_action_just_pressed("p1_interact") or (not solo_mode and Input.is_action_just_pressed("p2_interact"))):
 		state = State.MAIN
-	if locked[0] and locked[1]:
+	if locked[0] and (solo_mode or locked[1]):
 		start_timer = COUNTDOWN
 		Sfx.play("levelup")
 
@@ -467,9 +476,12 @@ func _draw_workshop(view: Vector2) -> void:
 
 func _draw_select(view: Vector2) -> void:
 	_ui.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.55))
-	UiKit.text(_ui, Vector2(0, 90), "WÄHLT EURE ROBOTER", 44, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	for i in 2:
-		_draw_player_select(i, Rect2(Vector2(view.x * 0.5 - 760 + i * 800.0, 120), Vector2(720, 640)))
+	UiKit.text(_ui, Vector2(0, 90), "WÄHLE DEINEN ROBOTER" if solo_mode else "WÄHLT EURE ROBOTER", 44, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	if solo_mode:
+		_draw_player_select(0, Rect2(Vector2(view.x * 0.5 - 360.0, 120), Vector2(720, 640)))
+	else:
+		for i in 2:
+			_draw_player_select(i, Rect2(Vector2(view.x * 0.5 - 760 + i * 800.0, 120), Vector2(720, 640)))
 	var hint := "Links/Rechts wählen, Kreuz bestätigen, Kreis zurück"
 	if start_timer > 0.0:
 		hint = "LOS GEHT'S!"

@@ -191,9 +191,10 @@ func _draw_hints(view: Vector2) -> void:
 	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.8 * alpha), 14.0)
 	Art.rrect_line(_canvas, panel, Color(1, 1, 1, 0.25 * alpha), 14.0, 2.0)
 	_text(panel.position + Vector2(0, 28), "STEUERUNG", 16, Color(1.0, 0.85, 0.4, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
-	_text(panel.position + Vector2(0, 56), "Controller: R2 schießen   R1 Dash   L1 Sprung   Quadrat Fähigkeit   L2 Haken   Dreieck Waffe   Kreis Partner beleben", 15, Color(0.9, 0.92, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
-	_text(panel.position + Vector2(0, 80), "Tastatur P1: WASD, Maus, Leertaste, Shift, E     P2: Pfeile, Punkt, Strich, Komma     F11 Vollbild", 15, Color(0.7, 0.74, 0.9, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
-	_text(panel.position + Vector2(0, 102), "Je weiter ihr kommt, desto mehr Chips gibt es für die Garage.", 13, Color(0.6, 0.95, 1.0, alpha * 0.9), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+	var solo: bool = main.players.size() < 2
+	_text(panel.position + Vector2(0, 56), "Controller: R2 schießen   R1 Dash   L1 Sprung   Quadrat Fähigkeit   L2 Haken   Dreieck Waffe" + ("" if solo else "   Kreis Partner beleben"), 15, Color(0.9, 0.92, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+	_text(panel.position + Vector2(0, 80), "Tastatur: WASD, Maus, Leertaste, Shift, E     F11 Vollbild" if solo else "Tastatur P1: WASD, Maus, Leertaste, Shift, E     P2: Pfeile, Punkt, Strich, Komma     F11 Vollbild", 15, Color(0.7, 0.74, 0.9, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+	_text(panel.position + Vector2(0, 102), "Je weiter du kommst, desto mehr Chips gibt es für die Garage." if solo else "Je weiter ihr kommt, desto mehr Chips gibt es für die Garage.", 13, Color(0.6, 0.95, 1.0, alpha * 0.9), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 
 
 ## Einmaliger Hinweis (siehe Tips): Tafel unten in der Mitte, gleicher Platz wie die Steuerungsuebersicht.
@@ -265,7 +266,8 @@ func ui_scale(view: Vector2) -> float:
 func _draw_player_panels(view: Vector2) -> void:
 	var s := ui_scale(view)
 	var width := (PANEL_WIDTH + 20.0) * s
-	for i in 2:
+	var player_count: int = main.players.size()
+	for i in player_count:
 		var player: Player = main.players[i]
 		var x := 18.0 if i == 0 else view.x - width - 18.0
 		var shake := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * 6.0 * player.hurt_amount() * SaveData.shake_scale()
@@ -490,7 +492,7 @@ func _draw_perk_banner(view: Vector2) -> void:
 	if pop > 0.9:
 		PerkArt.draw(_canvas, id, panel.position + Vector2(70.0, 60.0), 70.0)
 		_text(panel.position + Vector2(130.0, 44.0), "UPGRADE: %s" % String(Perks.DATA[id].name), 34, Color(1.0, 0.95, 0.7, alpha))
-		_text(panel.position + Vector2(130.0, 82.0), "Für beide Roboter, je nach Klasse", 20, Color(0.8, 0.84, 0.95, alpha))
+		_text(panel.position + Vector2(130.0, 82.0), "Für deinen Roboter" if main.players.size() < 2 else "Für beide Roboter, je nach Klasse", 20, Color(0.8, 0.84, 0.95, alpha))
 
 
 ## Kisten ausserhalb des Bildes: Pfeil am Bildrand mit Preis, golden wenn ein Spieler sie bezahlen kann.

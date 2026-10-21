@@ -31,6 +31,11 @@ var wave := 1
 var wave_progress := 0.0
 ## Modifikator der laufenden Welle (siehe WaveModifiers), leer = normal.
 var modifier: Dictionary = {}
+## Solo: weniger Gegner, weil nur einer kaempft (ohne Partner und Wiederbeleben).
+var solo := false
+
+const SOLO_CREDITS := 0.65
+const SOLO_CAP := 0.75
 
 var _credits := 4.0
 var _spawn_timer := 1.0
@@ -49,7 +54,7 @@ func unlock_time() -> float:
 
 
 func current_cap() -> int:
-	return mini(int((20.0 + difficulty() * 4.5) * float(modifier.get("cap", 1.0))), 200)
+	return mini(int((20.0 + difficulty() * 4.5) * float(modifier.get("cap", 1.0)) * (SOLO_CAP if solo else 1.0)), 200)
 
 
 ## Anteil der Spawns, die als Elite erscheinen (ab ELITE_FROM, wachsend bis 15 Prozent).
@@ -89,7 +94,7 @@ func _physics_process(delta: float) -> void:
 	if not enabled:
 		return
 	time += delta
-	_credits += (0.8 + 0.45 * difficulty()) * float(modifier.get("credits", 1.0)) * float(Meta.difficulty_data().credits) * delta
+	_credits += (0.8 + 0.45 * difficulty()) * float(modifier.get("credits", 1.0)) * float(Meta.difficulty_data().credits) * (SOLO_CREDITS if solo else 1.0) * delta
 	_spawn_timer -= delta
 	if _spawn_timer > 0.0 or enemies.size() >= current_cap():
 		return

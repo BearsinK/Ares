@@ -234,7 +234,8 @@ func _draw_result(view: Vector2) -> void:
 	var news := _news_line()
 	if news != "":
 		UiKit.text(_canvas, Vector2(0, panel.end.y + 62.0), news, 17, Color(1.0, 0.9, 0.55), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	for i in 2:
+	var player_count: int = main.players.size()
+	for i in player_count:
 		var player: Player = main.players[i]
 		var accent: Color = RobotClasses.PLAYER_COLORS[i]
 		var x := panel.position.x + 50.0 + i * 380.0

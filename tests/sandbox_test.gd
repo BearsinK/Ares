@@ -101,6 +101,8 @@ func _run() -> void:
 	add_child(title)
 	await _frames(5)
 	await _tap("p1_down")
+	_check(title.MENU_ITEMS[title.cursor] == "Solo", "Menue hat den Eintrag Solo")
+	await _tap("p1_down")
 	_check(title.MENU_ITEMS[title.cursor] == "Sandbox", "Menue hat den Eintrag Sandbox")
 	await _tap("p1_confirm")
 	_check(title.state == title.State.SELECT and title.sandbox_mode, "Sandbox oeffnet zuerst die Klassenwahl")
@@ -116,6 +118,20 @@ func _run() -> void:
 	_check(last.kind == "ready" or title.sandbox_cursor[0] > 10, "Runter laeuft durch die Liste (Zeile %d)" % title.sandbox_cursor[0])
 	title.set_process(false)
 	title.queue_free()
+	await get_tree().process_frame
+
+	# Titelmenue: Solo -> nur Spieler 1 waehlt, danach ist die Klassenliste einelementig
+	Engine.set_meta("classes", ["roomba", "hexapod"])
+	var solo_title: Node = load("res://scenes/title.tscn").instantiate()
+	add_child(solo_title)
+	await _frames(5)
+	await _tap("p1_down")
+	await _tap("p1_confirm")
+	_check(solo_title.state == solo_title.State.SELECT and solo_title.solo_mode and not solo_title.sandbox_mode, "Solo oeffnet die Klassenwahl fuer einen Spieler")
+	await _tap("p1_confirm")
+	_check(solo_title.locked[0] and solo_title.start_timer > 0.0, "Ein Spieler genuegt zum Start")
+	solo_title.set_process(false)
+	solo_title.queue_free()
 	await get_tree().process_frame
 
 	print("Fertig, Fehler: ", failures)
