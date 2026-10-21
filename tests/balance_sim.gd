@@ -54,6 +54,10 @@ func _physics_process(delta: float) -> void:
 		_report("SIEG")
 		get_tree().quit()
 		return
+	if main.contract_menu.is_open:
+		var contracts: ContractMenu = main.contract_menu
+		contracts._finish(contracts.perk_ids[randi() % contracts.perk_ids.size()])
+		return
 	if main.levelup_menu.is_open:
 		var menu: LevelUpMenu = main.levelup_menu
 		menu._finish(menu.perk_ids[randi() % menu.perk_ids.size()])

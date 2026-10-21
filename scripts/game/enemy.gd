@@ -23,7 +23,7 @@ const CHAMPION_HP_MULT := 5.0
 const CHAMPION_SCALE := 1.9
 const FROST_RADIUS := 230.0
 ## Anteil des Schadens, der durch einen Frontschild kommt.
-const BLOCK_PASS := 0.1
+const BLOCK_PASS := 0.2
 
 var kind := "walker"
 var data: Dictionary = {}

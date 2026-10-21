@@ -66,14 +66,14 @@ const DATA := {
 		"windup": 0.9, "cooldown": 4.5, "damage": 0.0, "knockback": 1.0,
 		"xp": 4, "gold_chance": 0.9, "cost": 4.0, "from_time": 170.0,
 	},
-	# Aegis: Frontschild fangt Direkttreffer von vorn fast ganz ab. Von hinten, von oben, mit Sprengungen und Faehigkeiten
+	# Aegis: Frontschild fangt Direkttreffer von vorn weitgehend ab. Von hinten, von oben, mit Sprengungen und Faehigkeiten
 	# oder im Zangengriff mit dem Partner ist er verwundbar (Gegner kollidieren nicht mit Spielern: durchdashen geht).
 	"aegis": {
 		"name": "Aegis", "color": Color(0.3, 0.6, 0.9), "radius": 17.0,
 		"hp": 95.0, "speed": 68.0, "movement": "ground", "jump": 500.0,
 		"attack": "melee", "melee_shape": "cone", "reach": 62.0, "frontal_shield": true,
 		"windup": 0.75, "cooldown": 2.3, "damage": 16.0, "knockback": 0.3,
-		"xp": 4, "gold_chance": 0.8, "cost": 5.0, "from_time": 130.0,
+		"xp": 4, "gold_chance": 0.8, "cost": 5.0, "from_time": 180.0,
 	},
 	# Nest: bleibt auf Abstand und setzt alle paar Sekunden Buzzer in die Welt (hoechstens max_minions gleichzeitig).
 	# Zerstoert man es, stuerzen seine Buzzer mit ab. Die Buzzer geben keine Beute.
@@ -82,7 +82,7 @@ const DATA := {
 		"hp": 150.0, "speed": 50.0, "movement": "ground", "jump": 400.0,
 		"attack": "spawn", "keep_distance": 600.0, "range": 1000.0, "spawn_kind": "flyer", "spawn_count": 2, "max_minions": 6,
 		"windup": 1.0, "cooldown": 6.5, "damage": 0.0, "knockback": 0.2,
-		"xp": 5, "gold_chance": 0.9, "cost": 6.0, "from_time": 210.0,
+		"xp": 5, "gold_chance": 0.9, "cost": 6.0, "from_time": 240.0,
 	},
 }
 

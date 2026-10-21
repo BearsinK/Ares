@@ -91,7 +91,7 @@ func _aegis() -> void:
 	before = aegis.hp
 	box.take_damage(50.0, p1, Vector2.RIGHT, "")
 	var open_loss := before - aegis.hp
-	_check(open_loss > 30.0 and blocked_loss < open_loss * 0.2, "Von vorn kaum Schaden, von hinten voll (%.1f gegen %.1f)" % [blocked_loss, open_loss])
+	_check(open_loss > 30.0 and blocked_loss < open_loss * 0.25, "Von vorn kaum Schaden, von hinten voll (%.1f gegen %.1f)" % [blocked_loss, open_loss])
 	_check(aegis._block_flash > 0.0 or open_loss > 0.0, "Der Schild blitzt beim Abprallen")
 
 	# Elemente wirken nicht durch den Schild.
