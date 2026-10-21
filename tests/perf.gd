@@ -33,12 +33,27 @@ func _run() -> void:
 				child.queue_free()
 				print("entfernt ", child)
 		await get_tree().process_frame
-	var process_total := 0.0
-	var physics_total := 0.0
+	var mode := OS.get_environment("PERF_MODE")
+	for e in main.director.enemies:
+		match mode:
+			"freeze":
+				e.set_physics_process(false)
+			"nocollide":
+				e.collision_layer = 0
+				e.collision_mask = 0
+			"nohurt":
+				for child in e.get_children():
+					if child is Area2D:
+						child.queue_free()
+	await get_tree().process_frame
+	var process_samples: Array[float] = []
+	var physics_samples: Array[float] = []
 	var frames := 240
 	for i in frames:
-		await get_tree().process_frame
-		process_total += Performance.get_monitor(Performance.TIME_PROCESS)
-		physics_total += Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)
-	print("Gegner ", count, ": process ", snappedf(process_total / frames * 1000.0, 0.01), " ms, physics ", snappedf(physics_total / frames * 1000.0, 0.01), " ms pro Frame, Objekte ", Performance.get_monitor(Performance.OBJECT_COUNT), " Nodes ", Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+		await get_tree().physics_frame
+		physics_samples.append(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS))
+		process_samples.append(Performance.get_monitor(Performance.TIME_PROCESS))
+	process_samples.sort()
+	physics_samples.sort()
+	print("Gegner ", count, " [", mode, "]: process Median ", snappedf(process_samples[frames / 2] * 1000.0, 0.01), " ms, physics Median ", snappedf(physics_samples[frames / 2] * 1000.0, 0.01), " ms (p25 ", snappedf(physics_samples[frames / 4] * 1000.0, 0.01), ", p90 ", snappedf(physics_samples[int(frames * 0.9)] * 1000.0, 0.01), "), Objekte ", Performance.get_monitor(Performance.OBJECT_COUNT), " Nodes ", Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
 	get_tree().quit()
