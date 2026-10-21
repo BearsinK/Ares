@@ -32,6 +32,15 @@ var style := "bullet"
 ## Verbleibende Abpraller an Waennen (Ricochet) und Wucht-Faktor fuer Treffer und Explosionen (Heavy Slugs).
 var bounces := 0
 var knock := 1.0
+## Zustand beim Treffer (Gespinst, Markierung, Betaeubung ...) und seine Dauer.
+var status := ""
+var status_time := 0.0
+## Wurfscheibe: nach so vielen Sekunden dreht sie um und fliegt zum Schuetzen zurueck (0 = kein Boomerang).
+var boomerang := 0.0
+## Wolke beim Aufprall (Toner): Radius, Dauer, Schaden pro Sekunde, Zustand. Leer = keine.
+var zone: Dictionary = {}
+
+var _returning := false
 
 var _prev_pos := Vector2.ZERO
 var _hit_targets: Array[Node] = []
@@ -58,8 +67,12 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	_age += delta
 	_prev_pos = global_position
-	if homing > 0.0:
+	if boomerang > 0.0:
+		_step_boomerang()
+	elif homing > 0.0:
 		_steer(delta)
+	if style == "disc":
+		queue_redraw()
 	_velocity.y += arc_gravity * delta
 	position += _velocity * delta
 	if arc_gravity > 0.0:
@@ -75,6 +88,31 @@ func _physics_process(delta: float) -> void:
 			# Eine Rakete, die ihr Ziel verfehlt, zuendet am Ende ihrer Flugzeit.
 			hit.emit(self, global_position, null)
 		queue_free()
+
+
+## Wurfscheibe: erst geradeaus, dann Umkehr und gerade zurueck zum Schuetzen (Waende stoeren dabei nicht mehr).
+func _step_boomerang() -> void:
+	if not _returning:
+		if _age >= boomerang:
+			_begin_return()
+		return
+	if shooter == null or not is_instance_valid(shooter):
+		queue_free()
+		return
+	var back: Vector2 = (shooter as Node2D).global_position - global_position
+	if back.length() < 44.0:
+		if Fx.instance:
+			Fx.instance.spark(global_position, color, 3, 120.0)
+		queue_free()
+		return
+	_velocity = back.normalized() * speed * 1.3
+	direction = _velocity.normalized()
+
+
+func _begin_return() -> void:
+	_returning = true
+	_hit_targets.clear()
+	set_deferred("collision_mask", 1 << 2)
 
 
 ## Lenkt auf den naechsten Gegner vor der Rakete und beschleunigt bis zur Hoechstgeschwindigkeit.
@@ -124,12 +162,16 @@ func _has_line_of_sight(target: Node2D) -> bool:
 
 
 func _draw() -> void:
-	if style == "rocket":
-		_draw_rocket()
-		return
-	if style == "can":
-		_draw_can()
-		return
+	match style:
+		"rocket":
+			_draw_rocket()
+			return
+		"can":
+			_draw_can()
+			return
+		"disc":
+			_draw_disc()
+			return
 	var streak := clampf(speed * 0.02, 6.0, 40.0)
 	draw_line(-direction * streak, Vector2.ZERO, Color(color, 0.5), size * 1.2)
 	draw_circle(Vector2.ZERO, size, color)
@@ -150,6 +192,24 @@ func _draw_rocket() -> void:
 	draw_circle(Vector2.ZERO, size * 2.2, Color(color, 0.2))
 
 
+func _draw_disc() -> void:
+	# Scheibe mit Zaehnen, dreht sich schnell. Beim Rueckflug leuchtet sie heller.
+	var spin := _age * 16.0
+	var radius := size
+	var tint := color if _returning else color.darkened(0.05)
+	draw_circle(Vector2.ZERO, radius * 2.0, Color(tint, 0.22))
+	for i in 8:
+		var a := spin + TAU * i / 8.0
+		var tip := Vector2(cos(a), sin(a)) * radius * 1.35
+		var left := Vector2(cos(a - 0.24), sin(a - 0.24)) * radius * 0.9
+		var right := Vector2(cos(a + 0.24), sin(a + 0.24)) * radius * 0.9
+		draw_colored_polygon(PackedVector2Array([left, tip, right]), tint)
+		draw_polyline(PackedVector2Array([left, tip, right]), Color(0.1, 0.12, 0.2), 1.5, true)
+	draw_circle(Vector2.ZERO, radius * 0.95, Color(0.16, 0.2, 0.3))
+	draw_arc(Vector2.ZERO, radius * 0.95, 0.0, TAU, 20, tint, 2.5, true)
+	draw_circle(Vector2.ZERO, radius * 0.32, tint)
+
+
 func _draw_can() -> void:
 	# Dose: Koerper, Deckel und Boden, geschuettelte Dosen schaeumen.
 	var body_color := color
@@ -167,6 +227,12 @@ func _on_body_entered(body: Node2D) -> void:
 		return
 	# Plattformen sind von unten durchlaessig, ein aufsteigender Wurf fliegt hindurch.
 	if body is CollisionObject2D and (body.collision_layer & (1 << 5)) != 0 and _velocity.y <= 0.0:
+		return
+	if boomerang > 0.0:
+		# Die Scheibe prallt an der Wand ab und kommt zurueck.
+		if not _returning:
+			_begin_return()
+			Sfx.play("block", 0.2)
 		return
 	if bounces > 0 and explosion_radius <= 0.0 and arc_gravity <= 0.0 and _bounce_off():
 		return
@@ -202,6 +268,8 @@ func _on_area_entered(area: Area2D) -> void:
 		return
 	_hit_targets.append(area)
 	area.take_damage(damage, shooter, direction * push * knock, element)
+	if status != "" and is_instance_valid(area) and area.has_method("apply_status"):
+		area.apply_status(status, status_time, shooter)
 	hit.emit(self, global_position, area)
 	if pierce <= 0:
 		queue_free()

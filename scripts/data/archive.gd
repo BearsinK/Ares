@@ -40,6 +40,11 @@ const WEAPON_TEXT := {
 	"sniper": "Langsames Gewehr mit sehr hohem Schaden. Trifft sofort und durchschlägt mehrere Gegner.",
 	"can": "Wirft Dosen. Feuer halten schüttelt sie auf, beim Aufprall explodieren sie, und je länger geschüttelt, desto größer.",
 	"turret": "Präzise Kanone des Hexapods: schnelle Schüsse, die Gegner in einer Linie durchschlagen.",
+	"dronegun": "Die Begleitdrohnen des Printbots feuern leichte Impulsschüsse. Allein schwach, mit Upgrades und Markierungen stark.",
+	"sweeper": "Roomba schwingt seinen Besen: trifft alle Gegner vor ihm, schleudert sie weg und fegt gegnerische Schüsse aus der Luft.",
+	"disc": "Wurfscheibe, die sich durch Gegner schneidet, umkehrt und auf dem Rückweg erneut trifft.",
+	"vacuum": "Saugkegel, der Gegner vor dem Roomba zu einem Punkt zusammenzieht. Wenig Schaden, aber ideal für Explosionen des Partners.",
+	"zapper": "Kettenblitz: trifft den Gegner am Fadenkreuz und springt auf bis zu drei weitere. Nasse Gegner erleiden den vollen Volt-Effekt.",
 }
 
 
@@ -79,8 +84,8 @@ static func _build(kind: String) -> Array[Dictionary]:
 				var weapon: Dictionary = Weapons.DATA[id]
 				var stats: Array = [Weapons.summary(id), "Feuerrate %s pro Sekunde" % ("%.1f" % float(weapon.fire_rate)).trim_suffix(".0")]
 				var tag := "WAFFE"
-				if Weapons.EXCLUSIVE.has(id):
-					tag = "NUR %s" % String(RobotClasses.get_stats(Weapons.EXCLUSIVE[id]).name).to_upper()
+				if Weapons.owner_of(id) != "":
+					tag = "NUR %s" % String(RobotClasses.get_stats(Weapons.owner_of(id)).name).to_upper()
 				result.append({"id": id, "name": String(weapon.name), "color": weapon.color, "text": WEAPON_TEXT[id], "tag": tag, "stats": stats})
 	return result
 

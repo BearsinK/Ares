@@ -42,9 +42,14 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
+func apply_status(status_name: String, duration: float, source: Node = null) -> void:
+	statuses.apply(status_name, duration, source)
+
+
 func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element := "", from_effect := false) -> void:
 	if _dead:
 		return
+	amount *= statuses.damage_factor()
 	if element != "" and not from_effect:
 		amount = statuses.process_hit(element, source, amount)
 	health -= amount

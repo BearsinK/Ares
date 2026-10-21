@@ -80,6 +80,8 @@ var _jump_cooldown := 0.0
 var _stuck_time := 0.0
 ## Betaeubt (z.B. im Roomba-Wirbel): keine Angriffe, keine eigene Bewegung.
 var stunned_time := 0.0
+const STUN_IMMUNITY := 1.4
+var _stun_immunity := 0.0
 var _fall_speed := 0.0
 var _was_grounded := false
 
@@ -136,6 +138,7 @@ func _ready() -> void:
 func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element := "", from_effect := false) -> void:
 	if _dead:
 		return
+	amount *= statuses.damage_factor()
 	if source is Player and not from_effect:
 		amount *= source.hit_multiplier(self)
 	if element != "" and not from_effect:
@@ -223,6 +226,20 @@ func stun(duration: float) -> void:
 	stunned_time = maxf(stunned_time, duration)
 
 
+## Zustand aus einer Waffe (Gespinst, Tinte, Markierung, Betaeubung). Betaeubung wirkt nicht im Dauerfeuer:
+## danach ist der Gegner eine Weile immun.
+func apply_status(status_name: String, duration: float, source: Node = null) -> void:
+	if _dead:
+		return
+	if status_name == "stun":
+		if _stun_immunity > 0.0 or stunned_time > 0.0:
+			return
+		stun(duration)
+		_stun_immunity = duration + STUN_IMMUNITY
+		return
+	statuses.apply(status_name, duration, source)
+
+
 func radius() -> float:
 	return float(data.radius) * body_scale
 
@@ -269,6 +286,7 @@ func _physics_process(delta: float) -> void:
 	_squash = maxf(0.0, _squash - delta * 6.0)
 	_jump_cooldown = maxf(0.0, _jump_cooldown - delta)
 	stunned_time = maxf(0.0, stunned_time - delta)
+	_stun_immunity = maxf(0.0, _stun_immunity - delta)
 	if stunned_time > 0.0 and (_state == State.WINDUP or _state == State.CHARGE):
 		_state = State.COOLDOWN
 		_cooldown = maxf(_cooldown, 0.6)

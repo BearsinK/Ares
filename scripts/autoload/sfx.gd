@@ -12,6 +12,7 @@ const GAIN := {
 	"shoot": 0.4, "shoot_rapid": 0.3, "shoot_heavy": 0.55, "shotgun": 0.55, "rocket": 0.6, "beam": 0.35, "sniper": 0.6,
 	"turret": 0.45, "turret_over": 0.45, "can_throw": 0.55, "enemy_shoot": 0.45, "drone": 0.3, "drone_shot": 0.3,
 	"hit": 0.55, "kill": 0.7, "shake": 0.6, "pop": 0.6, "reload_start": 0.6, "reload_done": 0.7, "dry": 0.6,
+	"sweep": 0.5, "disc": 0.45, "suck_tick": 0.4, "zap_gun": 0.45,
 }
 
 var _streams: Dictionary = {}
@@ -75,6 +76,10 @@ func _ready() -> void:
 	_streams["drone_shot"] = _synth(1000.0, 600.0, 0.05, "sine", 0.25, 0.1)
 	_streams["drone"] = _synth(1300.0, 700.0, 0.07, "square", 0.14, 0.2)
 	_streams["kill"] = _synth(300.0, 40.0, 0.35, "saw", 0.4, 0.6)
+	_streams["sweep"] = _synth(700.0, 160.0, 0.14, "saw", 0.28, 0.85)
+	_streams["disc"] = _synth(900.0, 1300.0, 0.12, "saw", 0.2, 0.2)
+	_streams["suck_tick"] = _synth(260.0, 520.0, 0.05, "sine", 0.16, 0.5)
+	_streams["zap_gun"] = _synth(1800.0, 350.0, 0.1, "square", 0.2, 0.6)
 	_make_event_sounds()
 
 

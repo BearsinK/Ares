@@ -1515,9 +1515,13 @@ func _setup_camera() -> void:
 func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direction: Vector2, charge := 0.0) -> void:
 	var weapon := Weapons.get_weapon(weapon_id)
 	var damage := float(weapon.damage) * player.damage_mult()
+	if weapon.has("gold_scale"):
+		damage *= 1.0 + minf(0.6, float(player.gold) * float(weapon.gold_scale))
 	if randf() < float(player.mods.crit):
 		damage *= 2.0 + float(player.mods.crit_dmg)
 	var element := player.current_module()
+	if element == "":
+		element = String(weapon.get("element", ""))
 	var color := Elements.color_of(element, weapon.color)
 	var sound: String = weapon.sound
 	if sound == "turret" and player.ability.is_active("overwatch"):
@@ -1527,12 +1531,19 @@ func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direct
 	if float(weapon.shake) >= 5.0:
 		InputSetup.rumble(player.player_index, 0.2, minf(0.3 + float(weapon.shake) * 0.05, 0.7), 0.12)
 	fx.muzzle(origin, direction, color)
-	if weapon.kind == "lob":
-		_fire_lob(player, weapon, origin, direction, damage, element, color, charge)
-	elif weapon.kind == "hitscan":
-		_fire_hitscan(player, weapon, origin, direction, damage, element, color)
-	else:
-		_fire_projectiles(player, weapon, origin, direction, damage, element, color)
+	match String(weapon.kind):
+		"lob":
+			_fire_lob(player, weapon, origin, direction, damage, element, color, charge)
+		"hitscan":
+			_fire_hitscan(player, weapon, origin, direction, damage, element, color)
+		"sweep":
+			_fire_sweep(player, weapon, origin, direction, damage, element, color)
+		"stream":
+			_fire_stream(player, weapon, origin, direction, damage, element, color)
+		"chain":
+			_fire_chain(player, weapon, origin, direction, damage, element, color)
+		_:
+			_fire_projectiles(player, weapon, origin, direction, damage, element, color)
 
 
 ## Anzahl Projektile eines Schusses (Split Barrel) und der Schadensanteil je Projektil.
@@ -1603,13 +1614,19 @@ func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, dire
 			aim = aim.rotated(_fan_offset(i, count, Perks.FAN_ANGLE))
 		bullet.direction = aim
 		bullet.speed = float(weapon.speed) * speed_mult * (randf_range(0.9, 1.0) if int(weapon.pellets) > 1 else 1.0)
-		bullet.homing = float(weapon.get("homing", 0.0)) + Perks.SEEK_TURN * float(player.mods.seek)
+		bullet.homing = float(weapon.get("homing", 0.0)) + (Perks.SEEK_TURN * float(player.mods.seek) if bullet_can_seek(weapon) else 0.0)
 		bullet.accel = float(weapon.get("accel", 0.0))
 		bullet.speed_max = float(weapon.get("speed_max", 0.0)) * speed_mult
 		bullet.push = float(weapon.get("push", 1.0))
 		bullet.knock = 1.0 + float(player.mods.knock)
-		bullet.bounces = int(player.mods.bounce)
-		bullet.style = "rocket" if weapon.has("homing") else "bullet"
+		bullet.bounces = int(weapon.get("bounces", 0)) + int(player.mods.bounce)
+		bullet.style = String(weapon.get("style", "rocket" if weapon.has("homing") else "bullet"))
+		bullet.status = String(weapon.get("status", ""))
+		bullet.status_time = float(weapon.get("status_time", 0.0))
+		bullet.boomerang = float(weapon.get("boomerang", 0.0))
+		if weapon.has("gravity"):
+			bullet.arc_gravity = float(weapon.gravity)
+			bullet.collide_platforms = true
 		bullet.damage = damage * factor
 		bullet.lifetime = float(weapon.lifetime) * (1.0 + float(player.mods.range))
 		bullet.pierce = int(weapon.pierce) + int(player.mods.pierce)
@@ -1654,6 +1671,118 @@ func _fire_hitscan(player: Player, weapon: Dictionary, origin: Vector2, directio
 	for i in count:
 		var ray_dir := aim.rotated(_fan_offset(i, count, Perks.FAN_ANGLE * 0.6)) if count > 1 else aim
 		_trace_ray(player, weapon, origin, ray_dir, damage * factor, element, color)
+
+
+## Zielsuche (Seeker Chip) wirkt nicht auf Scheiben und Bogenwuerfe.
+func bullet_can_seek(weapon: Dictionary) -> bool:
+	return not weapon.has("boomerang") and not weapon.has("gravity")
+
+
+func _enemy_radius(enemy: Node) -> float:
+	return float(enemy.radius()) if enemy.has_method("radius") else 40.0
+
+
+## Liegt das Ziel im Kegel um dir (halber Oeffnungswinkel half) und in Reichweite? Sehr nahe Ziele zaehlen immer.
+func _in_cone(apex: Vector2, dir: Vector2, target: Node2D, reach: float, half: float, body_radius := -1.0) -> bool:
+	var offset := target.global_position - apex
+	var distance := offset.length()
+	var slack := _enemy_radius(target) if body_radius < 0.0 else body_radius
+	if distance > reach + slack:
+		return false
+	if distance <= slack + 30.0:
+		return true
+	return absf(dir.angle_to(offset)) <= half + asin(clampf(slack / distance, 0.0, 1.0))
+
+
+func _clear_line(from: Vector2, to: Vector2) -> bool:
+	var query := PhysicsRayQueryParameters2D.create(from, to, 1 << 0)
+	return get_world_2d().direct_space_state.intersect_ray(query).is_empty()
+
+
+## Zustand der Waffe auf ein getroffenes Ziel legen (Gespinst, Markierung ...).
+func _apply_weapon_status(target: Node, weapon: Dictionary, source: Node) -> void:
+	if weapon.has("status") and is_instance_valid(target) and target.has_method("apply_status"):
+		target.apply_status(String(weapon.status), float(weapon.get("status_time", 2.0)), source)
+
+
+## Schwung vor dem Spieler (Sweeper): trifft alle im Bogen, schleudert sie weg und raeumt gegnerische Schuesse ab.
+## Zusatzprojektile machen den Bogen breiter.
+func _fire_sweep(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
+	var reach := float(weapon.range) * (1.0 + 0.5 * float(player.mods.range))
+	var arc := minf(float(weapon.arc) * (1.0 + 0.3 * float(player.mods.proj)), TAU * 0.6)
+	var apex := origin - direction * 24.0
+	var push := float(weapon.get("push", 1.0)) * (1.0 + float(player.mods.knock))
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if not is_instance_valid(enemy) or not _in_cone(apex, direction, enemy, reach, arc * 0.5):
+			continue
+		enemy.take_damage(damage, player, direction * push, element)
+		_apply_weapon_status(enemy, weapon, player)
+		fx.spark(enemy.global_position, color, 4)
+	var cleared := 0
+	for bullet in enemy_projectiles.get_children():
+		if bullet is EnemyProjectile and _in_cone(apex, direction, bullet, reach, arc * 0.5, 10.0):
+			fx.spark(bullet.global_position, color, 3)
+			bullet.queue_free()
+			cleared += 1
+	if cleared > 0:
+		Sfx.play("block", 0.15)
+	fx.slash(apex, direction, reach, arc, color)
+
+
+## Sog-Kegel (Suction): schwacher Schaden und ein Zug zum Fokuspunkt vor dem Spieler, nicht zum Spieler selbst.
+func _fire_stream(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
+	var reach := float(weapon.range) * (1.0 + float(player.mods.range))
+	var cone := float(weapon.cone) * (1.0 + 0.25 * float(player.mods.proj))
+	var focus := origin + direction * reach * float(weapon.focus)
+	var pull := float(weapon.pull) * (1.0 + float(player.mods.knock))
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if not is_instance_valid(enemy) or not _in_cone(origin, direction, enemy, reach, cone) or not _clear_line(origin, enemy.global_position):
+			continue
+		var to_focus: Vector2 = focus - enemy.global_position
+		var strength := clampf(to_focus.length() / 120.0, 0.15, 1.0)
+		enemy.take_damage(damage, player, to_focus.normalized() * pull * strength, element)
+		_apply_weapon_status(enemy, weapon, player)
+	fx.suction(origin, direction, reach, cone, color)
+
+
+## Kettenblitz (Zapper): trifft den Gegner am dichtesten am Fadenkreuz, springt dann auf Nachbarn. Zusatzprojektile geben Spruenge.
+func _fire_chain(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
+	var reach := float(weapon.range) * (1.0 + float(player.mods.range))
+	var jumps := int(weapon.jumps) + int(player.mods.proj)
+	var current: Node2D = null
+	var best_angle := float(weapon.cone) * (1.0 + float(player.mods.seek))
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if not is_instance_valid(enemy):
+			continue
+		var offset: Vector2 = enemy.global_position - origin
+		var angle := absf(direction.angle_to(offset))
+		if offset.length() <= reach + _enemy_radius(enemy) and (angle < best_angle or offset.length() < _enemy_radius(enemy) + 40.0) and _clear_line(origin, enemy.global_position):
+			best_angle = minf(angle, best_angle)
+			current = enemy
+	var from := origin
+	var struck: Array[Node2D] = []
+	var power := damage
+	while current != null and struck.size() <= jumps:
+		var away := (current.global_position - from).normalized()
+		current.take_damage(power, player, away * float(weapon.get("push", 1.0)), element)
+		_apply_weapon_status(current, weapon, player)
+		fx.zigzag(from, current.global_position, color)
+		fx.spark(current.global_position, color, 4)
+		struck.append(current)
+		from = current.global_position
+		power *= float(weapon.get("falloff", 0.85))
+		var next: Node2D = null
+		var next_distance := float(weapon.jump_range)
+		for enemy in get_tree().get_nodes_in_group("enemies"):
+			if not is_instance_valid(enemy) or struck.has(enemy):
+				continue
+			var gap: float = enemy.global_position.distance_to(from)
+			if gap < next_distance and _clear_line(from, enemy.global_position):
+				next_distance = gap
+				next = enemy
+		current = next
+	if struck.is_empty():
+		fx.zigzag(origin, origin + direction * minf(reach, 260.0), Color(color, 0.6), 2.0, 0.1)
 
 
 ## Zielhilfe fuer Strahlen (Seeker Chip): dreht die Richtung auf den Gegner, der am dichtesten am Fadenkreuz liegt.
@@ -1702,6 +1831,7 @@ func _trace_ray(player: Player, weapon: Dictionary, origin: Vector2, direction: 
 			var collider: Object = result.collider
 			if collider.has_method("take_damage"):
 				collider.take_damage(damage, player, dir * push, element)
+				_apply_weapon_status(collider, weapon, player)
 				fx.spark(result.position, color, 4)
 				exclude.append(result.rid)
 				hits_left -= 1

@@ -27,6 +27,11 @@ const STEAM_RADIUS := 100.0
 const STEAM_DAMAGE_SOLO := 30.0
 const STEAM_DAMAGE_COOP := 70.0
 const BURN_DAMAGE := 4.0
+## Zustaende aus Waffen (nicht aus Elementen): Gespinst bremst stark, Tinte bremst, Markierung erhoeht den Schaden.
+const WEB_TIME := 3.0
+const WEB_SPEED := 0.3
+const INK_SPEED := 0.55
+const TAG_MULT := 1.3
 
 var target: Node2D
 var _status: Dictionary = {}
@@ -48,9 +53,25 @@ func is_frozen() -> bool:
 func speed_factor() -> float:
 	if _status.has("frozen"):
 		return 0.0
+	var factor := 1.0
 	if _status.has("chilled"):
-		return 0.6
-	return 1.0
+		factor = 0.6
+	if _status.has("webbed"):
+		factor = minf(factor, WEB_SPEED)
+	if _status.has("inked"):
+		factor = minf(factor, INK_SPEED)
+	return factor
+
+
+## Schadensfaktor auf das Ziel: markierte Gegner (Labeler) nehmen von allen mehr Schaden.
+func damage_factor() -> float:
+	return TAG_MULT if _status.has("tagged") else 1.0
+
+
+## Zustand aus einer Waffe setzen. Ein laengerer Rest bleibt erhalten.
+func apply(status_name: String, duration: float, source: Node) -> void:
+	var left: float = float(_status[status_name].t) if _status.has(status_name) else 0.0
+	_apply_status(status_name, maxf(duration, left), source)
 
 
 func update(delta: float) -> void:
@@ -126,6 +147,28 @@ func draw_overlay(item: CanvasItem, radius: float, time: float) -> void:
 		var r := radius + 5.0
 		item.draw_rect(Rect2(-r, -r, r * 2.0, r * 2.0), Color(0.7, 0.95, 1.0, 0.45))
 		item.draw_rect(Rect2(-r, -r, r * 2.0, r * 2.0), Color(0.9, 1.0, 1.0), false, 2.0)
+	if _status.has("webbed"):
+		# Gespinst: Speichen und zwei Ringe ueber dem ganzen Gegner.
+		var web := Color(0.95, 0.97, 1.0, 0.85)
+		for i in 6:
+			var a := TAU * i / 6.0 + 0.3
+			item.draw_line(Vector2.ZERO, Vector2(cos(a), sin(a)) * (radius + 6.0), web, 1.5, true)
+		for ring in [0.55, 1.0]:
+			var points := PackedVector2Array()
+			for i in 7:
+				var a := TAU * i / 6.0 + 0.3
+				points.append(Vector2(cos(a), sin(a)) * (radius + 6.0) * ring)
+			item.draw_polyline(points, web, 1.5, true)
+	if _status.has("inked"):
+		for i in 4:
+			var a := time * 0.8 + i * 1.6
+			item.draw_circle(Vector2(cos(a), sin(a * 1.3)) * radius * 0.6, 4.5 + 2.0 * sin(time * 3.0 + i), Color(0.08, 0.05, 0.12, 0.85))
+	if _status.has("tagged"):
+		# Etikett ueber dem Kopf.
+		var tag := Rect2(Vector2(-9.0, -radius - 26.0), Vector2(18.0, 11.0))
+		item.draw_rect(tag, Color(1.0, 0.85, 0.3))
+		item.draw_rect(tag, Color(0.2, 0.15, 0.05), false, 1.5)
+		item.draw_line(tag.position + Vector2(4.0, 5.5), tag.position + Vector2(14.0, 5.5), Color(0.2, 0.15, 0.05), 2.0)
 
 
 func _apply_status(status_name: String, duration: float, source: Node) -> void:

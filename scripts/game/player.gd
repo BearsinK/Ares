@@ -987,6 +987,11 @@ func _process_dash(delta: float) -> void:
 			_burst(Perks.DASH_BLAST_RADIUS, Perks.DASH_BLAST_DAMAGE * float(mods.dash_blast), Color(0.5, 0.9, 1.0))
 
 
+## Gehoert die Waffe zur eigenen Klasse (Klassenwaffen loesen z.B. beim Hexapod die Schiesshaltung aus)?
+func is_class_weapon(weapon_id: String) -> bool:
+	return Weapons.owner_of(weapon_id) == class_id
+
+
 func current_weapon_id() -> String:
 	return weapons[weapon_index]
 
@@ -1201,12 +1206,12 @@ func _handle_fire(_delta: float) -> void:
 	if Input.is_action_just_pressed(_prefix + "weapon"):
 		_rotate_weapon()
 	var current := Weapons.get_weapon(current_weapon_id())
-	if Input.is_action_pressed(_prefix + "fire") and not downed and current_weapon_id() == stats.weapons[0]:
+	if Input.is_action_pressed(_prefix + "fire") and not downed and is_class_weapon(current_weapon_id()):
 		_stance_timer = STANCE_HOLD
 	else:
 		_stance_timer = maxf(0.0, _stance_timer - _delta)
-	if current.has("ramp_time") and Input.is_action_pressed(_prefix + "fire") and not downed:
-		_channel = minf(_channel + _delta, float(current.ramp_time))
+	if (current.has("ramp_time") or current.has("slow")) and Input.is_action_pressed(_prefix + "fire") and not downed:
+		_channel = minf(_channel + _delta, float(current.get("ramp_time", 1.0)))
 	else:
 		_channel = maxf(0.0, _channel - _delta * 3.0)
 	if current.kind == "lob":
@@ -1227,7 +1232,7 @@ func _handle_fire(_delta: float) -> void:
 	var origin := _fire_origin(float(weapon.barrel))
 	# Rueckstoss: am Boden schwaecher, in der Luft staerker. Drohnenschuesse stossen den Koerper nicht.
 	var kick := float(weapon.recoil) * (0.35 if is_on_floor() else 1.0)
-	if not (float(stats.get("fire_slow", 1.0)) < 1.0 and weapon_id == stats.weapons[0]) and escorts.is_empty():
+	if not (float(stats.get("fire_slow", 1.0)) < 1.0 and is_class_weapon(weapon_id)) and escorts.is_empty():
 		velocity -= aim_dir * kick
 	_fire_flash = 1.0
 	_recoil = 1.0 if escorts.is_empty() else 0.0

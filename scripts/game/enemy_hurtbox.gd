@@ -6,6 +6,12 @@ extends Area2D
 var enemy: Node = null
 
 
+## Zustand aus einer Waffe an den Gegner weitergeben.
+func apply_status(status_name: String, duration: float, source: Node = null) -> void:
+	if is_instance_valid(enemy):
+		enemy.apply_status(status_name, duration, source)
+
+
 func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element := "") -> void:
 	if not is_instance_valid(enemy):
 		return

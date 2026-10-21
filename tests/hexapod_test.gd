@@ -146,7 +146,9 @@ func _run() -> void:
 	Input.action_release("p2_fire")
 	_check(shots[0] >= 4, "Schnelle Schussrate (%d Schuesse in 2 s)" % shots[0])
 
-	# Nur die Klassenwaffe bremst: der Sniper aus dem Shop nicht
+	# Alle Klassenwaffen bremsen (auch der Sniper), allgemeine Waffen aus dem Shop nicht
+	hexapod.weapons = ["turret", "rapid"]
+	hexapod.modules = ["", ""]
 	hexapod.weapon_index = 1
 	await _frames(20)
 	shots[0] = 0

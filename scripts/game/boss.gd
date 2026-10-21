@@ -105,6 +105,12 @@ func _say(text: String, seconds := 2.0) -> void:
 	banner_time = seconds
 
 
+## Bosse nehmen nur die Markierung an (mehr Schaden), alles andere prallt ab.
+func apply_status(status_name: String, duration: float, source: Node = null) -> void:
+	if status_name == "tagged":
+		statuses.apply(status_name, duration, source)
+
+
 func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element := "", from_effect := false) -> void:
 	if dying:
 		return
@@ -114,6 +120,7 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 		return
 	if element != "" and not from_effect:
 		amount = statuses.process_hit(element, source, amount)
+	amount *= statuses.damage_factor()
 	amount *= 1.0 if open else ARMOR
 	amount *= float(WEAK.get(element, 1.0))
 	hp -= amount

@@ -83,6 +83,9 @@ static func _random_offer(player: Player, wave: int) -> Dictionary:
 			for weapon_id in Weapons.ALL_IDS:
 				if not player.weapons.has(weapon_id) and SaveData.weapon_unlocked(weapon_id) and Weapons.usable_by(weapon_id, player.class_id):
 					candidates.append(weapon_id)
+					# Die eigenen Klassenwaffen kommen doppelt so oft vor wie die allgemeinen.
+					if Weapons.owner_of(weapon_id) == player.class_id:
+						candidates.append(weapon_id)
 			if candidates.is_empty():
 				return {}
 			var weapon_id: String = candidates[randi() % candidates.size()]

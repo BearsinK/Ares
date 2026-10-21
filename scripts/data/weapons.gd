@@ -1,19 +1,44 @@
 class_name Weapons
 extends RefCounted
-## Waffenwerte. Waffen sind neutral, Elemente kommen spaeter ueber Module.
-## kind "projectile": fliegende Geschosse (auch Schrot und Raketen)
+## Waffenwerte. Waffen sind neutral, Elemente kommen ueber Module (oder fest in manchen Waffen).
+## kind "projectile": fliegende Geschosse (auch Schrot, Raketen, Drohnen, Scheiben)
 ## kind "hitscan": sofortiger Treffer entlang einer Linie (Strahl, Sniper)
 ## kind "lob": Bogenwurf mit Schuettel-Aufladung (Feuer halten = schuetteln, loslassen = werfen)
+## kind "sweep": Schwung vor dem Spieler, trifft alle im Bogen und raeumt gegnerische Schuesse ab
+## kind "stream": Sog-Kegel, der Gegner zu einem Punkt vor dem Spieler zieht und schwach verletzt
+## kind "chain": Kettenblitz, springt von Gegner zu Gegner
+## kind "deploy": legt etwas ab (entity "mine" oder "sentry")
 ## Jede Waffe hat ein Magazin ("mag" Schuss) und eine Nachladezeit ("reload" Sekunden). Optional "ammo_cost" (Standard 1).
+## Optional: "element" (fester Standard-Effekt, ein Modul ersetzt ihn), "burst" (Schuesse pro Druck) und "burst_gap",
+## "status" und "status_time" (Zustand beim Treffer), "gravity" (Bogenflug), "bounces", "boomerang" (Sekunden bis zur Umkehr),
+## "zone" (Wolke beim Aufprall), "slow" (bremst den Schuetzen beim Halten), "tag" (Kurztext), "dps" (Schaetzung fuer die Karte).
 
-const ALL_IDS: Array[String] = ["dust", "rapid", "shotgun", "rocket", "beam", "sniper", "can", "turret"]
+## Waffen, die nur eine Klasse benutzen darf. Alles andere (rapid, shotgun, rocket, beam) darf jeder.
+const OWNER := {
+	"dust": "roomba", "sweeper": "roomba", "disc": "roomba", "vacuum": "roomba", "zapper": "roomba",
+	"turret": "hexapod", "sniper": "hexapod",
+	"can": "vending",
+	"dronegun": "printer",
+}
 
-## Klassenwaffen, die nur ihre Klasse im Shop angeboten bekommt.
-const EXCLUSIVE := {"can": "vending", "turret": "hexapod"}
+## Die fuenf Waffen jeder Klasse, in Anzeigereihenfolge (Klassenwaffe zuerst).
+const CLASS_SETS := {
+	"roomba": ["dust", "sweeper", "disc", "vacuum", "zapper"],
+	"hexapod": ["turret", "sniper"],
+	"vending": ["can"],
+	"printer": ["dronegun"],
+}
+
+const ALL_IDS: Array[String] = ["dust", "sweeper", "disc", "vacuum", "zapper", "turret", "sniper", "can", "dronegun", "rapid", "shotgun", "rocket", "beam"]
+
+
+## Klasse, der die Waffe gehoert ("" = darf jeder).
+static func owner_of(weapon_id: String) -> String:
+	return String(OWNER.get(weapon_id, ""))
 
 
 static func usable_by(weapon_id: String, class_id: String) -> bool:
-	return not EXCLUSIVE.has(weapon_id) or EXCLUSIVE[weapon_id] == class_id
+	return not OWNER.has(weapon_id) or OWNER[weapon_id] == class_id
 
 
 const DATA := {
@@ -23,6 +48,35 @@ const DATA := {
 		"fire_rate": 6.0, "damage": 8.0, "pellets": 1, "spread": 0.04,
 		"speed": 950.0, "lifetime": 0.9, "pierce": 0, "size": 4.0, "push": 0.8,
 		"recoil": 40.0, "shake": 1.0, "sound": "shoot", "barrel": 14.0,
+	},
+	"sweeper": {
+		"mag": 16, "reload": 1.3,
+		"name": "Sweeper", "kind": "sweep", "color": Color(0.55, 1.0, 0.75),
+		"tag": "Schwung im Nahbereich, räumt Schüsse ab",
+		"fire_rate": 3.0, "damage": 26.0, "range": 175.0, "arc": 1.9, "push": 3.4,
+		"recoil": 0.0, "shake": 2.0, "sound": "sweep", "barrel": 10.0,
+	},
+	"disc": {
+		"mag": 8, "reload": 1.4,
+		"name": "Razor Disc", "kind": "projectile", "style": "disc", "color": Color(0.9, 0.95, 1.0),
+		"tag": "Wurfscheibe, kehrt zurück und trifft zweimal",
+		"fire_rate": 1.8, "damage": 15.0, "pellets": 1, "spread": 0.02,
+		"speed": 820.0, "lifetime": 3.0, "pierce": 99, "size": 12.0, "push": 0.6, "boomerang": 0.5,
+		"recoil": 30.0, "shake": 1.5, "sound": "disc", "barrel": 14.0, "dps": 54,
+	},
+	"vacuum": {
+		"mag": 90, "reload": 1.8,
+		"name": "Suction", "kind": "stream", "color": Color(0.7, 0.85, 1.0),
+		"tag": "Sog, zieht Gegner zusammen",
+		"fire_rate": 14.0, "damage": 2.4, "range": 360.0, "cone": 0.5, "focus": 0.55, "pull": 0.9, "slow": 0.7,
+		"recoil": 0.0, "shake": 0.3, "sound": "suck_tick", "barrel": 14.0,
+	},
+	"zapper": {
+		"mag": 24, "reload": 1.5,
+		"name": "Zapper", "kind": "chain", "color": Color(1.0, 0.95, 0.35), "element": "lightning",
+		"tag": "Kettenblitz, springt auf vier Ziele",
+		"fire_rate": 4.0, "damage": 12.0, "range": 480.0, "cone": 0.4, "jumps": 3, "jump_range": 230.0, "falloff": 0.85,
+		"recoil": 10.0, "shake": 1.0, "sound": "zap_gun", "barrel": 14.0, "dps": 48,
 	},
 	"dronegun": {
 		"mag": 24, "reload": 1.2,
@@ -98,7 +152,9 @@ static func summary(weapon_id: String) -> String:
 	var weapon: Dictionary = DATA[weapon_id]
 	var damage := float(weapon.damage) * float(weapon.get("pellets", 1))
 	var kind := "Projektil"
-	if weapon.kind == "hitscan":
+	if weapon.has("tag"):
+		kind = String(weapon.tag)
+	elif weapon.kind == "hitscan":
 		kind = "Dauerstrahl, wächst" if weapon.has("ramp_time") else "Strahl, trifft sofort"
 	elif weapon.kind == "lob":
 		kind = "Wurf, schütteln = Explosion"
@@ -111,7 +167,11 @@ static func summary(weapon_id: String) -> String:
 		damage = float(weapon.explosion_damage)
 	elif int(weapon.get("pellets", 1)) > 1:
 		kind = "Streuschuss"
-	return "%s, ca. %d Schaden/s" % [kind, int(round(damage * float(weapon.fire_rate)))]
+	var burst := float(weapon.get("burst", 1))
+	var per_second := damage * burst * float(weapon.fire_rate)
+	if weapon.has("dps"):
+		per_second = float(weapon.dps)
+	return "%s, ca. %d Schaden/s" % [kind, int(round(per_second))]
 
 
 static func get_weapon(id: String) -> Dictionary:

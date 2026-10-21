@@ -86,6 +86,29 @@ func tracer(from: Vector2, to: Vector2, color: Color, width: float, life: float)
 	_items.append({"type": "tracer", "from": from, "to": to, "t": life, "max": life, "color": color, "width": width})
 
 
+## Schwung eines Nahkampf-Bogens: heller Halbmond vor dem Spieler (Sweeper).
+func slash(pos: Vector2, dir: Vector2, reach: float, arc: float, color: Color) -> void:
+	_items.append({"type": "slash", "pos": pos, "dir": dir, "reach": reach, "arc": arc, "t": 0.16, "max": 0.16, "color": color})
+
+
+## Gezackte Blitzlinie zwischen zwei Punkten (Kettenblitz). Die Zacken werden einmal ausgewuerfelt.
+func zigzag(from: Vector2, to: Vector2, color: Color, width := 3.0, life := 0.14) -> void:
+	var points := PackedVector2Array([from])
+	var length := from.distance_to(to)
+	var segments := maxi(2, int(length / 32.0))
+	var side := (to - from).normalized().orthogonal()
+	for i in range(1, segments):
+		var along := from.lerp(to, float(i) / float(segments))
+		points.append(along + side * randf_range(-9.0, 9.0))
+	points.append(to)
+	_items.append({"type": "zigzag", "points": points, "t": life, "max": life, "color": color, "width": width})
+
+
+## Sog-Kegel (Vacuum): schmale Linien, die zum Fokuspunkt laufen.
+func suction(pos: Vector2, dir: Vector2, reach: float, cone: float, color: Color) -> void:
+	_items.append({"type": "suction", "pos": pos, "dir": dir, "reach": reach, "cone": cone, "t": 0.1, "max": 0.1, "color": color, "phase": randf()})
+
+
 ## Symbol eines Items steigt auf und verblasst (Kiste geoeffnet).
 func perk_icon(pos: Vector2, perk_id: String, life := 2.2) -> void:
 	if _items.size() >= MAX_ITEMS:
@@ -199,6 +222,35 @@ func _draw() -> void:
 				color.a = fade
 				draw_line(item.from, item.to, color, item.width * 2.2)
 				draw_line(item.from, item.to, Color(1, 1, 1, fade), item.width)
+			"slash":
+				# Halbmond: aeusserer Bogen blitzt auf und verblasst, der innere folgt.
+				var base_angle: float = item.dir.angle()
+				var half: float = item.arc * 0.5
+				var sweep := 1.0 - fade
+				var reach: float = item.reach
+				color.a = fade
+				draw_arc(item.pos, reach * (0.75 + 0.25 * sweep), base_angle - half, base_angle + half, 24, color, 12.0 * fade + 2.0, true)
+				draw_arc(item.pos, reach * (0.7 + 0.25 * sweep), base_angle - half, base_angle + half, 24, Color(1, 1, 1, fade), 3.0, true)
+				draw_arc(item.pos, reach * 0.55, base_angle - half * 0.9, base_angle + half * 0.9, 20, Color(color, 0.4 * fade), 6.0, true)
+			"zigzag":
+				color.a = fade
+				draw_polyline(item.points, color, item.width * 2.6, true)
+				draw_polyline(item.points, Color(1, 1, 1, fade), item.width, true)
+			"suction":
+				# Kegelflaeche und Linien, die von aussen auf die Mittelachse zulaufen (Zugrichtung).
+				var heading: float = item.dir.angle()
+				var reach: float = item.reach
+				var cone: float = item.cone
+				var fan := PackedVector2Array([item.pos])
+				for k in 9:
+					fan.append(item.pos + Vector2.from_angle(heading + lerpf(-cone, cone, float(k) / 8.0)) * reach)
+				draw_colored_polygon(fan, Color(color, 0.08 * fade))
+				for k in 7:
+					var lane := lerpf(-cone, cone, (float(k) + 0.5) / 7.0)
+					var run := fposmod(float(item.phase) + float(k) * 0.29, 1.0)
+					var angle := heading + lane * (0.25 + 0.75 * (1.0 - run))
+					var dist := reach * (1.0 - run * 0.7)
+					draw_line(item.pos + Vector2.from_angle(angle) * dist, item.pos + Vector2.from_angle(angle) * (dist + 38.0), Color(color, 0.8 * fade * (1.0 - run * 0.4)), 3.0, true)
 			"ring":
 				color.a = fade
 				draw_arc(item.pos, item.radius * (1.1 - 0.1 * fade), 0.0, TAU, 32, color, 4.0)
