@@ -68,6 +68,8 @@ func _run() -> void:
 	await _until(func() -> bool: return main.phase == main.Phase.WAVE)
 	_check(main.phase == main.Phase.WAVE and main.wave == 11, "Welle 11 beginnt (Welle %d)" % main.wave)
 	_check(main.director.wave == 11, "Der Director kennt Welle 11")
+	# Der zufaellige Wellenmodifikator aendert die Leben (z.B. 0,7), daher ohne ihn messen.
+	main.director.modifier = {}
 	_check(main.director.hp_scale() > 3.5, "Die Gegner sind staerker (Leben x%.1f)" % main.director.hp_scale())
 
 	# Waechter im Kreis.
