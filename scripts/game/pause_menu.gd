@@ -19,6 +19,7 @@ var victory := false
 var options := OptionsPage.new()
 
 var _pending := ""
+var _leaving := false
 var _confirm_cursor := 1
 var _age := 0.0
 var _canvas: Node2D
@@ -135,12 +136,11 @@ func _update_confirm() -> void:
 
 
 func _run(action: String) -> void:
+	if _leaving:
+		return
+	_leaving = true
 	main.abandon_run()
-	get_tree().paused = false
-	if action == "restart":
-		get_tree().reload_current_scene()
-	else:
-		get_tree().change_scene_to_file("res://scenes/title.tscn")
+	Transition.go("" if action == "restart" else "res://scenes/title.tscn")
 
 
 # ---------------------------------------------------------------- Zeichnen

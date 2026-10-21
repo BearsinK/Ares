@@ -18,7 +18,7 @@ https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2
 - Zufallseingaben-Test (Abstuerze, NaN, aus der Arena fallen): CHAOS_CLASSES=roomba,hexapod CHAOS_SECONDS=300 [CHAOS_BOSS=1 CHAOS_GOD=1] godot --headless --path . res://tests/chaos.tscn
 - Frame-Zeit mit vielen Gegnern: PERF_ENEMIES=60 godot --headless --path . res://tests/perf.tscn (nur relative Werte vergleichen)
 - Screenshots: xvfb-run -a -s "-screen 0 1600x900x24" godot --path . --rendering-driver opengl3 <szene>
-- Autoloads (Sfx, InputSetup) gibt es nur in Szenen, nicht im --script Modus.
+- Autoloads (Sfx, Music, InputSetup, Transition) gibt es nur in Szenen, nicht im --script Modus.
 
 ## Karten
 Grosse Karten stehen in scripts/data/stages.gd (Layouts als Daten), gebaut von scripts/game/stage_builder.gd. Tests laufen auf der alten flachen Halle: `main.stage_id = "classic"` vor add_child(main). tests/stage_test.gd prueft jedes Layout auf Erreichbarkeit (Fuss, Sprung, Seil) und Spawnpunkte, neue Layouts muessen ihn bestehen.

@@ -2,9 +2,9 @@ extends Node2D
 ## Titelbildschirm mit Hauptmenue, Klassenauswahl fuer beide Spieler und
 ## Steuerungsuebersicht. Startet danach die Hauptszene.
 
-enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING, SANDBOX, OPTIONS }
+enum State { MAIN, SELECT, CONTROLS, WORKSHOP, STARTING, SANDBOX, OPTIONS, CREDITS }
 
-const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Schwierigkeit", "Steuerung", "Optionen", "Beenden"]
+const MENU_ITEMS: Array[String] = ["Spielen", "Sandbox", "Garage", "Schwierigkeit", "Steuerung", "Optionen", "Credits", "Beenden"]
 const COUNTDOWN := 1.1
 
 var state := State.MAIN
@@ -26,6 +26,7 @@ var sandbox_classes: Array[String] = []
 var options := OptionsPage.new()
 
 var _time := 0.0
+var _leaving := false
 var _camera: Camera2D
 var _stage: Node2D
 var _ui: Node2D
@@ -74,6 +75,9 @@ func _process(delta: float) -> void:
 		State.OPTIONS:
 			if options.update(delta):
 				state = State.MAIN
+		State.CREDITS:
+			if UiKit.back() or UiKit.confirm():
+				state = State.MAIN
 	_stage.queue_redraw()
 	_ui.queue_redraw()
 
@@ -110,6 +114,8 @@ func _update_main() -> void:
 			"Optionen":
 				state = State.OPTIONS
 				options.cursor = 0
+			"Credits":
+				state = State.CREDITS
 			"Beenden":
 				get_tree().quit()
 
@@ -174,6 +180,8 @@ func _workshop_say(text: String, good := false) -> void:
 
 
 func _update_select(delta: float) -> void:
+	if _leaving:
+		return
 	if start_timer > 0.0:
 		start_timer -= delta
 		if start_timer <= 0.0:
@@ -186,7 +194,8 @@ func _update_select(delta: float) -> void:
 				return
 			if Engine.has_meta("sandbox"):
 				Engine.remove_meta("sandbox")
-			get_tree().change_scene_to_file("res://scenes/main.tscn")
+			_leaving = true
+			Transition.go("res://scenes/main.tscn")
 		return
 	var nobody_ready := not locked[0] and not locked[1]
 	for i in 2:
@@ -225,12 +234,15 @@ func _enter_sandbox(classes: Array) -> void:
 
 
 func _update_sandbox(delta: float) -> void:
+	if _leaving:
+		return
 	if start_timer > 0.0:
 		start_timer -= delta
 		if start_timer <= 0.0:
 			Engine.set_meta("sandbox", sandbox_config)
 			Engine.set_meta("classes", sandbox_classes)
-			get_tree().change_scene_to_file("res://scenes/main.tscn")
+			_leaving = true
+			Transition.go("res://scenes/main.tscn")
 		return
 	for i in 2:
 		var prefix := "p%d_" % (i + 1)
@@ -304,6 +316,8 @@ func _draw_ui() -> void:
 			_draw_sandbox(view)
 		State.OPTIONS:
 			options.draw(_ui, view)
+		State.CREDITS:
+			_draw_credits(view)
 
 
 func _item_label(index: int) -> String:
@@ -327,6 +341,30 @@ func _draw_main(view: Vector2) -> void:
 	if MENU_ITEMS[cursor] == "Schwierigkeit" and state == State.MAIN:
 		hint = "Links/Rechts oder Kreuz: Stufe wechseln"
 	UiKit.text(_ui, Vector2(0, view.y - 40), hint, 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(0, view.y - 20), version_text(), 14, Color(0.5, 0.54, 0.68), HORIZONTAL_ALIGNMENT_RIGHT, view.x - 20.0)
+
+
+## Versionsnummer aus den Projekteinstellungen.
+static func version_text() -> String:
+	return "Version %s" % String(ProjectSettings.get_setting("application/config/version", "0.0.0"))
+
+
+func _draw_credits(view: Vector2) -> void:
+	_ui.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.78))
+	var panel := Rect2(Vector2(view.x * 0.5 - 520.0, 150.0), Vector2(1040.0, 560.0))
+	Art.panel(_ui, panel, Color(0.09, 0.11, 0.18), 18.0, Color(1, 1, 1, 0.28))
+	UiKit.text(_ui, Vector2(0, 110), "CREDITS", 52, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	var y := panel.position.y + 70.0
+	UiKit.text(_ui, Vector2(0, y), "ROBROS", 46, Color(1.0, 0.8, 0.3), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(0, y + 34.0), "Der Aufstand der Apparate", 22, Color(0.85, 0.88, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(0, y + 64.0), version_text(), 18, Color(0.6, 0.65, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(0, y + 130.0), "TECHNIK", 18, Color(0.6, 0.9, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(panel.position.x + 80.0, y + 160.0), "Alle Grafik, alle Sounds und die Musik entstehen beim Start im Code. Es gibt keine Bild- oder Audiodateien.", 20, Color(0.9, 0.92, 1.0), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x - 160.0, true)
+	UiKit.text(_ui, Vector2(0, y + 250.0), "ENGINE", 18, Color(0.6, 0.9, 1.0), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(panel.position.x + 80.0, y + 280.0), "Gebaut mit der Godot Engine 4.7 (godotengine.org), MIT-Lizenz.", 20, Color(0.9, 0.92, 1.0), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x - 160.0, true)
+	UiKit.text(_ui, Vector2(panel.position.x + 80.0, y + 312.0), "Copyright (c) 2014-present Godot Engine contributors. Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur. Weitere Lizenzen Dritter: godotengine.org/license", 16, Color(0.75, 0.78, 0.9), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x - 160.0, true)
+	UiKit.text(_ui, Vector2(0, y + 420.0), "Danke fürs Spielen!", 26, Color(1.0, 0.9, 0.5), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(_ui, Vector2(0, view.y - 40.0), "Zurück: Kreis oder Escape", 18, Color(0.65, 0.68, 0.8), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
 func _draw_sandbox(view: Vector2) -> void:
