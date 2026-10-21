@@ -7,6 +7,8 @@ extends Node2D
 signal opened(chest: Chest, player: Player)
 
 const USE_RANGE := 85.0
+## Ab dieser Naehe erscheint beim ersten Mal der Hinweis zur Kiste.
+const TIP_RANGE := 340.0
 const BODY := Vector2(58.0, 38.0)
 
 var players: Array[Player] = []
@@ -51,6 +53,8 @@ func _physics_process(delta: float) -> void:
 		if player.downed:
 			continue
 		var distance := player.global_position.distance_to(global_position + Vector2(0.0, -BODY.y * 0.5))
+		if distance < TIP_RANGE and not bounty:
+			Tips.request(_tip_id())
 		if distance < best:
 			best = distance
 			_near = i
@@ -59,6 +63,10 @@ func _physics_process(delta: float) -> void:
 		if Input.is_action_just_pressed("p%d_interact" % player.player_index) and not _reviving(player):
 			_try_open(player)
 	queue_redraw()
+
+
+func _tip_id() -> String:
+	return "chest"
 
 
 ## Liegt der Partner am Boden und in Reichweite, hat Wiederbeleben Vorrang (gleiche Taste).

@@ -44,6 +44,8 @@ const STANCE_HOLD := 0.12
 const WORLD_MASK := (1 << 0) | (1 << 5) | (1 << 7)
 
 var player_index := 1
+## Wie oft dieser Spieler gedasht hat (fuer den Dash-Hinweis nach dem ersten Treffer).
+var dash_count := 0
 var class_id := "roomba"
 var stats: Dictionary = {}
 var aim_dir := Vector2.RIGHT
@@ -888,6 +890,7 @@ func _try_dash() -> void:
 	_ceiling_cooldown = 0.3
 	_dash_time_left = DASH_TIME
 	dash_charges -= 1
+	dash_count += 1
 	iframes = maxf(iframes, DASH_IFRAMES)
 	Sfx.play("dash")
 	_puff(Vector2(-_dash_dir.x * 20.0, float(stats.size.y) * 0.5 if is_on_floor() else 0.0), 6, 170.0)

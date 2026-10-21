@@ -698,6 +698,8 @@ func hitstop(duration: float) -> void:
 
 
 func _on_player_hurt(player: Player, amount: float) -> void:
+	if player.dash_count == 0:
+		Tips.request("dash")
 	camera.add_shake(minf(8.0 + amount * 0.5, 18.0))
 	if amount >= 15.0:
 		hitstop(0.06)
@@ -722,6 +724,7 @@ func _on_player_down(_player: Player) -> void:
 		return
 	for player in players:
 		if not player.downed:
+			Tips.request("revive")
 			return
 	game_over = true
 	_game_over_time = 0.0

@@ -10,6 +10,7 @@ const ROWS: Array[Dictionary] = [
 	{"id": "shake", "label": "Bildschirmwackeln", "kind": "choice"},
 	{"id": "numbers", "label": "Schadenszahlen", "kind": "toggle"},
 	{"id": "rumble", "label": "Vibration", "kind": "toggle"},
+	{"id": "tips", "label": "Hinweise", "kind": "toggle"},
 	{"id": "fullscreen", "label": "Vollbild", "kind": "toggle"},
 	{"id": "back", "label": "Zurück", "kind": "back"},
 ]
@@ -86,6 +87,9 @@ func change(id: String, direction: int) -> void:
 			Sfx.play("switch")
 			InputSetup.rumble(1, 0.4, 0.6, 0.25)
 			InputSetup.rumble(2, 0.4, 0.6, 0.25)
+		"tips":
+			SaveData.set_tips(not SaveData.tips_enabled())
+			Sfx.play("switch")
 		"fullscreen":
 			InputSetup.toggle_fullscreen()
 			Sfx.play("switch")
@@ -101,6 +105,8 @@ func value_text(id: String) -> String:
 			return "An" if SaveData.numbers_enabled() else "Aus"
 		"rumble":
 			return "An" if SaveData.rumble_enabled() else "Aus"
+		"tips":
+			return "An" if SaveData.tips_enabled() else "Aus"
 		"fullscreen":
 			return "An" if InputSetup.is_fullscreen() else "Aus"
 	return ""

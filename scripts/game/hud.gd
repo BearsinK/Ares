@@ -5,12 +5,16 @@ extends CanvasLayer
 
 const PANEL_WIDTH := 330.0
 const PANEL_HEIGHT := 128.0
+const HINTS_TIME := 16.0
+const TIP_TIME := 7.0
 
 var main: Node = null
 var _canvas: Node2D
 var _flash_color := Color(0, 0, 0, 0)
 var _flash_time := 0.0
 var _age := 0.0
+var _tip_id := ""
+var _tip_time := 0.0
 
 
 func _ready() -> void:
@@ -20,12 +24,30 @@ func _ready() -> void:
 	_canvas = Node2D.new()
 	_canvas.draw.connect(_draw_hud)
 	add_child(_canvas)
+	Tips.queue.clear()
 
 
 func _process(delta: float) -> void:
 	_age += delta
 	_flash_time = maxf(0.0, _flash_time - delta)
+	_update_tips(delta)
 	_canvas.queue_redraw()
+
+
+## Zeigt wartende Hinweise nacheinander, aber nie waehrend Menues, der Steuerungsuebersicht oder nach dem Ende.
+func _update_tips(delta: float) -> void:
+	if main == null or get_tree().paused or main.game_over or main.shop_menu.is_open or main.levelup_menu.is_open:
+		return
+	_tip_time = maxf(0.0, _tip_time - delta)
+	if _tip_time > 0.0:
+		return
+	_tip_id = ""
+	if Tips.queue.is_empty() or _hints_visible() or main.phase != main.Phase.WAVE:
+		return
+	_tip_id = Tips.queue.pop_front()
+	_tip_time = TIP_TIME
+	SaveData.mark_tip(_tip_id)
+	Sfx.play("ready", 0.0)
 
 
 ## Farbiger Bildschirmrand-Blitz (z.B. rot bei Treffern).
@@ -51,6 +73,7 @@ func _draw_hud() -> void:
 		_draw_xp_bar(view)
 		return
 	_draw_hints(view)
+	_draw_tip(view)
 	_draw_wave_banner(view)
 	_draw_wave_clear(view)
 	_draw_player_panels(view)
@@ -135,10 +158,15 @@ func _draw_wave_clear(view: Vector2) -> void:
 	_text(Vector2(0, y + 178.0), next, 20, Color(0.7, 0.75, 0.9, info_alpha), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 
 
+## Die Steuerungsuebersicht steht in der ersten Welle die ersten Sekunden.
+func _hints_visible() -> bool:
+	return _age <= HINTS_TIME and main.wave <= 1 and main.phase == main.Phase.WAVE and not main.levelup_menu.is_open and not main.shop_menu.is_open
+
+
 func _draw_hints(view: Vector2) -> void:
-	var visible_time := 16.0
-	if _age > visible_time or main.wave > 1 or main.phase != main.Phase.WAVE or main.levelup_menu.is_open or main.shop_menu.is_open:
+	if not _hints_visible():
 		return
+	var visible_time := HINTS_TIME
 	var alpha := clampf(minf(_age / 0.6, (visible_time - _age) / 1.5), 0.0, 1.0)
 	var panel := Rect2(Vector2(view.x * 0.5 - 430.0, view.y - 190.0), Vector2(860.0, 112.0))
 	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.8 * alpha), 14.0)
@@ -147,6 +175,20 @@ func _draw_hints(view: Vector2) -> void:
 	_text(panel.position + Vector2(0, 56), "Controller: R2 schießen   R1 Dash   L1 Sprung   Quadrat Fähigkeit   L2 Haken   Dreieck Waffe   Kreis Partner beleben", 15, Color(0.9, 0.92, 1.0, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 	_text(panel.position + Vector2(0, 80), "Tastatur P1: WASD, Maus, Leertaste, Shift, E     P2: Pfeile, Punkt, Strich, Komma     F11 Vollbild", 15, Color(0.7, 0.74, 0.9, alpha), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
 	_text(panel.position + Vector2(0, 102), "Je weiter ihr kommt, desto mehr Chips gibt es für die Garage.", 13, Color(0.6, 0.95, 1.0, alpha * 0.9), HORIZONTAL_ALIGNMENT_CENTER, panel.size.x)
+
+
+## Einmaliger Hinweis (siehe Tips): Tafel unten in der Mitte, gleicher Platz wie die Steuerungsuebersicht.
+func _draw_tip(view: Vector2) -> void:
+	if _tip_id == "" or _tip_time <= 0.0 or not Tips.DATA.has(_tip_id):
+		return
+	var info: Dictionary = Tips.DATA[_tip_id]
+	var alpha := clampf(minf((TIP_TIME - _tip_time) / 0.4, _tip_time / 0.6), 0.0, 1.0)
+	var panel := Rect2(Vector2(view.x * 0.5 - 380.0, view.y - 190.0 + (1.0 - alpha) * 16.0), Vector2(760.0, 96.0))
+	Art.rrect(_canvas, panel, Color(0.04, 0.05, 0.09, 0.88 * alpha), 14.0)
+	Art.rrect_line(_canvas, panel, Color(0.5, 0.85, 1.0, 0.8 * alpha), 14.0, 2.0)
+	_canvas.draw_rect(Rect2(panel.position + Vector2(20.0, 0.0), Vector2(90.0, 4.0)), Color(0.5, 0.85, 1.0, alpha))
+	_text(panel.position + Vector2(24.0, 30.0), "HINWEIS   %s" % String(info.title), 17, Color(0.6, 0.92, 1.0, alpha))
+	UiKit.text(_canvas, panel.position + Vector2(24.0, 58.0), String(info.text), 19, Color(0.94, 0.96, 1.0, alpha), HORIZONTAL_ALIGNMENT_LEFT, panel.size.x - 48.0, true)
 
 
 func _draw_flash(view: Vector2) -> void:

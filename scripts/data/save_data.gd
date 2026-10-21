@@ -43,7 +43,7 @@ static func _defaults() -> Dictionary:
 		"chips": 0, "levels": {}, "classes": [], "weapons": [],
 		"stats": {"runs": 0, "best_wave": 0, "kills": 0, "boss_kills": 0, "best_time": 0},
 		"fullscreen": false, "difficulty": 1,
-		"volume": {}, "shake": SHAKE_DEFAULT, "numbers": true, "rumble": true,
+		"volume": {}, "shake": SHAKE_DEFAULT, "numbers": true, "rumble": true, "tips_on": true, "tips": [],
 	}
 
 
@@ -167,6 +167,32 @@ static func set_numbers(enabled: bool) -> void:
 	_ensure()
 	_data.numbers = enabled
 	save()
+
+
+## Einmalige Hinweise: an oder aus, und welche schon gezeigt wurden.
+static func tips_enabled() -> bool:
+	_ensure()
+	return bool(_data.get("tips_on", true))
+
+
+static func set_tips(enabled: bool) -> void:
+	_ensure()
+	_data.tips_on = enabled
+	save()
+
+
+static func tip_seen(id: String) -> bool:
+	_ensure()
+	return (_data.get("tips", []) as Array).has(id)
+
+
+static func mark_tip(id: String) -> void:
+	_ensure()
+	var seen: Array = _data.get("tips", [])
+	if not seen.has(id):
+		seen.append(id)
+		_data.tips = seen
+		save()
 
 
 static func rumble_enabled() -> bool:

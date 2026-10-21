@@ -38,6 +38,10 @@ func _try_open(player: Player) -> void:
 		_age = 0.0
 
 
+func _tip_id() -> String:
+	return "altar_" + kind
+
+
 func _physics_process(delta: float) -> void:
 	_flash = maxf(0.0, _flash - delta * 2.5)
 	super._physics_process(delta)

@@ -152,6 +152,10 @@ func spawn(kind: String, at: Variant = null, elite := false, elite_kind := "", c
 	enemies.append(enemy)
 	parent_node.add_child(enemy)
 	enemy_spawned.emit(enemy)
+	if kind == "medic" or kind == "bomber":
+		Tips.request(kind)
+	elif elite and not champion:
+		Tips.request("elite")
 	return enemy
 
 
