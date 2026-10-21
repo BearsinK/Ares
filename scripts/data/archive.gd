@@ -4,12 +4,13 @@ extends RefCounted
 ## entdeckt hat, lassen sich im Titelmenue nachlesen. Hier stehen die Eintraege; was entdeckt ist,
 ## merkt SaveData.
 
-const KINDS: Array[String] = ["items", "enemies", "weapons"]
-const KIND_NAMES := {"items": "Items", "enemies": "Gegner", "weapons": "Waffen"}
+const KINDS: Array[String] = ["items", "enemies", "weapons", "achievements"]
+const KIND_NAMES := {"items": "Items", "enemies": "Gegner", "weapons": "Waffen", "achievements": "Erfolge"}
 const HINTS := {
 	"items": "Finde dieses Item in einem Lauf: aus Kisten, Altären oder dem Level-Up.",
 	"enemies": "Begegne diesem Gegner in einem Lauf.",
 	"weapons": "Rüste diese Waffe in einem Lauf aus (Shop).",
+	"achievements": "",
 }
 
 const ENEMY_ORDER: Array[String] = ["walker", "shooter", "flyer", "charger", "mortar", "brute", "bomber", "medic", "elite", "guardian", "boss"]
@@ -65,6 +66,13 @@ static func _build(kind: String) -> Array[Dictionary]:
 		"enemies":
 			for id in ENEMY_ORDER:
 				result.append(_enemy_entry(id))
+		"achievements":
+			for id in Achievements.DATA:
+				var info: Dictionary = Achievements.DATA[id]
+				result.append({
+					"id": id, "name": String(info.name), "color": Color(1.0, 0.82, 0.3), "text": String(info.text),
+					"tag": "ERFOLG", "stats": ["Belohnung: %d Chips" % int(info.chips)],
+				})
 		"weapons":
 			for id in Weapons.ALL_IDS:
 				var weapon: Dictionary = Weapons.DATA[id]
@@ -88,6 +96,17 @@ static func _enemy_entry(id: String) -> Dictionary:
 		entry.color = Color(1.0, 0.45, 0.3) if id != "elite" else Color(0.95, 0.85, 0.3)
 		entry.tag = "ELITE" if id == "elite" else ("MINI-BOSS" if id == "guardian" else "ENDBOSS")
 	return entry
+
+
+## Archiv ohne Erfolge: entdeckte und alle Items, Gegner und Waffen zusammen.
+static func collection_progress() -> Vector2i:
+	var found := 0
+	var total := 0
+	for kind in ["items", "enemies", "weapons"]:
+		var p := progress(kind)
+		found += p.x
+		total += p.y
+	return Vector2i(found, total)
 
 
 ## Anzahl entdeckter und aller Eintraege einer Art.

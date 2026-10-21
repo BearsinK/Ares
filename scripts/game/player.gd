@@ -8,6 +8,8 @@ signal fired(player: Player, weapon_id: String, origin: Vector2, direction: Vect
 signal hurt(player: Player, amount: float)
 signal went_down(player: Player)
 signal revived(player: Player)
+## Der Partner hat diesen Spieler per Interagieren wiederbelebt (nicht durch Waechter-Reparatur).
+signal rescued(player: Player)
 signal slam_landed(player: Player, position: Vector2)
 signal heavy_landed(player: Player, strength: float)
 
@@ -378,6 +380,7 @@ func _process_downed(delta: float) -> void:
 		revive_progress += delta / REVIVE_TIME
 		if revive_progress >= 1.0:
 			revive()
+			rescued.emit(self)
 	else:
 		revive_progress = maxf(0.0, revive_progress - delta * 0.5)
 

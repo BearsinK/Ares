@@ -214,10 +214,15 @@ func _draw_notices(view: Vector2) -> void:
 		var t: float = notice.t
 		var alpha := clampf(minf((NOTICE_TIME - t) / 0.25, t / 0.5), 0.0, 1.0)
 		var slide := (1.0 - alpha) * -40.0
-		var plate := Rect2(Vector2(18.0 + slide, view.y - 130.0 - i * 54.0), Vector2(300.0, 46.0))
+		var plate := Rect2(Vector2(18.0 + slide, view.y - 130.0 - i * 54.0), Vector2(320.0, 46.0))
 		Art.rrect(_canvas, plate, Color(0.04, 0.05, 0.09, 0.86 * alpha), 10.0)
 		Art.rrect_line(_canvas, plate, Color(0.5, 0.85, 1.0, 0.7 * alpha), 10.0, 2.0)
-		_text(plate.position + Vector2(16.0, 18.0), "NEU IM ARCHIV", 12, Color(0.6, 0.92, 1.0, alpha))
+		var achievement: bool = notice.kind == "achievements"
+		var accent := Color(1.0, 0.85, 0.35) if achievement else Color(0.6, 0.92, 1.0)
+		if achievement:
+			Art.rrect_line(_canvas, plate, Color(accent, 0.8 * alpha), 10.0, 2.0)
+		var header := "ERFOLG  +%d Chips" % int(Achievements.DATA[notice.id].chips) if achievement else "NEU IM ARCHIV"
+		_text(plate.position + Vector2(16.0, 18.0), header, 12, Color(accent, alpha))
 		_text(plate.position + Vector2(16.0, 38.0), String(notice.name), 19, Color(1.0, 1.0, 1.0, alpha))
 
 

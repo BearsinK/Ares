@@ -58,7 +58,7 @@ func draw(c: CanvasItem, view: Vector2) -> void:
 	UiKit.text(c, Vector2(0, 108), "%d von %d Einträgen entdeckt" % [found, total], 18, Color(0.7, 0.74, 0.88), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	# Reiter.
 	for i in Archive.KINDS.size():
-		var rect := Rect2(Vector2(view.x * 0.5 - 330.0 + i * 230.0, 124.0), Vector2(210.0, 44.0))
+		var rect := Rect2(Vector2(view.x * 0.5 - 450.0 + i * 230.0, 124.0), Vector2(210.0, 44.0))
 		UiKit.button(c, rect, "%s  %d/%d" % [Archive.KIND_NAMES[Archive.KINDS[i]], progress[i].x, progress[i].y], i == tab, Color(0.4, 0.75, 1.0), 20)
 	var panel := Rect2(Vector2(view.x * 0.5 - 640.0, 184.0), Vector2(1280.0, 620.0))
 	Art.panel(c, panel, Color(0.09, 0.11, 0.18), 18.0, Color(1, 1, 1, 0.28))
@@ -83,7 +83,7 @@ func _draw_list(c: CanvasItem, area: Rect2) -> void:
 			Art.rrect(c, rect, Color(0.2, 0.25, 0.38), 8.0)
 			Art.rrect_line(c, rect, Color(0.4, 0.75, 1.0), 8.0, 2.0)
 		_draw_icon(c, entry, rect.position + Vector2(24.0, rect.size.y * 0.5), 26.0, found)
-		var label := String(entry.name) if found else "???"
+		var label := String(entry.name) if (found or kind() == "achievements") else "???"
 		UiKit.text(c, rect.position + Vector2(52.0, 26.0), label, 20, (Color.WHITE if selected else Color(0.82, 0.85, 0.95)) if found else Color(0.5, 0.52, 0.62))
 		if found and kind() == "enemies":
 			UiKit.text(c, rect.position + Vector2(0.0, 26.0), "x%d" % SaveData.archive_kills(String(entry.id)), 16, Color(0.7, 0.74, 0.88), HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - 12.0)
@@ -101,16 +101,17 @@ func _draw_detail(c: CanvasItem, area: Rect2) -> void:
 	var entry := list[cursor]
 	var found := Archive.is_found(kind(), String(entry.id))
 	var color: Color = entry.color if found else Color(0.4, 0.42, 0.52)
+	var open_goal := kind() == "achievements" and not found
 	Art.rrect(c, Rect2(area.position, Vector2(area.size.x, 200.0)), Color(0.06, 0.07, 0.13), 14.0)
 	Art.glow(c, area.position + Vector2(110.0, 100.0), 90.0, color)
 	_draw_icon(c, entry, area.position + Vector2(110.0, 104.0), 120.0, found)
-	if not found:
+	if not found and not open_goal:
 		UiKit.text(c, area.position + Vector2(230.0, 90.0), "???", 52, Color(0.55, 0.57, 0.68))
 		UiKit.text(c, area.position + Vector2(230.0, 130.0), "Noch nicht entdeckt", 22, Color(0.7, 0.72, 0.85))
 		UiKit.text(c, area.position + Vector2(0.0, 250.0), String(Archive.HINTS[kind()]), 22, Color(0.8, 0.83, 0.93), HORIZONTAL_ALIGNMENT_LEFT, area.size.x, true)
 		return
-	UiKit.text(c, area.position + Vector2(230.0, 76.0), String(entry.tag), 17, Color(color, 1.0).lightened(0.2))
-	UiKit.text(c, area.position + Vector2(230.0, 124.0), String(entry.name), 44, Color.WHITE)
+	UiKit.text(c, area.position + Vector2(230.0, 76.0), "ERFOLG   NOCH OFFEN" if open_goal else String(entry.tag), 17, Color(0.62, 0.64, 0.74) if open_goal else Color(color, 1.0).lightened(0.2))
+	UiKit.text(c, area.position + Vector2(230.0, 124.0), String(entry.name), 44, Color(0.78, 0.8, 0.9) if open_goal else Color.WHITE)
 	if kind() == "enemies" and EnemyTypes.DATA.has(String(entry.id)):
 		UiKit.text(c, area.position + Vector2(230.0, 164.0), "Besiegt: %d" % SaveData.archive_kills(String(entry.id)), 18, Color(0.7, 0.74, 0.88))
 	c.draw_rect(Rect2(area.position + Vector2(0.0, 214.0), Vector2(90.0, 4.0)), color)
@@ -123,6 +124,9 @@ func _draw_detail(c: CanvasItem, area: Rect2) -> void:
 
 ## Bild eines Eintrags: Item-Symbol, Gegnerfigur oder Waffenfarbe. Unentdeckt als graues Fragezeichen.
 func _draw_icon(c: CanvasItem, entry: Dictionary, center: Vector2, size: float, found: bool) -> void:
+	if kind() == "achievements":
+		_draw_star(c, center, size * 0.42, found)
+		return
 	if not found:
 		UiKit.text(c, center + Vector2(-size * 0.2, size * 0.2), "?", int(size * 0.8), Color(0.4, 0.42, 0.52))
 		return
@@ -146,3 +150,19 @@ func _draw_icon(c: CanvasItem, entry: Dictionary, center: Vector2, size: float, 
 			Art.rrect(c, Rect2(center + Vector2(-half, -half * 0.28), Vector2(half * 2.0, half * 0.56)), color.darkened(0.45), half * 0.18)
 			Art.rrect(c, Rect2(center + Vector2(-half * 0.2, -half * 0.28), Vector2(half * 1.2, half * 0.3)), color, half * 0.1)
 			c.draw_rect(Rect2(center + Vector2(half * 0.9, -half * 0.12), Vector2(half * 0.5, half * 0.24)), color.lightened(0.3))
+
+
+## Stern fuer Erfolge: golden, wenn freigeschaltet, sonst nur der graue Umriss.
+func _draw_star(c: CanvasItem, center: Vector2, outer: float, filled: bool) -> void:
+	var points := PackedVector2Array()
+	for k in 10:
+		var radius := outer if k % 2 == 0 else outer * 0.45
+		var angle := -PI * 0.5 + k * PI / 5.0
+		points.append(center + Vector2(cos(angle), sin(angle)) * radius)
+	if filled:
+		c.draw_colored_polygon(points, Color(1.0, 0.82, 0.3))
+		points.append(points[0])
+		c.draw_polyline(points, Color(1.0, 0.95, 0.7), maxf(1.0, outer * 0.08))
+	else:
+		points.append(points[0])
+		c.draw_polyline(points, Color(0.45, 0.47, 0.58), maxf(1.5, outer * 0.08))

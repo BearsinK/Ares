@@ -128,6 +128,12 @@ var wave_intro := 0.0
 ## Gewaehlte Team-Perks (id -> Anzahl) und das Banner nach der Wahl.
 var perks_taken := {}
 var _archive_timer := 0.0
+## Zaehler fuer Erfolge, gelten fuer den ganzen Lauf.
+var _run_chests := 0
+var _run_gambles := 0
+var _run_bloods := 0
+var _run_rescues := 0
+var _hit_this_wave := false
 ## Beim ersten Durchlauf (Startausruestung) gibt es keine Meldungen.
 var _archive_primed := false
 var perk_banner_id := ""
@@ -209,6 +215,7 @@ func _update_archive(delta: float) -> void:
 			_discover("weapons", String(id))
 	for id in perks_taken:
 		_discover("items", String(id))
+	_check_holdings()
 	for enemy in director.enemies:
 		if is_instance_valid(enemy):
 			_discover("enemies", archive_id(enemy))
@@ -218,8 +225,39 @@ func _update_archive(delta: float) -> void:
 
 
 func _discover(kind: String, id: String) -> void:
-	if SaveData.archive_discover(kind, id) and hud != null and _archive_primed:
-		hud.notice(kind, id)
+	if SaveData.archive_discover(kind, id):
+		if hud != null and _archive_primed:
+			hud.notice(kind, id)
+		var progress := Archive.collection_progress()
+		if progress.x * 2 >= progress.y:
+			_unlock("archive_half")
+
+
+## Schaltet einen Erfolg frei (einmalig): Chips gutschreiben und melden. Nicht in der Sandbox.
+func _unlock(id: String) -> void:
+	if sandbox or not Achievements.DATA.has(id) or not SaveData.archive_discover("achievements", id):
+		return
+	SaveData.add_chips(int(Achievements.DATA[id].chips))
+	if hud != null:
+		hud.notice("achievements", id)
+
+
+func _on_player_rescued(_player: Player) -> void:
+	_run_rescues += 1
+	if _run_rescues >= 3:
+		_unlock("revive_3")
+
+
+## Erfolge, die sich aus dem Besitz ergeben (Gold, Items), zweimal pro Sekunde geprueft.
+func _check_holdings() -> void:
+	for player in players:
+		if player.gold >= 500:
+			_unlock("rich")
+		for id in player.items:
+			if Perks.RARE_IDS.has(String(id)):
+				_unlock("rare_find")
+			if int(player.items[id]) >= 5:
+				_unlock("stack_5")
 
 
 func _physics_process(delta: float) -> void:
@@ -370,6 +408,7 @@ func _update_guardian() -> void:
 ## Sieg ueber den Waechter: eine gratis Goldkiste an seiner Stelle, Reparatur fuer beide und Beute.
 func _guardian_defeated(pos: Vector2, radius: float) -> void:
 	guardian = null
+	_unlock("guardian")
 	if phase != Phase.WAVE:
 		return
 	var ground := GroundProbe.ground_y(self, pos, pos + Vector2(0.0, radius + 120.0))
@@ -402,6 +441,12 @@ func _end_wave() -> void:
 	director.enabled = false
 	Sfx.play("fanfare", 0.0)
 	wave_kills = kills - _wave_kills_start
+	if wave >= 5:
+		_unlock("wave_5")
+	if wave >= 2 and not _hit_this_wave:
+		_unlock("no_hit")
+	if contract_bonus > 0.0:
+		_unlock("contract")
 	# Bonus fuer die geschaffte Welle, fuer jeden Spieler.
 	wave_bonus = 4 + 2 * wave
 	for player in players:
@@ -475,6 +520,7 @@ func _on_contract_chosen(contract_id: String) -> void:
 
 ## Die neue Welle beginnt: Tore auf, Modifikator (gewaehlt oder zufaellig), Gegner, Kisten.
 func _begin_new_wave(contract_id: String) -> void:
+	_hit_this_wave = false
 	if gates != null and gates.is_closed:
 		gates.open()
 	_apply_modifier(contract_id)
@@ -541,6 +587,11 @@ func abandon_run() -> void:
 
 
 func _on_boss_died() -> void:
+	_unlock("boss")
+	if director.time < Achievements.SPEEDRUN_SECONDS:
+		_unlock("speedrun")
+	if SaveData.difficulty() >= 2:
+		_unlock("boss_hard")
 	phase = Phase.VICTORY
 	_game_over_time = 0.0
 	_record_run(true)
@@ -716,6 +767,7 @@ func _spawn_players() -> void:
 		_place_at_start(player, i)
 		player.fired.connect(_on_player_fired)
 		player.went_down.connect(_on_player_down)
+		player.rescued.connect(_on_player_rescued)
 		player.hurt.connect(_on_player_hurt)
 		player.heavy_landed.connect(func(_p: Player, strength: float) -> void: camera.add_shake(5.0 + 8.0 * strength))
 		player.slam_landed.connect(_on_slam_landed)
@@ -736,6 +788,7 @@ func hitstop(duration: float) -> void:
 
 
 func _on_player_hurt(player: Player, amount: float) -> void:
+	_hit_this_wave = true
 	if player.dash_count == 0:
 		Tips.request("dash")
 	camera.add_shake(minf(8.0 + amount * 0.5, 18.0))
@@ -798,6 +851,12 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	if not sandbox:
 		_discover("enemies", archive_id(enemy))
 		SaveData.archive_add_kill(archive_id(enemy))
+		if kills == 1:
+			_unlock("first_blood")
+		elif kills == 100:
+			_unlock("kills_100")
+		if enemy.elite and not enemy.champion and SaveData.archive_kills("elite") >= 10:
+			_unlock("elite_10")
 	var info: Dictionary = enemy.data
 	_spawn_pickup("xp", int(info.xp) * (3 if enemy.elite else 1), enemy.global_position)
 	var gold_value := 1 + int(director.difficulty() * 1.1)
@@ -966,6 +1025,9 @@ func _add_altar(pos: Vector2, kind: String) -> void:
 func _on_altar_used(altar: Altar, player: Player) -> void:
 	var at := altar.global_position + Vector2(0.0, -130.0)
 	if altar.kind == "blood":
+		_run_bloods += 1
+		if _run_bloods >= 3:
+			_unlock("blood")
 		var gold := 16 + 6 * wave
 		player.gold += gold
 		player.gold_flash()
@@ -979,6 +1041,9 @@ func _on_altar_used(altar: Altar, player: Player) -> void:
 	else:
 		var roll := chance_roll_override if chance_roll_override >= 0.0 else randf()
 		if roll < CHANCE_ODDS:
+			_run_gambles += 1
+			if _run_gambles >= 3:
+				_unlock("gambler")
 			_grant_item(player, altar.global_position, Perks.RARE_IDS if randf() < 0.25 else Perks.DATA.keys(), 3.2)
 		else:
 			Sfx.play("altar_lose", 0.03)
@@ -1013,6 +1078,9 @@ func _on_chest_opened(chest: Chest, player: Player) -> void:
 		return
 	if not chest.bounty:
 		chests_opened += 1
+		_run_chests += 1
+		if _run_chests >= 5:
+			_unlock("chests_5")
 	var pool: Array = Perks.RARE_IDS if chest.large else Perks.DATA.keys()
 	_grant_item(player, chest.global_position, pool, 3.2)
 	camera.add_shake(7.0 if chest.large else 4.0)

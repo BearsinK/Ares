@@ -44,7 +44,7 @@ static func _defaults() -> Dictionary:
 		"stats": {"runs": 0, "best_wave": 0, "kills": 0, "boss_kills": 0, "best_time": 0},
 		"fullscreen": false, "difficulty": 1,
 		"volume": {}, "shake": SHAKE_DEFAULT, "numbers": true, "rumble": true, "tips_on": true, "tips": [],
-		"archive": {"items": [], "weapons": [], "enemies": {}},
+		"archive": {"items": [], "weapons": [], "enemies": {}, "achievements": []},
 	}
 
 
