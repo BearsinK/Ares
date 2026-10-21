@@ -51,6 +51,7 @@ func _run() -> void:
 	await _waves()
 	await _bosses()
 	await _holdings()
+	await _newer()
 	await _team()
 	await _page()
 	print("Fertig, Fehler: ", failures)
@@ -93,6 +94,28 @@ func _kills() -> void:
 	var notices: int = main.hud._notices.size()
 	_check(notices >= 1 and notices <= 3, "Erfolge melden sich im HUD (%d)" % notices)
 	_check(count >= 3, "Mehrere Erfolge stehen im Spielstand (%d)" % count)
+
+
+func _newer() -> void:
+	await _fresh_main()
+	var target: Enemy = main.director.spawn("brute", Vector2(900.0, 1200.0))
+	target.set_physics_process(false)
+	target.hp = 99999.0
+	target.max_hp = 99999.0
+	for pair in [["water", "fire"], ["water", "ice"], ["water", "lightning"], ["fire", "ice"], ["fire", "lightning"], ["ice", "lightning"]]:
+		target.statuses._status.clear()
+		target.take_damage(1.0, p1, Vector2.ZERO, pair[0])
+		target.take_damage(1.0, p2, Vector2.ZERO, pair[1])
+	main._check_holdings()
+	_check(Achievements.combos_seen.size() == 6, "Alle sechs Kombos wurden gezaehlt (%d)" % Achievements.combos_seen.size())
+	_check(_has("combo_all"), "Kombinator: alle Kombos in einem Lauf")
+	await _fresh_main()
+	_check(Achievements.combos_seen.is_empty(), "Ein neuer Lauf beginnt ohne gezaehlte Kombos")
+	_check(not _has("arsenal"), "Anfangs kein Waffenmeister")
+	for id in Weapons.CLASS_SETS.roomba:
+		SaveData.archive_discover("weapons", id)
+	main._check_holdings()
+	_check(_has("arsenal"), "Waffenmeister: alle fuenf Waffen der Klasse entdeckt")
 
 
 func _waves() -> void:

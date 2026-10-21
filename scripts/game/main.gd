@@ -158,6 +158,7 @@ var _intro_beat := 0
 
 
 func _ready() -> void:
+	Achievements.combos_seen.clear()
 	RenderingServer.set_default_clear_color(BG_COLOR)
 	_read_sandbox_early()
 	_pick_stage(wave)
@@ -280,7 +281,15 @@ func _on_player_rescued(_player: Player) -> void:
 
 ## Erfolge, die sich aus dem Besitz ergeben (Gold, Items), zweimal pro Sekunde geprueft.
 func _check_holdings() -> void:
+	if Achievements.combos_seen.size() >= Elements.COMBOS.size():
+		_unlock("combo_all")
 	for player in players:
+		var set: Array = Weapons.CLASS_SETS.get(player.class_id, [])
+		var complete := not set.is_empty()
+		for id in set:
+			complete = complete and SaveData.archive_has("weapons", String(id))
+		if complete:
+			_unlock("arsenal")
 		if player.gold >= 500:
 			_unlock("rich")
 		for id in player.items:

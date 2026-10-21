@@ -18,6 +18,8 @@ const DATA := {
 	"revive_3": {"name": "Teamgeist", "text": "Belebe deinen Partner dreimal in einem Lauf.", "chips": 30},
 	"elite_10": {"name": "Elitejäger", "text": "Besiege insgesamt 10 Elite-Gegner.", "chips": 40},
 	"guardian": {"name": "Wächterfall", "text": "Besiege einen Wächter.", "chips": 30},
+	"combo_all": {"name": "Kombinator", "text": "Löse alle sechs Element-Kombos in einem Lauf aus.", "chips": 40},
+	"arsenal": {"name": "Waffenmeister", "text": "Entdecke alle fünf Waffen deiner Klasse.", "chips": 40},
 	"archive_half": {"name": "Archivar", "text": "Entdecke die Hälfte aller Items, Gegner und Waffen.", "chips": 50},
 	"boss": {"name": "Ofen aus", "text": "Besiege den Smelter.", "chips": 100},
 	"speedrun": {"name": "Schnellschmelze", "text": "Besiege den Smelter in unter 15 Minuten.", "chips": 60},
@@ -27,3 +29,6 @@ const DATA := {
 }
 
 const SPEEDRUN_SECONDS := 900.0
+
+## Kombos, die in diesem Lauf schon ausgeloest wurden (die Hauptszene leert die Liste beim Start).
+static var combos_seen: Dictionary = {}
