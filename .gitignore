@@ -6,3 +6,5 @@ export_presets.cfg
 
 # Lokale Einstellungen
 godot_path.txt
+tests/_scratch_*
+tests/_shot*
