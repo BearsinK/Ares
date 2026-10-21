@@ -71,7 +71,10 @@ func apply_settings() -> void:
 
 ## Spannung 0..1: laesst die zweite Ebene lauter werden.
 func set_layer_level(level: float) -> void:
-	layer_level = clampf(level, 0.0, 1.0)
+	var clamped := clampf(level, 0.0, 1.0)
+	if is_equal_approx(clamped, layer_level):
+		return
+	layer_level = clamped
 	_apply_volume()
 
 

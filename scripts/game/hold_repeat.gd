@@ -11,7 +11,8 @@ var _time := 0.0
 
 
 ## Gibt -1, 0 oder 1 zurueck. negative und positive sind Aktionsnamen ohne Spielerkennung, z.B. "left" und "right".
-func step(delta: float, negative: String, positive: String) -> int:
+## Mit repeat = false zaehlt nur ein frischer Druck (fuer Schalter, die nicht flackern duerfen).
+func step(delta: float, negative: String, positive: String, repeat := true) -> int:
 	var direction := 0
 	if UiKit.pressed(negative):
 		direction -= 1
@@ -21,7 +22,7 @@ func step(delta: float, negative: String, positive: String) -> int:
 	if direction != 0:
 		_direction = direction
 		_time = 0.0
-	elif held != 0 and held == _direction:
+	elif repeat and held != 0 and held == _direction:
 		_time += delta
 		if _time >= DELAY:
 			_time -= INTERVAL
@@ -29,6 +30,10 @@ func step(delta: float, negative: String, positive: String) -> int:
 	else:
 		_direction = 0
 	return direction
+
+
+static func is_held(suffix: String) -> bool:
+	return _held(suffix)
 
 
 static func _held(suffix: String) -> bool:

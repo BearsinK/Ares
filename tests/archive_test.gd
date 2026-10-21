@@ -119,6 +119,14 @@ func _in_game() -> void:
 	elite.take_damage(99999.0, p1, Vector2.RIGHT, "")
 	await _frames(3)
 	_check(SaveData.archive_kills("elite") == 1 and SaveData.archive_kills("walker") == 1, "Elite zaehlt getrennt vom Grunt")
+	# Sofort besiegter Gegner: erst Meldung, dann Zaehlung.
+	var shooter: Enemy = main.director.spawn("shooter", p1.global_position + Vector2(900.0, 0.0))
+	shooter.take_damage(99999.0, p1, Vector2.RIGHT, "")
+	await _frames(3)
+	var announced := false
+	for notice in hud._notices:
+		announced = announced or (notice.kind == "enemies" and notice.id == "shooter")
+	_check(announced and SaveData.archive_kills("shooter") == 1, "Sofort besiegter Gegner meldet sich im Archiv und wird gezaehlt")
 	if is_instance_valid(medic):
 		medic.queue_free()
 	main.queue_free()

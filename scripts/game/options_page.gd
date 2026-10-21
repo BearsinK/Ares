@@ -20,6 +20,7 @@ var cursor := 0
 
 var _horizontal := HoldRepeat.new()
 var _vertical := HoldRepeat.new()
+var _dirty := false
 
 
 ## Eine Eingaberunde. Gibt true zurueck, wenn die Seite geschlossen werden soll.
@@ -29,18 +30,29 @@ func update(delta: float) -> bool:
 		cursor = (cursor + step + ROWS.size()) % ROWS.size()
 		Sfx.play("switch")
 	if UiKit.back():
+		_flush()
 		return true
-	# Gehaltene Richtung wiederholt sich (Lautstaerke schnell verstellen).
-	var direction := _horizontal.step(delta, "left", "right")
 	var row := ROWS[cursor]
+	# Nur die Lautstaerke wiederholt sich beim Halten, Schalter wechseln erst beim naechsten Druck.
+	var direction := _horizontal.step(delta, "left", "right", row.kind == "volume")
 	if direction != 0 and row.kind != "back":
 		change(String(row.id), direction)
 	if UiKit.confirm():
 		if row.kind == "back":
+			_flush()
 			return true
 		if row.kind != "volume":
 			change(String(row.id), 1)
+	# Lautstaerke wird erst gespeichert, wenn die Taste losgelassen ist (nicht bei jeder Wiederholung).
+	if _dirty and not HoldRepeat.is_held("left") and not HoldRepeat.is_held("right"):
+		_flush()
 	return false
+
+
+func _flush() -> void:
+	if _dirty:
+		_dirty = false
+		SaveData.save()
 
 
 ## Stellt eine Zeile um eine Stufe weiter (Lautstaerke begrenzt, Auswahl und Schalter laufen im Kreis).
@@ -51,8 +63,10 @@ func change(id: String, direction: int) -> void:
 			var step := clampi(before + direction, 0, SaveData.VOLUME_STEPS)
 			if step == before:
 				return
-			SaveData.set_volume_step(id, step)
+			SaveData.set_volume_step(id, step, false)
+			_dirty = true
 			Music.apply_settings()
+			Sfx.apply_settings()
 			# Beim Verstellen der Effekte und der Gesamtlautstaerke hoert man gleich die Probe.
 			if id != "music":
 				Sfx.play("pickup", 0.0)

@@ -23,6 +23,7 @@ var _lid := 0.0
 var _deny := 0.0
 var _fade := 1.0
 var _near := -1
+var _tip_sent := false
 
 
 func _ready() -> void:
@@ -53,7 +54,8 @@ func _physics_process(delta: float) -> void:
 		if player.downed:
 			continue
 		var distance := player.global_position.distance_to(global_position + Vector2(0.0, -BODY.y * 0.5))
-		if distance < TIP_RANGE and not bounty:
+		if distance < TIP_RANGE and not bounty and not _tip_sent:
+			_tip_sent = true
 			Tips.request(_tip_id())
 		if distance < best:
 			best = distance

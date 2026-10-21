@@ -83,10 +83,12 @@ func _effects() -> void:
 	fx.queue_free()
 
 	SaveData.set_volume_step("sfx", 0)
+	Sfx.apply_settings()
 	var before: int = Sfx._next
 	Sfx.play("hit")
 	_check(Sfx._next == before, "Effekte auf 0: es wird nichts abgespielt")
 	SaveData.set_volume_step("sfx", 8)
+	Sfx.apply_settings()
 	Sfx._last_played.clear()
 	Sfx.play("hit")
 	_check(Sfx._next != before, "Mit Lautstaerke wird abgespielt")
@@ -178,4 +180,19 @@ func _hold() -> void:
 	await get_tree().process_frame
 	var after := SaveData.volume_step("music")
 	_check(after == steps, "Nach dem Loslassen ist Ruhe")
+	_check(not page._dirty, "Nach dem Loslassen ist die Lautstaerke gespeichert (nicht bei jeder Wiederholung)")
+
+	# Schalter wechseln nur beim frischen Druck, Halten flackert nicht.
+	SaveData.reset()
+	page = OptionsPage.new()
+	page.cursor = 4
+	_check(String(OptionsPage.ROWS[4].id) == "numbers" and SaveData.numbers_enabled(), "Zeile 5 ist der Zahlen-Schalter (an)")
+	await get_tree().process_frame
+	Input.action_press("p1_right")
+	for i in 90:
+		page.update(1.0 / 60.0)
+		await get_tree().process_frame
+	Input.action_release("p1_right")
+	_check(not SaveData.numbers_enabled(), "Gehaltene Taste schaltet den Schalter genau einmal um")
+	Sfx.apply_settings()
 	SaveData.reset()

@@ -108,6 +108,10 @@ func _pause_and_result() -> void:
 	_check(menu.page == PauseMenu.Page.CONFIRM, "Neustart fragt nach")
 	await _tap("p1_confirm")
 	_check(menu.page == PauseMenu.Page.MAIN, "Nein bricht den Neustart ab")
+	menu._leaving = true
+	await _escape()
+	_check(menu.is_open(), "Waehrend des Verlassens reagiert die Pause nicht mehr")
+	menu._leaving = false
 	await _escape()
 	_check(not menu.is_open() and not get_tree().paused, "Escape schliesst die Pause")
 

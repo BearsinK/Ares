@@ -41,8 +41,18 @@ const WEAPON_TEXT := {
 }
 
 
+static var _cache := {}
+
+
 ## Alle Eintraege einer Art als Dictionary: id, name, color, text, tag (Kurzlabel), stats (Zeilen), art (Gegnerbild).
+## Die Liste wird nur einmal gebaut und darf nicht veraendert werden.
 static func entries(kind: String) -> Array[Dictionary]:
+	if not _cache.has(kind):
+		_cache[kind] = _build(kind)
+	return _cache[kind]
+
+
+static func _build(kind: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	match kind:
 		"items":

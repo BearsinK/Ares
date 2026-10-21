@@ -57,7 +57,7 @@ func _update_tips(delta: float) -> void:
 	if _tip_time > 0.0:
 		return
 	_tip_id = ""
-	if Tips.queue.is_empty() or _hints_visible() or main.phase != main.Phase.WAVE:
+	if Tips.queue.is_empty() or _hints_visible() or (main.phase != main.Phase.WAVE and main.phase != main.Phase.BOSS):
 		return
 	_tip_id = Tips.queue.pop_front()
 	_tip_time = TIP_TIME

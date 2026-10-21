@@ -17,10 +17,17 @@ const GAIN := {
 var _streams: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
 var _next := 0
+var _gain_db := 0.0
 var _last_played: Dictionary = {}
 
 
+## Uebernimmt die gespeicherte Effekt-Lautstaerke (nach Aenderung in den Optionen).
+func apply_settings() -> void:
+	_gain_db = SaveData.gain_db("sfx")
+
+
 func _ready() -> void:
+	apply_settings()
 	for i in POOL_SIZE:
 		var player := AudioStreamPlayer.new()
 		player.volume_db = BASE_DB
@@ -119,7 +126,7 @@ func _make_event_sounds() -> void:
 func play(sound: String, pitch_variation := 0.1) -> void:
 	if not _streams.has(sound):
 		return
-	var gain := SaveData.gain_db("sfx")
+	var gain := _gain_db
 	if gain <= -79.0:
 		return
 	var now := Time.get_ticks_msec()

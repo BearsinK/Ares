@@ -21,6 +21,13 @@ func _frames(count: int) -> void:
 		await get_tree().physics_frame
 
 
+## Wartet auf Bildframes (das HUD arbeitet in _process), hoechstens timeout Sekunden Echtzeit.
+func _until(condition: Callable, timeout := 3.0) -> void:
+	var start := Time.get_ticks_msec()
+	while not condition.call() and Time.get_ticks_msec() - start < int(timeout * 1000.0):
+		await get_tree().process_frame
+
+
 func _ready() -> void:
 	_run.call_deferred()
 
@@ -73,7 +80,7 @@ func _in_game() -> void:
 	chest.players = main.players
 	chest.position = p1.global_position + Vector2(200.0, 0.0)
 	main.add_child(chest)
-	await _frames(4)
+	await _until(func() -> bool: return hud._tip_id == "chest")
 	_check(hud._tip_id == "chest" and hud._tip_time > 0.0, "Kiste in der Naehe zeigt den Kisten-Hinweis")
 	_check(SaveData.tip_seen("chest"), "Angezeigter Hinweis gilt als gesehen")
 	chest.queue_free()
@@ -84,10 +91,10 @@ func _in_game() -> void:
 	altar.players = main.players
 	altar.position = p1.global_position + Vector2(220.0, 0.0)
 	main.add_child(altar)
-	await _frames(4)
+	await _until(func() -> bool: return Tips.queue.has("altar_blood"))
 	_check(Tips.queue.has("altar_blood") and hud._tip_id == "chest", "Der Altar-Hinweis wartet auf den Kisten-Hinweis")
 	hud._tip_time = 0.01
-	await _frames(4)
+	await _until(func() -> bool: return hud._tip_id == "altar_blood")
 	_check(hud._tip_id == "altar_blood", "Danach erscheint der Altar-Hinweis")
 	altar.queue_free()
 	hud._tip_time = 0.0
@@ -132,6 +139,17 @@ func _in_game() -> void:
 	for id in Tips.queue:
 		seen.append(id)
 	_check(seen.has("medic") and seen.has("bomber") and seen.has("elite"), "Medic, Sprengi und Elite melden ihre Hinweise (%s)" % ", ".join(seen))
+
+	# Auch im Bosskampf erscheinen Hinweise.
+	hud._tip_time = 0.0
+	hud._tip_id = ""
+	Tips.queue.clear()
+	SaveData.reset()
+	main.phase = main.Phase.BOSS
+	Tips.request("bomber")
+	await _until(func() -> bool: return hud._tip_id == "bomber")
+	_check(hud._tip_id == "bomber", "Im Bosskampf wird der Hinweis gezeigt")
+	main.phase = main.Phase.WAVE
 
 	# Waehrend der Pause laeuft die Anzeige nicht weiter.
 	hud._tip_id = "medic"

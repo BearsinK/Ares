@@ -793,6 +793,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 		return
 	kills += 1
 	if not sandbox:
+		_discover("enemies", archive_id(enemy))
 		SaveData.archive_add_kill(archive_id(enemy))
 	var info: Dictionary = enemy.data
 	_spawn_pickup("xp", int(info.xp) * (3 if enemy.elite else 1), enemy.global_position)

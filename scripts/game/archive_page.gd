@@ -10,8 +10,6 @@ var cursor := 0
 
 var _horizontal := HoldRepeat.new()
 var _vertical := HoldRepeat.new()
-var _cache: Array[Dictionary] = []
-var _cache_tab := -1
 var _time := 0.0
 
 
@@ -20,16 +18,12 @@ func kind() -> String:
 
 
 func entries() -> Array[Dictionary]:
-	if _cache_tab != tab:
-		_cache = Archive.entries(kind())
-		_cache_tab = tab
-	return _cache
+	return Archive.entries(kind())
 
 
 func open() -> void:
 	tab = 0
 	cursor = 0
-	_cache_tab = -1
 
 
 ## Eine Eingaberunde. Gibt true zurueck, wenn die Seite geschlossen werden soll.
@@ -54,17 +48,18 @@ func draw(c: CanvasItem, view: Vector2) -> void:
 	c.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.8))
 	var total := 0
 	var found := 0
+	var progress: Array[Vector2i] = []
 	for k in Archive.KINDS:
 		var p := Archive.progress(k)
+		progress.append(p)
 		found += p.x
 		total += p.y
 	UiKit.text(c, Vector2(0, 80), "ARCHIV", 52, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	UiKit.text(c, Vector2(0, 108), "%d von %d Einträgen entdeckt" % [found, total], 18, Color(0.7, 0.74, 0.88), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	# Reiter.
 	for i in Archive.KINDS.size():
-		var p := Archive.progress(Archive.KINDS[i])
 		var rect := Rect2(Vector2(view.x * 0.5 - 330.0 + i * 230.0, 124.0), Vector2(210.0, 44.0))
-		UiKit.button(c, rect, "%s  %d/%d" % [Archive.KIND_NAMES[Archive.KINDS[i]], p.x, p.y], i == tab, Color(0.4, 0.75, 1.0), 20)
+		UiKit.button(c, rect, "%s  %d/%d" % [Archive.KIND_NAMES[Archive.KINDS[i]], progress[i].x, progress[i].y], i == tab, Color(0.4, 0.75, 1.0), 20)
 	var panel := Rect2(Vector2(view.x * 0.5 - 640.0, 184.0), Vector2(1280.0, 620.0))
 	Art.panel(c, panel, Color(0.09, 0.11, 0.18), 18.0, Color(1, 1, 1, 0.28))
 	_draw_list(c, Rect2(panel.position + Vector2(16.0, 16.0), Vector2(440.0, panel.size.y - 32.0)))

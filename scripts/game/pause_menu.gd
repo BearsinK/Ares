@@ -69,7 +69,7 @@ func _items() -> Array[String]:
 
 
 func _process(delta: float) -> void:
-	if mode == Mode.CLOSED:
+	if mode == Mode.CLOSED or _leaving:
 		return
 	_age += delta
 	match page:

@@ -128,12 +128,14 @@ static func volume_step(bus: String) -> int:
 	return clampi(int(volumes.get(bus, VOLUME_DEFAULT)), 0, VOLUME_STEPS)
 
 
-static func set_volume_step(bus: String, step: int) -> void:
+## write = false: nur im Speicher aendern, der Aufrufer ruft spaeter save() (beim Halten einer Taste).
+static func set_volume_step(bus: String, step: int, write := true) -> void:
 	_ensure()
 	var volumes: Dictionary = _data.get("volume", {})
 	volumes[bus] = clampi(step, 0, VOLUME_STEPS)
 	_data.volume = volumes
-	save()
+	if write:
+		save()
 
 
 ## Verstaerkung in dB fuer einen Bus mit Gesamtlautstaerke: 0 dB bei den Standardstufen, -80 bei Stumm.
