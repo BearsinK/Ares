@@ -46,16 +46,13 @@ func update(delta: float) -> bool:
 
 func draw(c: CanvasItem, view: Vector2) -> void:
 	c.draw_rect(Rect2(Vector2.ZERO, view), Color(0, 0, 0, 0.8))
-	var total := 0
-	var found := 0
 	var progress: Array[Vector2i] = []
 	for k in Archive.KINDS:
-		var p := Archive.progress(k)
-		progress.append(p)
-		found += p.x
-		total += p.y
+		progress.append(Archive.progress(k))
+	var collection := Archive.collection_progress()
+	var goals: Vector2i = progress[Archive.KINDS.find("achievements")]
 	UiKit.text(c, Vector2(0, 80), "ARCHIV", 52, Color(1.0, 0.9, 0.4), HORIZONTAL_ALIGNMENT_CENTER, view.x)
-	UiKit.text(c, Vector2(0, 108), "%d von %d Einträgen entdeckt" % [found, total], 18, Color(0.7, 0.74, 0.88), HORIZONTAL_ALIGNMENT_CENTER, view.x)
+	UiKit.text(c, Vector2(0, 108), "%d von %d Einträgen entdeckt     Erfolge %d von %d" % [collection.x, collection.y, goals.x, goals.y], 18, Color(0.7, 0.74, 0.88), HORIZONTAL_ALIGNMENT_CENTER, view.x)
 	# Reiter.
 	for i in Archive.KINDS.size():
 		var rect := Rect2(Vector2(view.x * 0.5 - 450.0 + i * 230.0, 124.0), Vector2(210.0, 44.0))

@@ -85,11 +85,20 @@ func _run() -> void:
 	_check(SaveData.archive_has("achievements", "endless_20"), "Welle 20 schaltet Unaufhaltsam frei")
 	_check(not SaveData.archive_has("achievements", "wave_5"), "Durchhalter zaehlt nur ausserhalb des Endlosmodus")
 	main.wave = 14
+	main.phase = main.Phase.WAVE
 	var before := SaveData.chips()
 	main._record_endless()
 	_check(int(SaveData.stats().endless_best) == 13, "Rekord: 13 Wellen (%d)" % int(SaveData.stats().endless_best))
 	_check(SaveData.chips() - before == (13 - 10) * Meta.ENDLESS_CHIPS_PER_WAVE, "Chips fuer drei Wellen nach dem Boss (%d)" % (SaveData.chips() - before))
 	_check(main.run_chips >= (13 - 10) * Meta.ENDLESS_CHIPS_PER_WAVE, "Der Ergebnisbildschirm zaehlt sie zu den Chips des Laufs (%d)" % main.run_chips)
+	# Im Shop ist die laufende Welle schon geschafft.
+	main._endless_recorded = false
+	main.phase = main.Phase.SHOP
+	main.wave = 14
+	var shop_before := SaveData.chips()
+	main._record_endless()
+	_check(int(SaveData.stats().endless_best) == 14 and SaveData.chips() > shop_before, "Im Shop zaehlt die gerade geschaffte Welle mit (Rekord %d)" % int(SaveData.stats().endless_best))
+	main.phase = main.Phase.WAVE
 	var again := SaveData.chips()
 	main._record_endless()
 	_check(SaveData.chips() == again, "Nur einmal verbuchen")
@@ -148,3 +157,7 @@ func _pure() -> void:
 	_check(int(SaveData.stats().endless_best) == 12, "Rekord merkt sich das Maximum")
 	SaveData.record_endless(11, 10)
 	_check(int(SaveData.stats().endless_best) == 12, "Ein niedrigerer Lauf senkt ihn nicht")
+	SaveData.set_difficulty(0)
+	var rookie := SaveData.record_endless(12, 10)
+	_check(rookie == int(round(2.0 * float(Meta.ENDLESS_CHIPS_PER_WAVE) * float(Meta.difficulty_data().chips))) and rookie < 2 * Meta.ENDLESS_CHIPS_PER_WAVE, "Endlos-Chips folgen dem Schwierigkeitsfaktor (Rookie %d)" % rookie)
+	SaveData.set_difficulty(1)

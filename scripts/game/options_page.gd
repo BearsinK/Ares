@@ -49,6 +49,11 @@ func update(delta: float) -> bool:
 	return false
 
 
+## Schreibt noch nicht gespeicherte Lautstaerke (auch von aussen, wenn die Seite von der Pause aus verlassen wird).
+func flush() -> void:
+	_flush()
+
+
 func _flush() -> void:
 	if _dirty:
 		_dirty = false

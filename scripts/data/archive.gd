@@ -10,7 +10,6 @@ const HINTS := {
 	"items": "Finde dieses Item in einem Lauf: aus Kisten, Altären oder dem Level-Up.",
 	"enemies": "Begegne diesem Gegner in einem Lauf.",
 	"weapons": "Rüste diese Waffe in einem Lauf aus (Shop).",
-	"achievements": "",
 }
 
 const ENEMY_ORDER: Array[String] = ["walker", "shooter", "flyer", "charger", "mortar", "brute", "bomber", "medic", "aegis", "nest", "elite", "guardian", "boss"]

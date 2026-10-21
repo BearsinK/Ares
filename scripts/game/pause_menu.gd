@@ -54,6 +54,7 @@ func open_result(new_victory: bool) -> void:
 
 
 func close() -> void:
+	options.flush()
 	mode = Mode.CLOSED
 	visible = false
 	get_tree().paused = false
@@ -148,6 +149,7 @@ func _run(action: String) -> void:
 	if _leaving:
 		return
 	_leaving = true
+	options.flush()
 	main.abandon_run()
 	Transition.go("" if action == "restart" else "res://scenes/title.tscn")
 

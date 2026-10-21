@@ -237,7 +237,9 @@ func _update_archive(delta: float) -> void:
 ## Wenig Leben (unter 30 Prozent bei einem lebenden Spieler): dumpfer Herzschlag im Takt der Warnung.
 func _update_heartbeat(delta: float) -> void:
 	_heartbeat -= delta
-	if _heartbeat > 0.0 or game_over:
+	if _heartbeat > 0.0 or game_over or (phase != Phase.WAVE and phase != Phase.BOSS):
+		return
+	if levelup_menu.is_open or shop_menu.is_open or contract_menu.is_open or pause_menu.is_open():
 		return
 	_heartbeat = 0.25
 	for player in players:
@@ -621,7 +623,9 @@ func _record_endless() -> void:
 	if not endless or _endless_recorded or sandbox:
 		return
 	_endless_recorded = true
-	run_chips += SaveData.record_endless(wave - 1, _boss_wave)
+	# Steht man im Shop oder hinter den Toren, ist die laufende Welle schon geschafft.
+	var cleared := wave if (phase == Phase.CLEARING or phase == Phase.SHOP) else wave - 1
+	run_chips += SaveData.record_endless(cleared, _boss_wave)
 
 
 ## Wird beim Verlassen per Pausemenue aufgerufen, damit auch abgebrochene Laeufe zaehlen.
@@ -650,6 +654,8 @@ func continue_endless() -> void:
 	if endless or sandbox or phase != Phase.VICTORY:
 		return
 	endless = true
+	if boss_arena != null and is_instance_valid(boss_arena):
+		boss_arena.clear_obstacles()
 	_boss_wave = max_waves
 	max_waves = ENDLESS_WAVES
 	boss_enabled = false

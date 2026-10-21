@@ -209,6 +209,13 @@ func _run() -> void:
 	main._heartbeat = 0.0
 	main._update_heartbeat(0.016)
 	_check(Sfx._next != beats_before and main._heartbeat > 0.5, "Unter 30 Prozent Leben schlaegt das Herz")
+	main.phase = main.Phase.SHOP
+	Sfx._last_played.clear()
+	var in_shop: int = Sfx._next
+	main._heartbeat = 0.0
+	main._update_heartbeat(0.016)
+	_check(Sfx._next == in_shop, "Im Shop schlaegt kein Herz mit")
+	main.phase = main.Phase.WAVE
 	p1.hp = p1.max_health()
 
 	print("Fertig, Fehler: ", failures)

@@ -286,7 +286,7 @@ static func record_endless(waves_cleared: int, boss_wave: int) -> int:
 	_ensure()
 	var s: Dictionary = _data.stats
 	s.endless_best = maxi(int(s.get("endless_best", 0)), waves_cleared)
-	var earned := maxi(0, waves_cleared - boss_wave) * Meta.ENDLESS_CHIPS_PER_WAVE
+	var earned := int(round(float(maxi(0, waves_cleared - boss_wave) * Meta.ENDLESS_CHIPS_PER_WAVE) * float(Meta.difficulty_data().chips)))
 	add_chips(earned)
 	return earned
 

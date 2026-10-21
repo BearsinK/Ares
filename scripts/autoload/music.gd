@@ -150,6 +150,8 @@ func _finish() -> void:
 	_normalize(_layer)
 	_base_player.stream = _make_stream(_base)
 	_layer_player.stream = _make_stream(_layer)
+	_base_player.pitch_scale = mood
+	_layer_player.pitch_scale = mood
 	ready_to_play = true
 	_apply_volume()
 	_base_player.play()

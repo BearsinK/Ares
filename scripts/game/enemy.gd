@@ -40,6 +40,7 @@ var suicide := false
 var minion := false
 var _minions: Array = []
 var _block_flash := 0.0
+var _last_block_fx := 0
 var _wounded_cache: Array = []
 var _wounded_stamp := -1000
 ## Art der Elite (fire, shield, storm, frost), siehe EnemyTypes.ELITE_KINDS.
@@ -173,8 +174,13 @@ func is_blocking(direction: Vector2) -> bool:
 	return heading.x * _facing < -0.35 and absf(heading.y) < 0.8
 
 
-func on_blocked(direction: Vector2) -> void:
+func on_blocked() -> void:
 	_block_flash = 1.0
+	# Schnelle Waffen prallen vielfach pro Sekunde ab: Klang, Funken und Text nur alle 0,15 s.
+	var now := Time.get_ticks_msec()
+	if now - _last_block_fx < 150:
+		return
+	_last_block_fx = now
 	Sfx.play("block", 0.1)
 	if Fx.instance:
 		Fx.instance.spark(global_position + Vector2(_facing * radius() * 0.9, -radius() * 0.2), Color(0.6, 0.9, 1.0), 4, 260.0)
@@ -229,7 +235,7 @@ func _die() -> void:
 	_dead = true
 	for follower in _minions:
 		if is_instance_valid(follower) and not follower._dead:
-			follower.take_damage(1.0e9, null, Vector2.ZERO, "", true)
+			follower._die()
 	Sfx.play("kill")
 	if Fx.instance:
 		Fx.instance.spark(global_position, data.color, 36 if elite else 14, 520.0 if elite else 380.0)

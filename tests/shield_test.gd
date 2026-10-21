@@ -94,6 +94,13 @@ func _aegis() -> void:
 	_check(open_loss > 30.0 and blocked_loss < open_loss * 0.25, "Von vorn kaum Schaden, von hinten voll (%.1f gegen %.1f)" % [blocked_loss, open_loss])
 	_check(aegis._block_flash > 0.0 or open_loss > 0.0, "Der Schild blitzt beim Abprallen")
 
+	# Abpraller-Effekte werden gedrosselt (schnelle Waffen).
+	aegis._last_block_fx = 0
+	aegis.on_blocked()
+	var stamp: int = aegis._last_block_fx
+	aegis.on_blocked()
+	_check(stamp > 0 and aegis._last_block_fx == stamp and aegis._block_flash > 0.9, "Block-Effekte kommen hoechstens alle 0,15 s, der Schild blitzt trotzdem")
+
 	# Elemente wirken nicht durch den Schild.
 	var fresh: Enemy = director.spawn("aegis", Vector2(1700.0, 1225.0))
 	fresh._cooldown = 99.0
