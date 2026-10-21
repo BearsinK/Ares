@@ -736,6 +736,8 @@ static func draw_enemy(c: CanvasItem, kind: String, s: Dictionary, offset := Vec
 	var grounded := bool(s.get("grounded", true)) and not flying
 	# Neigung mit der Fahrt (Flieger staerker), Zurueckzucken bei Treffern.
 	var tilt := (clampf(vx / 900.0, -0.12, 0.12) if (grounded or flying) else 0.0) * (2.0 if flying else 1.0) - facing * hurt * 0.16
+	# Auf schraegem Boden parallel zur Flaeche (nur Bodengegner, Flieger haben keine Bodenneigung).
+	tilt += float(s.get("slope", 0.0)) if not flying else 0.0
 	var squash: Vector2 = s.get("squash", Vector2.ONE)
 	var foot := float(s.get("foot", 14.0))
 	var pivot := Vector2(0.0, foot * zoom * (1.0 - squash.y)) if not flying else Vector2.ZERO

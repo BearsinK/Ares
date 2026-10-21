@@ -73,6 +73,18 @@ func _run() -> void:
 	await _frames(14)
 	_check(not p1.is_on_floor() and absf(p1._slope_tilt) < 0.45, "In der Luft richtet er sich wieder auf (%.2f)" % p1._slope_tilt)
 	await _frames(60)
+	# Bodengegner stehen ebenfalls parallel zur Rampe, Flieger bewegen sich frei.
+	var walker: Enemy = main.director.spawn("walker", Vector2(1600.0, 1130.0))
+	var flyer: Enemy = main.director.spawn("flyer", Vector2(1800.0, 700.0))
+	for foe in [walker, flyer]:
+		foe._cooldown = 99.0
+		foe.speed_mult = 0.0
+	await _frames(90)
+	_check(walker.is_on_floor() and absf(walker._slope_tilt - expected * -1.0) < 0.1 or absf(absf(walker._slope_tilt) - absf(expected)) < 0.1, "Ein Bodengegner steht parallel zur Rampe (%.2f rad)" % walker._slope_tilt)
+	_check(walker._slope_tilt < 0.0, "und kippt in dieselbe Richtung wie die Spieler")
+	_check(flyer._slope_tilt == 0.0, "Flieger bekommen keine Bodenneigung")
+	walker.free()
+	flyer.free()
 	# Ausgeschaltet bleibt die Zeichnung flach.
 	p2.invulnerable = false
 	p2.iframes = 0.0

@@ -81,6 +81,9 @@ var _stuck_time := 0.0
 ## Betaeubt (z.B. im Roomba-Wirbel): keine Angriffe, keine eigene Bewegung.
 var stunned_time := 0.0
 const STUN_IMMUNITY := 1.4
+## Staerkste Neigung der Zeichnung auf schraegem Boden (rad, etwa 49 Grad).
+const SLOPE_MAX := 0.85
+var _slope_tilt := 0.0
 var _stun_immunity := 0.0
 var _fall_speed := 0.0
 var _was_grounded := false
@@ -316,6 +319,7 @@ func _physics_process(delta: float) -> void:
 		_fly_movement(delta)
 	else:
 		_ground_movement(delta)
+		_update_slope(delta)
 	_apply_separation(delta)
 	_update_attack(delta)
 	_update_elite(delta)
@@ -375,6 +379,18 @@ func _pick_target() -> void:
 		if distance < best:
 			best = distance
 			_target = player
+
+
+## Bodengegner stellen sich auf schraegem Boden parallel zur Flaeche (Flieger bewegen sich frei). Der Kollisionskreis liegt
+## immer im Abstand seines Radius auf der Flaeche, die gedrehte Zeichnung sitzt daher ohne Verschiebung auf.
+func _update_slope(delta: float) -> void:
+	var target_tilt := 0.0
+	if is_on_floor():
+		var normal := get_floor_normal()
+		target_tilt = clampf(atan2(normal.x, -normal.y), -SLOPE_MAX, SLOPE_MAX)
+	_slope_tilt = lerpf(_slope_tilt, target_tilt, 1.0 - exp(-14.0 * delta))
+	if target_tilt == 0.0 and absf(_slope_tilt) < 0.002:
+		_slope_tilt = 0.0
 
 
 func _ground_movement(delta: float) -> void:
@@ -667,7 +683,7 @@ func _draw() -> void:
 		"flash": _flash > 0.0, "windup": windup, "slam": _slam_flash > 0.0 or charging,
 		"vx": velocity.x, "grounded": is_on_floor(), "hurt": _hurt_time / 0.25, "fire": _fire_flash,
 		"hp_frac": hp / max_hp, "foot": float(data.radius), "lod": siblings.size() > 40 and not elite,
-		"squash": _draw_squash(), "block": _block_flash,
+		"squash": _draw_squash(), "block": _block_flash, "slope": _slope_tilt,
 	}, Vector2.ZERO, body_scale * maxf(grow, 0.05))
 	if elite:
 		_draw_crown(r)
