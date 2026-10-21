@@ -182,6 +182,35 @@ func _run() -> void:
 	victim.take_damage(9999.0, p1, Vector2.ZERO)
 	_check(p1.ability.cooldown < 10.0 - 0.5, "Recycler: Kill verkuerzt die Ladezeit (%.1f)" % p1.ability.cooldown)
 
+	# Seltenheit: Seltene Items fallen seltener (Gewicht 0,4), am Altar jedes dritte (Gewicht 1).
+	var all_ids: Array = Perks.DATA.keys()
+	var rare_draws := 0
+	var luck_draws := 0
+	for i in 6000:
+		if Perks.RARE_IDS.has(Perks.weighted_pick(all_ids)):
+			rare_draws += 1
+		if Perks.RARE_IDS.has(Perks.weighted_pick(all_ids, 1.0)):
+			luck_draws += 1
+	var chest_share := float(rare_draws) / 6000.0
+	var luck_share := float(luck_draws) / 6000.0
+	_check(chest_share > 0.13 and chest_share < 0.21, "Kisten: etwa jedes sechste Item ist selten (%.0f %%)" % (chest_share * 100.0))
+	_check(luck_share > 0.29 and luck_share < 0.38, "Gluecksaltar: etwa jedes dritte Item ist selten (%.0f %%)" % (luck_share * 100.0))
+	_check(Perks.weighted_pick(["frenzy"]) == "frenzy" and Perks.weighted_pick(Perks.RARE_IDS) != "", "Auch Listen nur aus Seltenem liefern etwas")
+
+	# Herzschlag: nur bei einem lebenden Spieler unter 30 Prozent.
+	var beats_before: int = Sfx._next
+	p1.hp = p1.max_health()
+	p2.hp = p2.max_health()
+	main._heartbeat = 0.0
+	main._update_heartbeat(0.016)
+	_check(Sfx._next == beats_before, "Bei vollem Leben kein Herzschlag")
+	p1.hp = p1.max_health() * 0.2
+	Sfx._last_played.clear()
+	main._heartbeat = 0.0
+	main._update_heartbeat(0.016)
+	_check(Sfx._next != beats_before and main._heartbeat > 0.5, "Unter 30 Prozent Leben schlaegt das Herz")
+	p1.hp = p1.max_health()
+
 	print("Fertig, Fehler: ", failures)
 	main.queue_free()
 	get_tree().quit(1 if failures > 0 else 0)

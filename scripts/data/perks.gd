@@ -181,6 +181,21 @@ const DATA := {
 
 ## Verhaltens-Items: die grosse Goldkiste enthaelt immer eines davon.
 const RARE_IDS: Array[String] = ["frenzy", "arccoil", "dashblast", "thorns", "laststand", "shieldcell", "recycler", "executioner"]
+## Ziehgewicht seltener Items gegen 1,0 bei normalen: aus Kisten faellt etwa jedes sechste Item selten.
+const RARE_WEIGHT := 0.4
+
+
+## Zieht eine Item-Id aus der Liste. Seltene Items zaehlen mit rare_weight, normale mit 1.
+static func weighted_pick(pool: Array, rare_weight := RARE_WEIGHT) -> String:
+	var total := 0.0
+	for id in pool:
+		total += rare_weight if RARE_IDS.has(String(id)) else 1.0
+	var roll := randf() * total
+	for id in pool:
+		roll -= rare_weight if RARE_IDS.has(String(id)) else 1.0
+		if roll <= 0.0:
+			return String(id)
+	return String(pool[0])
 
 const LABELS := {
 	"damage": "Schaden", "fire_rate": "Feuerrate", "speed": "Tempo",

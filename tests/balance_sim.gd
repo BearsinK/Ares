@@ -44,8 +44,15 @@ func _boss_start() -> void:
 	print("Bosskampf gestartet (Testausstattung mit Modulen)")
 
 
+var _status_next := 0.0
+
+
 func _physics_process(delta: float) -> void:
 	Engine.time_scale = scale
+	# SIM_STATUS=1: alle 15 s Echtzeit eine Statuszeile (hilft bei Haengern).
+	if OS.get_environment("SIM_STATUS") != "" and Time.get_ticks_msec() / 1000.0 > _status_next:
+		_status_next = Time.get_ticks_msec() / 1000.0 + 15.0
+		print("STATUS Welle %d Phase %d Rest %.0f Zeit %d pausiert %s Menues L%s S%s C%s Gegner %d Tore %s" % [main.wave, main.phase, main.wave_time_left, int(main.director.time), get_tree().paused, main.levelup_menu.is_open, main.shop_menu.is_open, main.contract_menu.is_open, main.director.alive_count(), main.gates.is_closed if main.gates != null else "-"])
 	if main.game_over:
 		_report("GAME OVER")
 		get_tree().quit()

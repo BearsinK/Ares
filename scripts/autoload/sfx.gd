@@ -98,6 +98,13 @@ func _make_event_sounds() -> void:
 	_streams["altar_lose"] = _layers([[420.0, 260.0, 0.2, "saw", 0.28, 0.1, 0.0], [330.0, 150.0, 0.34, "saw", 0.28, 0.1, 0.2]])
 	# Item erhalten: kurzes Funkeln nach oben.
 	_streams["item"] = _layers([[1300.0, 1300.0, 0.07, "sine", 0.2, 0.0, 0.0], [1650.0, 1650.0, 0.07, "sine", 0.2, 0.0, 0.05], [2000.0, 2000.0, 0.07, "sine", 0.2, 0.0, 0.1], [2600.0, 2600.0, 0.22, "sine", 0.2, 0.0, 0.15]])
+	# Seltenes Item: feierlicher, mit tiefem Unterton und glitzerndem Ausklang.
+	_streams["item_rare"] = _layers([
+		[880.0, 880.0, 0.1, "sine", 0.22, 0.0, 0.0], [1100.0, 1100.0, 0.1, "sine", 0.22, 0.0, 0.07], [1320.0, 1320.0, 0.1, "sine", 0.22, 0.0, 0.14],
+		[1760.0, 1760.0, 0.1, "sine", 0.22, 0.0, 0.21], [2200.0, 2200.0, 0.5, "sine", 0.22, 0.0, 0.28], [440.0, 440.0, 0.6, "sine", 0.28, 0.0, 0.0, "swell"],
+	])
+	# Wenig Leben: dumpfer Doppelschlag.
+	_streams["heartbeat"] = _layers([[95.0, 48.0, 0.11, "sine", 0.55, 0.05, 0.0], [85.0, 42.0, 0.14, "sine", 0.5, 0.05, 0.17]])
 	# Waechter erscheint: tiefes Horn mit Grollen, schwillt an.
 	_streams["guardian"] = _layers([
 		[98.0, 92.0, 1.0, "saw", 0.34, 0.05, 0.0, "swell"], [147.0, 138.0, 1.0, "saw", 0.2, 0.05, 0.0, "swell"],

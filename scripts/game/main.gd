@@ -128,6 +128,7 @@ var wave_intro := 0.0
 ## Gewaehlte Team-Perks (id -> Anzahl) und das Banner nach der Wahl.
 var perks_taken := {}
 var _archive_timer := 0.0
+var _heartbeat := 0.0
 ## Zaehler fuer Erfolge, gelten fuer den ganzen Lauf.
 var _run_chests := 0
 var _run_gambles := 0
@@ -227,6 +228,19 @@ func _update_archive(delta: float) -> void:
 	_archive_primed = true
 
 
+## Wenig Leben (unter 30 Prozent bei einem lebenden Spieler): dumpfer Herzschlag im Takt der Warnung.
+func _update_heartbeat(delta: float) -> void:
+	_heartbeat -= delta
+	if _heartbeat > 0.0 or game_over:
+		return
+	_heartbeat = 0.25
+	for player in players:
+		if not player.downed and player.hp <= player.max_health() * 0.3:
+			Sfx.play("heartbeat", 0.0)
+			_heartbeat = 1.0
+			return
+
+
 func _discover(kind: String, id: String) -> void:
 	if SaveData.archive_discover(kind, id):
 		if _archive_primed:
@@ -276,6 +290,7 @@ func _physics_process(delta: float) -> void:
 	Music.set_mood(1.05 if phase == Phase.BOSS else float(stage_layout.get("mood", 1.0)))
 	_check_level_up()
 	_update_archive(delta)
+	_update_heartbeat(delta)
 	_update_wave(delta)
 	_apply_shaft_lift(delta)
 	for entry in _respawns:
@@ -954,7 +969,7 @@ func _refresh_chests() -> void:
 	var tries := 0
 	while normal < target and tries < 12:
 		tries += 1
-		var spot := _chest_spot(chest_spots, false, [900.0, 700.0])
+		var spot := _chest_spot(chest_spots, false, [900.0, 700.0, 520.0])
 		if spot == Vector2.INF:
 			break
 		_add_chest(spot, false)
@@ -1054,7 +1069,8 @@ func _on_altar_used(altar: Altar, player: Player) -> void:
 			_run_gambles += 1
 			if _run_gambles >= 3:
 				_unlock("gambler")
-			_grant_item(player, altar.global_position, Perks.RARE_IDS if randf() < 0.25 else Perks.DATA.keys(), 3.2)
+			# Das Glueck lohnt: Seltenes zaehlt hier voll (jedes dritte Item) statt mit dem Kistengewicht.
+			_grant_item(player, altar.global_position, Perks.DATA.keys(), 3.2, 1.0)
 		else:
 			Sfx.play("altar_lose", 0.03)
 			if Fx.instance:
@@ -1064,12 +1080,13 @@ func _on_altar_used(altar: Altar, player: Player) -> void:
 
 
 ## Zufaelliges Item aus dem Pool fuer den Spieler, mit Symbol, Name und Wirkung.
-func _grant_item(player: Player, from: Vector2, pool: Array, life: float) -> void:
+func _grant_item(player: Player, from: Vector2, pool: Array, life: float, rare_weight := Perks.RARE_WEIGHT) -> void:
 	# Moeglichst etwas, das der Spieler noch nicht hat.
 	var options: Array = pool.filter(func(id: String) -> bool: return int(player.items.get(id, 0)) == 0)
 	if options.is_empty():
 		options = pool
-	var id: String = options[randi() % options.size()]
+	var id: String = Perks.weighted_pick(options, rare_weight)
+	var rare := Perks.RARE_IDS.has(id)
 	player.add_item(id)
 	var color := PerkArt.color_of(id)
 	var at := from + Vector2(0.0, -118.0)
@@ -1079,7 +1096,10 @@ func _grant_item(player: Player, from: Vector2, pool: Array, life: float) -> voi
 		Fx.instance.perk_icon(at + Vector2(0.0, -46.0), id)
 		Fx.instance.number_text(at, String(Perks.DATA[id].name), color, 30, life)
 		Fx.instance.number_text(at + Vector2(0.0, 26.0), Perks.describe(id, player.class_id), Color(0.92, 0.94, 1.0), 17, life)
-	Sfx.play("item", 0.0)
+		if rare:
+			Fx.instance.number_text(at + Vector2(0.0, -34.0), "SELTEN", Color(1.0, 0.85, 0.3), 20, life)
+			Fx.instance.ring(from + Vector2(0.0, -20.0), 200.0, Color(1.0, 0.85, 0.3))
+	Sfx.play("item_rare" if rare else "item", 0.0)
 
 
 func _on_chest_opened(chest: Chest, player: Player) -> void:

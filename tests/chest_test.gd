@@ -163,6 +163,20 @@ func _run() -> void:
 	_check(after.size() >= 3, "Nach dem Auffuellen liegen wieder Kisten (%d)" % after.size())
 	_check(after[0].price == main.chest_price(after[0].large), "Preise folgen der Welle (%d)" % after[0].price)
 
+	# Auch spaeter im Lauf (4 Kisten, enge Karte) kommen immer genug Kisten zusammen.
+	var shortfalls := 0
+	for trial in 30:
+		main._clear_chests()
+		main._altar_kinds.clear()
+		main._large_chest_placed = false
+		main.chests_opened = 0
+		main.wave = 7
+		main._refresh_chests()
+		if _live().size() < 5:
+			shortfalls += 1
+	_check(shortfalls == 0, "Welle 7: immer vier Kisten und die grosse (zu wenig in %d von 30)" % shortfalls)
+	main.wave = 3
+
 	# Kartenwechsel: alte Kisten weg, neue Karte hat neue.
 	main.wave = 4
 	main._change_stage()

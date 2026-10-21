@@ -22,7 +22,7 @@ func _run() -> void:
 	await get_tree().process_frame
 	var streams: Dictionary = Sfx._streams
 	_check(streams.size() >= 50, "Klangtabelle ist gefuellt (%d Klaenge)" % streams.size())
-	for name in ["chest_open", "deny", "altar_blood", "altar_chance", "altar_lose", "item", "guardian", "heal", "fuse", "contract", "gate", "count", "go", "fanfare"]:
+	for name in ["chest_open", "deny", "altar_blood", "altar_chance", "altar_lose", "item", "guardian", "heal", "fuse", "contract", "gate", "count", "go", "fanfare", "block", "item_rare", "heartbeat"]:
 		var stream: AudioStreamWAV = streams.get(name)
 		_check(stream != null and stream.data.size() > 2000, "Klang %s ist vorhanden und nicht leer" % name)
 		if stream != null:
