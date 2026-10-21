@@ -46,6 +46,12 @@ func _deal_weapons() -> void:
 			player.weapons.append(id)
 			player.modules.append(["", "fire", "water", "ice", "lightning"].pick_random())
 		player.weapon_index = 0
+		# Zufaellige Bewegungs-Firmware (Jet, Blade, Spruenge ...), damit auch sie Zufallseingaben sieht.
+		player.firmware.clear()
+		for id in Firmware.DATA:
+			if randf() < 0.5:
+				for k in randi_range(1, int(Firmware.DATA[id].max)):
+					player.add_firmware(id)
 	_next_deal = _elapsed + 15.0
 
 
@@ -96,13 +102,13 @@ func _physics_process(delta: float) -> void:
 		_trail.append("t=%d %s w%d ph%d P1 %d,%d v%d,%d fl%s cl%s ro%s | P2 %d,%d" % [_elapsed, stage_id, main.wave, main.phase,
 			main.players[0].global_position.x, main.players[0].global_position.y, main.players[0].velocity.x, main.players[0].velocity.y,
 			str(main.players[0].is_on_floor())[0], str(main.players[0].is_clinging())[0], str(main.players[0].on_rope)[0],
-			main.players[1].global_position.x, main.players[1].global_position.y])
+			main.players[main.players.size() - 1].global_position.x, main.players[main.players.size() - 1].global_position.y])
 		if _trail.size() > 40:
 			_trail.pop_front()
 	if main.wave != _last_wave:
 		_last_wave = main.wave
 		print("Welle ", main.wave, " Zeit ", snappedf(_elapsed, 1.0))
-	for i in 2:
+	for i in main.players.size():
 		var player: Player = main.players[i]
 		if not is_finite(player.global_position.x) or not is_finite(player.global_position.y) or not is_finite(player.velocity.x):
 			_note("NaN P%d" % (i + 1))
