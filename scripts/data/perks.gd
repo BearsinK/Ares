@@ -376,7 +376,7 @@ static func describe(perk_id: String, class_id: String) -> String:
 		elif key == "blast":
 			parts.append("+%d%% Explosionsradius, +%d%% Explosionsschaden" % [int(round(value * 100.0)), int(round(value * BLAST_DAMAGE_SHARE * 100.0))])
 		elif key == "bounce":
-			parts.append("Schüsse prallen %dx von Wänden ab" % int(value))
+			parts.append("Kugeln, Strahlen und Raketen prallen %dx von Wänden ab" % int(value))
 		elif key == "seek":
 			parts.append("Schüsse lenken auf Gegner (Strahlen: Zielhilfe)")
 		elif key == "ammo_save":

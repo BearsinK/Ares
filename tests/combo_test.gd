@@ -68,6 +68,8 @@ func _run() -> void:
 	await _shock()
 	await _freeze()
 	await _spark()
+	await _stun_limits()
+	await _bosses()
 	await _popups()
 	await _particles()
 	print("Fertig, Fehler: ", failures)
@@ -224,3 +226,52 @@ func _particles() -> void:
 	for i in 600:
 		fx.element_hit(Vector2(900.0, 1000.0), "fire", 3.0)
 	_check(fx._items.size() <= Fx.MAX_ITEMS, "Die Teilchenzahl bleibt begrenzt (%d)" % fx._items.size())
+
+
+func _stun_limits() -> void:
+	_clear()
+	var target := _dummy(Vector2(800.0, 1200.0))
+	await _frames(2)
+	target.take_damage(1.0, p1, Vector2.ZERO, "water")
+	var stunned_frames := 0
+	for i in 150:
+		target.take_damage(1.0, p1, Vector2.ZERO, "water")
+		target.take_damage(2.0, p1, Vector2.ZERO, "lightning")
+		target.statuses.update(1.0 / 60.0)
+		target.stunned_time = maxf(0.0, target.stunned_time - 1.0 / 60.0)
+		target._stun_immunity = maxf(0.0, target._stun_immunity - 1.0 / 60.0)
+		if target.stunned_time > 0.0:
+			stunned_frames += 1
+	_check(stunned_frames < 150 * 0.5, "Stromschlag haelt einen Gegner nicht dauerhaft fest (%d von 150 Frames)" % stunned_frames)
+	_clear()
+	# Tote Gegner sind kein Sprungziel mehr.
+	target = _dummy(Vector2(800.0, 1200.0))
+	var corpse := _dummy(Vector2(900.0, 1200.0), 1.0)
+	var alive := _dummy(Vector2(1000.0, 1200.0))
+	await _frames(2)
+	corpse.take_damage(99999.0, p1, Vector2.ZERO, "")
+	var arc_before := alive.hp
+	for i in 200:
+		target.take_damage(2.0, p1, Vector2.ZERO, "lightning")
+		target.statuses.update(1.0)
+	_check(alive.hp < arc_before, "Der Funkenschlag springt auf Lebende, nicht auf die Leiche (%.0f)" % (arc_before - alive.hp))
+	_clear()
+
+
+func _bosses() -> void:
+	_clear()
+	Fx.instance._items.clear()
+	main._start_boss()
+	await _frames(20)
+	var boss: Boss = main.boss
+	boss.hp = 99999.0
+	boss.max_hp = 99999.0
+	boss._delay = 0.0
+	_check(boss.has_method("radius") and boss.radius() > 100.0, "Der Boss hat eine Koerpergroesse fuer Minen und Wolken")
+	boss.take_damage(1.0, p1, Vector2.ZERO, "water")
+	boss.take_damage(1.0, p2, Vector2.ZERO, "ice")
+	_check(not boss.statuses.is_frozen() and boss.statuses.has("chilled"), "Wasser und Eis frieren den Boss nicht ein, kuehlen ihn nur")
+	_check(not ("EINGEFROREN" in _texts()), "und melden deshalb keine Einfrier-Kombo")
+	boss.apply_status("tagged", 3.0, p1)
+	_check(is_equal_approx(boss.statuses.damage_factor(), StatusEffects.TAG_MULT), "Die Markierung wirkt auch am Boss")
+	main.boss.queue_free()

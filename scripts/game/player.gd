@@ -357,6 +357,7 @@ func take_hit(amount: float, from: Vector2) -> bool:
 		revive_progress = 0.0
 		shake_charge = 0.0
 		_lob_charging = false
+		_burst_left = 0
 		velocity = Vector2(velocity.x * 0.3, velocity.y)
 		InputSetup.rumble(player_index, 0.6, 1.0, 0.6)
 		went_down.emit(self)
@@ -365,6 +366,7 @@ func take_hit(amount: float, from: Vector2) -> bool:
 
 ## Setzt den Spieler an einen neuen Ort (Kartenwechsel) und beendet alles, was ihn gerade bewegt.
 func teleport(pos: Vector2) -> void:
+	_burst_left = 0
 	global_position = pos
 	velocity = Vector2.ZERO
 	if hook_active:
@@ -1260,7 +1262,9 @@ func _handle_fire(_delta: float) -> void:
 		_stance_timer = STANCE_HOLD
 	else:
 		_stance_timer = maxf(0.0, _stance_timer - _delta)
-	if (current.has("ramp_time") or current.has("slow")) and Input.is_action_pressed(_prefix + "fire") and not downed:
+	# Bremsen (Strahl, Flamme, Sog) nur, solange wirklich geschossen werden kann (nicht bei leerem Magazin oder Nachladen).
+	if (current.has("ramp_time") or current.has("slow")) and Input.is_action_pressed(_prefix + "fire") and not downed \
+			and ammo_of(weapon_index) > 0 and not is_reloading():
 		_channel = minf(_channel + _delta, float(current.get("ramp_time", 1.0)))
 	else:
 		_channel = maxf(0.0, _channel - _delta * 3.0)
@@ -1572,11 +1576,12 @@ func _muzzle_offset() -> Vector2:
 		return gun.global_position - global_position
 	var muzzle: Vector2 = stats.muzzle
 	var local := Vector2(muzzle.x * facing, muzzle.y)
-	if _slope_tilt != 0.0:
-		local = local.rotated(_slope_tilt) + _slope_shift
 	if _ceiling:
 		# Kopfueber sitzt das Geschuetz unten am Koerper.
 		return Vector2(muzzle.x * facing, -muzzle.y)
 	if _clinging:
 		return local.rotated(-_cling_dir * PI / 2.0)
+	# Auf schraegem Boden dreht sich der Ansatz mit dem Koerper (nur ohne Wand und Decke).
+	if _slope_tilt != 0.0:
+		return local.rotated(_slope_tilt) + _slope_shift
 	return local

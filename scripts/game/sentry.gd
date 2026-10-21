@@ -23,7 +23,7 @@ func _tick_planted(delta: float) -> void:
 	_cooldown -= delta
 	var target := _find_target()
 	if target != null:
-		_aim = (target.global_position - muzzle_position()).normalized()
+		_aim = (Targeting.point_of(target, muzzle_position()) - muzzle_position()).normalized()
 		if _cooldown <= 0.0:
 			_cooldown = 1.0 / shots_per_second
 			_muzzle = 1.0
@@ -41,10 +41,11 @@ func _find_target() -> Node2D:
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if not is_instance_valid(enemy):
 			continue
-		var distance: float = enemy.global_position.distance_to(origin)
+		var point := Targeting.point_of(enemy, origin)
+		var distance: float = point.distance_to(origin)
 		if distance >= best_distance:
 			continue
-		var query := PhysicsRayQueryParameters2D.create(origin, enemy.global_position, 1 << 0)
+		var query := PhysicsRayQueryParameters2D.create(origin, point, 1 << 0)
 		if get_world_2d().direct_space_state.intersect_ray(query).is_empty():
 			best_distance = distance
 			best = enemy

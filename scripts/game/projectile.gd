@@ -140,7 +140,7 @@ func _steer(delta: float) -> void:
 		if lost or not _has_line_of_sight(_target):
 			_target = _find_target()
 	if _target != null:
-		var wanted := (_target.global_position - global_position).angle()
+		var wanted := (Targeting.point_of(_target, global_position) - global_position).angle()
 		var diff := angle_difference(_velocity.angle(), wanted)
 		_velocity = _velocity.rotated(clampf(diff, -homing * delta, homing * delta))
 	direction = _velocity.normalized()
@@ -156,7 +156,7 @@ func _find_target() -> Node2D:
 	var best := 1100.0
 	var result: Node2D = null
 	for enemy in get_tree().get_nodes_in_group("enemies"):
-		var offset: Vector2 = enemy.global_position - global_position
+		var offset: Vector2 = Targeting.point_of(enemy, global_position) - global_position
 		var distance := offset.length()
 		if distance < best and offset.normalized().dot(_velocity.normalized()) > -0.15 and _has_line_of_sight(enemy):
 			best = distance
@@ -167,7 +167,7 @@ func _find_target() -> Node2D:
 func _has_line_of_sight(target: Node2D) -> bool:
 	if target == null or not is_instance_valid(target):
 		return false
-	var query := PhysicsRayQueryParameters2D.create(global_position, target.global_position, 1)
+	var query := PhysicsRayQueryParameters2D.create(global_position, Targeting.point_of(target, global_position), 1)
 	return get_world_2d().direct_space_state.intersect_ray(query).is_empty()
 
 
@@ -371,7 +371,8 @@ func _on_body_entered(body: Node2D) -> void:
 			_begin_return()
 			Sfx.play("block", 0.2)
 		return
-	if bounces > 0 and explosion_radius <= 0.0 and arc_gravity <= 0.0 and _bounce_off():
+	# Raketen und Drohnen prallen ab und explodieren dann an Gegner oder Flugzeitende; Bogenwuerfe (Dosen, Kartuschen) nicht.
+	if bounces > 0 and arc_gravity <= 0.0 and _bounce_off():
 		return
 	hit.emit(self, global_position, null)
 	queue_free()

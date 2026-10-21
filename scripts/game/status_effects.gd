@@ -91,7 +91,7 @@ func speed_factor() -> float:
 func damage_factor() -> float:
 	var factor := TAG_MULT if _status.has("tagged") else 1.0
 	# Gefrorene Ziele sind spröde.
-	if _status.has("frozen") and target.has_method("stun"):
+	if _status.has("frozen") and not (target is Boss):
 		factor *= BRITTLE_MULT
 	return factor
 
@@ -140,12 +140,16 @@ func process_hit(element: String, source: Node, amount: float) -> float:
 			else:
 				_apply_status("burning", BURN_TIME, source)
 		"ice":
-			if _status.has("wet"):
+			if _status.has("wet") and not (target is Boss):
 				var coop := _is_coop(_status.wet.source, source)
 				_status.erase("wet")
 				_apply_status("frozen", FROZEN_TIME_COOP if coop else FROZEN_TIME_SOLO, source)
 				_combo("freeze", coop)
 				Sfx.play("freeze")
+			elif _status.has("wet"):
+				# Bosse frieren nicht ein: nur Kaelte.
+				_status.erase("wet")
+				_apply_status("chilled", CHILL_TIME, source)
 			elif _status.has("burning"):
 				var coop := _is_coop(_status.burning.source, source)
 				_status.erase("burning")
@@ -291,8 +295,11 @@ func _combo(combo_name: String, coop: bool) -> void:
 		Fx.instance.combo(target.global_position, combo_name, coop)
 
 
+## Laehmung aus einer Kombo. Gegner mit Immunitaet (apply_status) lassen sich nicht dauerhaft festnageln.
 func _stun(duration: float) -> void:
-	if target.has_method("stun"):
+	if target.has_method("apply_status") and target.has_method("stun"):
+		target.apply_status("stun", duration, null)
+	elif target.has_method("stun"):
 		target.stun(duration)
 
 
@@ -328,7 +335,7 @@ func _spark_over(amount: float, source: Node) -> void:
 	var best: Node2D = null
 	var best_distance := SPARK_RADIUS
 	for enemy in target.get_tree().get_nodes_in_group("enemies"):
-		if enemy == target or not is_instance_valid(enemy):
+		if enemy == target or not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
 			continue
 		var distance: float = enemy.global_position.distance_to(target.global_position)
 		if distance < best_distance:
@@ -357,7 +364,7 @@ func _steam(source: Node, coop: bool) -> void:
 func _arc_to_wet(damage: float, source: Node, max_arcs: int) -> void:
 	var candidates: Array[Node2D] = []
 	for enemy in target.get_tree().get_nodes_in_group("enemies"):
-		if enemy == target or not is_instance_valid(enemy):
+		if enemy == target or not is_instance_valid(enemy) or enemy.is_queued_for_deletion():
 			continue
 		if enemy.statuses.has("wet") and enemy.global_position.distance_to(target.global_position) <= ARC_RADIUS:
 			candidates.append(enemy)

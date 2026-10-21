@@ -29,8 +29,8 @@ func _enemy_near() -> bool:
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if not is_instance_valid(enemy):
 			continue
-		var reach := trigger_radius + (float(enemy.radius()) if enemy.has_method("radius") else 40.0)
-		if enemy.global_position.distance_to(global_position) <= reach:
+		var reach := trigger_radius + Targeting.slack_of(enemy)
+		if Targeting.point_of(enemy, global_position).distance_to(global_position) <= reach:
 			return true
 	return false
 

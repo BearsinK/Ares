@@ -604,6 +604,9 @@ func _start_boss() -> void:
 			enemy.queue_free()
 	for bullet in enemy_projectiles.get_children():
 		bullet.queue_free()
+	# Minen, Tuerme, Wolken und Geschosse aus der letzten Welle bleiben nicht in der Boss-Halle stehen.
+	for bullet in projectiles.get_children():
+		bullet.queue_free()
 	for pickup in pickups.get_children():
 		pickup.queue_free()
 	_clear_arena()
@@ -1526,8 +1529,10 @@ func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direct
 	var damage := float(weapon.damage) * player.damage_mult()
 	if weapon.has("gold_scale"):
 		damage *= 1.0 + minf(0.6, float(player.gold) * float(weapon.gold_scale))
+	_crit_mult = 1.0
 	if randf() < float(player.mods.crit):
-		damage *= 2.0 + float(player.mods.crit_dmg)
+		_crit_mult = 2.0 + float(player.mods.crit_dmg)
+		damage *= _crit_mult
 	var element := player.current_module()
 	if element == "":
 		element = String(weapon.get("element", ""))
@@ -1557,6 +1562,10 @@ func _on_player_fired(player: Player, weapon_id: String, origin: Vector2, direct
 			_fire_deploy(player, weapon, origin, direction, damage, element, color)
 		_:
 			_fire_projectiles(player, weapon, origin, direction, damage, element, color)
+
+
+## Crit-Faktor des gerade abgegebenen Schusses: gilt auch fuer Explosionen und Wolken, nicht nur fuer den Direkttreffer.
+var _crit_mult := 1.0
 
 
 ## Anzahl Projektile eines Schusses (Split Barrel) und der Schadensanteil je Projektil.
@@ -1606,7 +1615,7 @@ func _fire_lob(player: Player, weapon: Dictionary, origin: Vector2, direction: V
 			can.shaken = true
 			can.explosion_radius = lerpf(float(weapon.explosion_radius), float(weapon.explosion_radius_max), charge) * (1.0 + blast)
 			can.explosion_damage = lerpf(float(weapon.explosion_damage), float(weapon.explosion_damage_max), charge) * player.damage_mult() \
-				* (1.0 + Perks.BLAST_DAMAGE_SHARE * blast) * factor
+				* (1.0 + Perks.BLAST_DAMAGE_SHARE * blast) * factor * _crit_mult
 		can.hit.connect(_on_projectile_hit)
 		projectiles.add_child(can)
 
@@ -1636,12 +1645,17 @@ func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, dire
 		bullet.style = String(weapon.get("style", "rocket" if weapon.has("homing") else "bullet"))
 		bullet.status = String(weapon.get("status", ""))
 		bullet.status_time = float(weapon.get("status_time", 0.0))
-		bullet.boomerang = float(weapon.get("boomerang", 0.0))
-		bullet.zone = weapon.get("zone", {})
+		bullet.boomerang = float(weapon.get("boomerang", 0.0)) * (1.0 + float(player.mods.range))
+		if weapon.has("zone"):
+			# Wolke: Zusatzprojektile und Crit wirken auf ihren Schaden, Blast Core in _spawn_zone.
+			bullet.zone = (weapon.zone as Dictionary).duplicate()
+			bullet.zone.dps = float(bullet.zone.dps) * factor * _crit_mult
 		bullet.detonate_on_timeout = weapon.has("zone") or weapon.has("homing")
 		if weapon.has("gravity"):
 			bullet.arc_gravity = float(weapon.gravity)
 			bullet.collide_platforms = true
+			# Bogenflug: die Weite waechst mit dem Quadrat der Geschwindigkeit, Reichweite wirkt daher als Wurzel.
+			bullet.speed *= sqrt(1.0 + float(player.mods.range))
 		bullet.damage = damage * factor
 		bullet.lifetime = float(weapon.lifetime) * (1.0 + float(player.mods.range))
 		bullet.pierce = int(weapon.pierce) + int(player.mods.pierce)
@@ -1650,7 +1664,7 @@ func _fire_projectiles(player: Player, weapon: Dictionary, origin: Vector2, dire
 		bullet.element = element
 		bullet.shooter = player
 		bullet.explosion_radius = float(weapon.get("explosion_radius", 0.0)) * (1.0 + blast)
-		bullet.explosion_damage = float(weapon.get("explosion_damage", 0.0)) * player.damage_mult() * (1.0 + Perks.BLAST_DAMAGE_SHARE * blast) * factor
+		bullet.explosion_damage = float(weapon.get("explosion_damage", 0.0)) * player.damage_mult() * (1.0 + Perks.BLAST_DAMAGE_SHARE * blast) * factor * _crit_mult
 		bullet.hit.connect(_on_projectile_hit)
 		projectiles.add_child(bullet)
 
@@ -1699,9 +1713,9 @@ func _enemy_radius(enemy: Node) -> float:
 
 ## Liegt das Ziel im Kegel um dir (halber Oeffnungswinkel half) und in Reichweite? Sehr nahe Ziele zaehlen immer.
 func _in_cone(apex: Vector2, dir: Vector2, target: Node2D, reach: float, half: float, body_radius := -1.0) -> bool:
-	var offset := target.global_position - apex
+	var offset := Targeting.point_of(target, apex) - apex
 	var distance := offset.length()
-	var slack := _enemy_radius(target) if body_radius < 0.0 else body_radius
+	var slack := Targeting.slack_of(target) if body_radius < 0.0 else body_radius
 	if distance > reach + slack:
 		return false
 	if distance <= slack + 30.0:
@@ -1728,7 +1742,7 @@ func _fire_sweep(player: Player, weapon: Dictionary, origin: Vector2, direction:
 	var apex := origin - direction * 24.0
 	var push := float(weapon.get("push", 1.0)) * (1.0 + float(player.mods.knock))
 	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if not is_instance_valid(enemy) or not _in_cone(apex, direction, enemy, reach, arc * 0.5):
+		if not is_instance_valid(enemy) or not _in_cone(apex, direction, enemy, reach, arc * 0.5) or not _clear_line(apex, Targeting.point_of(enemy, apex)):
 			continue
 		enemy.take_damage(damage, player, direction * push, element)
 		_apply_weapon_status(enemy, weapon, player)
@@ -1751,7 +1765,7 @@ func _fire_stream(player: Player, weapon: Dictionary, origin: Vector2, direction
 	var focus := origin + direction * reach * float(weapon.focus)
 	var pull := float(weapon.pull) * (1.0 + float(player.mods.knock))
 	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if not is_instance_valid(enemy) or not _in_cone(origin, direction, enemy, reach, cone) or not _clear_line(origin, enemy.global_position):
+		if not is_instance_valid(enemy) or not _in_cone(origin, direction, enemy, reach, cone) or not _clear_line(origin, Targeting.point_of(enemy, origin)):
 			continue
 		var to_focus: Vector2 = focus - enemy.global_position
 		var strength := clampf(to_focus.length() / 120.0, 0.15, 1.0)
@@ -1769,9 +1783,13 @@ func _fire_chain(player: Player, weapon: Dictionary, origin: Vector2, direction:
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if not is_instance_valid(enemy):
 			continue
-		var offset: Vector2 = enemy.global_position - origin
+		var point := Targeting.point_of(enemy, origin)
+		var offset: Vector2 = point - origin
 		var angle := absf(direction.angle_to(offset))
-		if offset.length() <= reach + _enemy_radius(enemy) and (angle < best_angle or offset.length() < _enemy_radius(enemy) + 40.0) and _clear_line(origin, enemy.global_position):
+		var slack := Targeting.slack_of(enemy)
+		var in_front := angle < best_angle
+		var touching := current == null and offset.length() < slack + 40.0
+		if offset.length() <= reach + slack and (in_front or touching) and _clear_line(origin, point):
 			best_angle = minf(angle, best_angle)
 			current = enemy
 	var from := origin
@@ -1779,7 +1797,7 @@ func _fire_chain(player: Player, weapon: Dictionary, origin: Vector2, direction:
 	var power := damage
 	while current != null and struck.size() <= jumps:
 		var away := (current.global_position - from).normalized()
-		current.take_damage(power, player, away * float(weapon.get("push", 1.0)), element)
+		current.take_damage(power, player, away * float(weapon.get("push", 1.0)) * (1.0 + float(player.mods.knock)), element)
 		_apply_weapon_status(current, weapon, player)
 		fx.zigzag(from, current.global_position, color)
 		fx.spark(current.global_position, color, 4)
@@ -1791,8 +1809,9 @@ func _fire_chain(player: Player, weapon: Dictionary, origin: Vector2, direction:
 		for enemy in get_tree().get_nodes_in_group("enemies"):
 			if not is_instance_valid(enemy) or struck.has(enemy):
 				continue
-			var gap: float = enemy.global_position.distance_to(from)
-			if gap < next_distance and _clear_line(from, enemy.global_position):
+			var next_point := Targeting.point_of(enemy, from)
+			var gap: float = next_point.distance_to(from)
+			if gap < next_distance and _clear_line(from, next_point):
 				next_distance = gap
 				next = enemy
 		current = next
@@ -1802,17 +1821,18 @@ func _fire_chain(player: Player, weapon: Dictionary, origin: Vector2, direction:
 
 ## Legt etwas ab (Mine). Zusatzprojektile legen weitere Minen im Faecher, aeltere verschwinden ueber dem Limit.
 func _fire_deploy(player: Player, weapon: Dictionary, origin: Vector2, direction: Vector2, damage: float, element: String, color: Color) -> void:
-	var count := _shot_count(player, weapon)
+	var entity := String(weapon.entity)
+	# Tuerme schiessen selbst mit den Upgrades des Spielers (Split Barrel gibt ihnen mehr Kugeln), mehr Tuerme gibt es dadurch nicht.
+	var count := 1 if entity == "sentry" else _shot_count(player, weapon)
 	var factor := _split_factor(player, weapon)
 	var blast := float(player.mods.blast)
-	var entity := String(weapon.entity)
 	# Aelteste eigene Dinge dieser Art entfernen, damit das Limit gilt.
 	var mine_list: Array[Node] = []
 	for node in get_tree().get_nodes_in_group("deployables"):
 		if node.owner_player == player and node.kind == entity and not node.is_queued_for_deletion():
 			mine_list.append(node)
 	mine_list.sort_custom(func(a: Node, b: Node) -> bool: return a.age > b.age)
-	var limit := int(weapon.max_active) + int(player.mods.proj)
+	var limit := int(weapon.max_active) + (0 if entity == "sentry" else int(player.mods.proj))
 	while mine_list.size() + count > limit and not mine_list.is_empty():
 		var old: Node = mine_list.pop_front()
 		if Fx.instance:
@@ -1822,8 +1842,8 @@ func _fire_deploy(player: Player, weapon: Dictionary, origin: Vector2, direction
 		var thing: Deployable
 		if entity == "sentry":
 			var sentry := Sentry.new()
-			sentry.damage = damage
-			sentry.reach = float(weapon.range)
+			sentry.damage = damage / maxf(_crit_mult, 1.0)
+			sentry.reach = float(weapon.range) * (1.0 + float(player.mods.range))
 			sentry.shots_per_second = float(weapon.rate)
 			sentry.shot.connect(_on_sentry_shot)
 			thing = sentry
@@ -1838,7 +1858,7 @@ func _fire_deploy(player: Player, weapon: Dictionary, origin: Vector2, direction
 		thing.owner_player = player
 		thing.kind = entity
 		thing.position = origin
-		thing.velocity = direction.rotated(_fan_offset(i, count, Perks.FAN_ANGLE * 2.0)) * float(weapon.get("throw", 300.0)) + Vector2(0.0, -140.0)
+		thing.velocity = direction.rotated(_fan_offset(i, count, Perks.FAN_ANGLE * 2.0)) * float(weapon.get("throw", 300.0)) * sqrt(1.0 + float(player.mods.range)) + Vector2(0.0, -140.0)
 		thing.life = float(weapon.life)
 		thing.color = color
 		thing.element = element
@@ -1865,13 +1885,14 @@ func _assist_aim(origin: Vector2, direction: Vector2, seek: float) -> Vector2:
 	var result := direction
 	var space := get_world_2d().direct_space_state
 	for enemy in get_tree().get_nodes_in_group("enemies"):
-		var offset: Vector2 = enemy.global_position - origin
+		var point := Targeting.point_of(enemy, origin)
+		var offset: Vector2 = point - origin
 		if offset.length() < 40.0:
 			continue
 		var angle := absf(direction.angle_to(offset))
 		if angle >= best_angle:
 			continue
-		var query := PhysicsRayQueryParameters2D.create(origin, enemy.global_position, 1 << 0)
+		var query := PhysicsRayQueryParameters2D.create(origin, point, 1 << 0)
 		if not space.intersect_ray(query).is_empty():
 			continue
 		best_angle = angle
@@ -1970,7 +1991,8 @@ func _explode(pos: Vector2, radius: float, damage: float, shooter: Node, color: 
 	camera.add_shake(shake_amount)
 	Sfx.play("explosion")
 	for enemy in get_tree().get_nodes_in_group("enemies"):
-		var distance: float = enemy.global_position.distance_to(pos)
+		var point := Targeting.point_of(enemy, pos)
+		var distance: float = point.distance_to(pos)
 		if distance <= radius + 25.0:
 			var falloff := 1.0 - 0.5 * clampf(distance / radius, 0.0, 1.0)
 			var away: Vector2 = (enemy.global_position - pos).normalized()

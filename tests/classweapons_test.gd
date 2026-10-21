@@ -72,6 +72,8 @@ func _run() -> void:
 	await _vendor_set()
 	await _printer_set()
 	_all_sets()
+	await _review_fixes()
+	await _boss_targets()
 	print("Fertig, Fehler: ", failures)
 	main.queue_free()
 	get_tree().quit(1 if failures > 0 else 0)
@@ -516,3 +518,133 @@ func _all_sets() -> void:
 	for id in Weapons.ALL_IDS:
 		texts = texts and Archive.WEAPON_TEXT.has(id)
 	_check(texts, "Jede Waffe hat einen Archiv-Text")
+
+
+## Der Boss ist ein grosser Rumpf, dessen Ursprung am Boden liegt: Waffen muessen den Koerper treffen.
+func _boss_targets() -> void:
+	_clear()
+	main._start_boss()
+	await _frames(20)
+	var boss: Boss = main.boss
+	boss.hp = 99999.0
+	boss.max_hp = 99999.0
+	boss._delay = 0.0
+	boss.open = true
+	p1.global_position = Vector2(2630.0, 1200.0)
+	p2.global_position = Vector2(2500.0, 1200.0)
+	await _frames(3)
+	var aim := Vector2.RIGHT
+
+	p1.weapons = ["sweeper"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	var before := boss.hp
+	_fire(p1, "sweeper", aim)
+	_check(boss.hp < before, "Der Sweeper trifft den Boss (%.1f)" % (before - boss.hp))
+
+	p1.weapons = ["vacuum"]
+	before = boss.hp
+	p1.global_position = Vector2(2630.0, 1200.0)
+	_fire(p1, "vacuum", aim)
+	_check(boss.hp < before, "Suction trifft den Boss (%.1f)" % (before - boss.hp))
+
+	p1.weapons = ["zapper"]
+	before = boss.hp
+	_fire(p1, "zapper", aim)
+	_check(boss.hp < before, "Der Zapper trifft den Boss (%.1f)" % (before - boss.hp))
+
+	# Mine: faellt vor dem Boss und loest aus.
+	p1.weapons = ["mine"]
+	before = boss.hp
+	_fire(p1, "mine", aim)
+	var exploded := await _until(func() -> bool: return boss.hp < before, 420)
+	_check(exploded, "Eine Mine vor dem Boss loest aus (%.1f)" % (before - boss.hp))
+	_clear_deployables()
+
+	# Geschuetzturm: findet den Boss.
+	p1.weapons = ["dispenser"]
+	before = boss.hp
+	_fire(p1, "dispenser", aim)
+	var shot := await _until(func() -> bool: return boss.hp < before, 420)
+	_check(shot, "Ein Geschuetzturm schiesst auf den Boss (%.1f)" % (before - boss.hp))
+	_clear_deployables()
+
+	# Explosionen am Rumpf treffen ihn auch weit ueber dem Boden.
+	before = boss.hp
+	main._explode(Vector2(2700.0, 900.0), 150.0, 40.0, p1, Color.WHITE)
+	_check(boss.hp < before, "Eine Explosion an der Rumpfseite trifft ihn (%.1f)" % (before - boss.hp))
+	main.boss.queue_free()
+
+
+func _clear_deployables() -> void:
+	for node in get_tree().get_nodes_in_group("deployables"):
+		node.free()
+
+
+## Neue Befunde der Reviews: Salve nach Tod, Dispenser mit Split Barrel, Zapper-Zielwahl, Bremsen ohne Munition.
+func _review_fixes() -> void:
+	_clear()
+	p1.global_position = Vector2(600.0, 1200.0)
+	# Salve bricht beim Ausschalten ab.
+	p2.weapons = ["burst"]
+	p2.modules = [""]
+	p2.weapon_index = 0
+	p2.invulnerable = false
+	p2.iframes = 0.0
+	await _frames(3)
+	p2._burst_left = 2
+	p2.take_hit(9999.0, p2.global_position + Vector2(5.0, 0.0))
+	_check(p2.downed and p2._burst_left == 0, "Eine Salve bricht ab, wenn der Spieler ausgeschaltet wird")
+	p2.revive(0.5)
+	p2.invulnerable = true
+	# Split Barrel macht keine zusaetzlichen Tuerme, sondern mehr Kugeln pro Turm.
+	p1.weapons = ["dispenser"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	p1.mods.proj = 2.0
+	_fire(p1, "dispenser")
+	var towers := 0
+	for node in get_tree().get_nodes_in_group("deployables"):
+		if node is Sentry:
+			towers += 1
+	_check(towers == 1, "Split Barrel legt keinen zusaetzlichen Turm (%d)" % towers)
+	p1.mods.proj = 0.0
+	_clear_deployables()
+	# Zapper waehlt das Ziel im Fadenkreuz, nicht den, der zufaellig am Spieler klebt.
+	p1.weapons = ["zapper"]
+	var ahead := _dummy("brute", Vector2(1000.0, p1.global_position.y))
+	var behind := _dummy("brute", Vector2(p1.global_position.x + 10.0, p1.global_position.y - 20.0))
+	behind.hp = 5000.0
+	await _frames(2)
+	var hp_ahead := ahead.hp
+	_fire(p1, "zapper", Vector2.RIGHT)
+	_check(ahead.hp < hp_ahead, "Der Zapper trifft den Gegner im Fadenkreuz (%.1f)" % (hp_ahead - ahead.hp))
+	_clear()
+	# Strahl bremst nicht ohne Munition.
+	p1.weapons = ["beam"]
+	p1.modules = [""]
+	p1.weapon_index = 0
+	await _frames(2)
+	p1.ammo[0] = 0
+	Input.action_press("p1_fire")
+	await _frames(20)
+	var slowed := p1.move_speed() < p1.base_speed() * 0.9
+	Input.action_release("p1_fire")
+	_check(not slowed, "Ohne Munition bremst der Strahl nicht (%.2f)" % (p1.move_speed() / p1.base_speed()))
+	await _until(func() -> bool: return not p1.is_reloading(), 400)
+	# Ricochet: eine Rakete prallt an der Wand ab.
+	var rocket := Projectile.new()
+	rocket.position = Vector2(300.0, 1100.0)
+	rocket.direction = Vector2.LEFT
+	rocket.speed = 700.0
+	rocket.lifetime = 3.0
+	rocket.explosion_radius = 80.0
+	rocket.bounces = 1
+	rocket.shooter = p1
+	main.projectiles.add_child(rocket)
+	var rocket_ref: WeakRef = weakref(rocket)
+	var turned := await _until(func() -> bool:
+		var live: Projectile = rocket_ref.get_ref()
+		return live != null and live.direction.x > 0.0, 120)
+	_check(turned, "Raketen prallen mit Ricochet ab")
+	_clear()

@@ -114,7 +114,7 @@ func element_trail(pos: Vector2, element: String) -> void:
 
 ## Treffer eines Elements: Glutfunken, Spritzer, Eisscherben oder kleine Blitzgabeln.
 func element_hit(pos: Vector2, element: String, strength := 1.0) -> void:
-	var count := _calm_count(int(round(6.0 * strength)))
+	var count := _calm_count(int(round(4.0 * strength)))
 	for i in count:
 		var angle := randf() * TAU
 		var dir := Vector2(cos(angle), sin(angle))
@@ -129,7 +129,7 @@ func element_hit(pos: Vector2, element: String, strength := 1.0) -> void:
 				if i < 3:
 					zigzag(pos, pos + dir * randf_range(26.0, 56.0), Elements.COLORS.lightning, 2.0, 0.1)
 	if element == "water":
-		_items.append({"type": "ring", "pos": pos, "radius": 22.0 * minf(strength, 2.0), "t": 0.2, "max": 0.2, "color": Color(0.45, 0.75, 1.0)})
+		ring(pos, 22.0 * minf(strength, 2.0), Color(0.45, 0.75, 1.0))
 
 
 ## Muendungseffekt des Elements vor dem Lauf.
@@ -169,8 +169,8 @@ func combo(pos: Vector2, combo_name: String, coop: bool) -> void:
 	number_text(pos + Vector2(0.0, -78.0), String(info.text), color, 24 if coop else 20, 1.2)
 	if coop:
 		number_text(pos + Vector2(0.0, -102.0), "KOOP", Color(1.0, 0.85, 0.3), 16, 1.2)
-		_items.append({"type": "ring", "pos": pos, "radius": 100.0, "t": 0.3, "max": 0.3, "color": Color(1.0, 0.85, 0.3)})
-	_items.append({"type": "ring", "pos": pos, "radius": 72.0 if coop else 56.0, "t": 0.25, "max": 0.25, "color": color})
+		ring(pos, 100.0, Color(1.0, 0.85, 0.3))
+	ring(pos, 72.0 if coop else 56.0, color)
 	match combo_name:
 		"steam":
 			puff(pos, 55.0, Color(0.92, 0.95, 1.0, 0.85), 9)
@@ -227,10 +227,14 @@ func perk_icon(pos: Vector2, perk_id: String, life := 2.2) -> void:
 
 
 func ring(pos: Vector2, radius: float, color: Color) -> void:
+	if _items.size() >= MAX_ITEMS:
+		return
 	_items.append({"type": "ring", "pos": pos, "radius": radius, "t": 0.2, "max": 0.2, "color": color})
 
 
 func explosion(pos: Vector2, radius: float, color: Color) -> void:
+	if _items.size() >= MAX_ITEMS:
+		return
 	_items.append({"type": "explosion", "pos": pos, "radius": radius, "t": 0.3, "max": 0.3, "color": color})
 	spark(pos, color, 18, 500.0)
 

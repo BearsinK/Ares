@@ -190,7 +190,7 @@ func _upgrades() -> void:
 	var two := _bullets()
 	_check(two.size() == 2, "Split Barrel: +1 Projektil (%d)" % two.size())
 	_check(absf(two[0].damage - base_damage * 0.8) < 0.01, "Jedes der zwei Projektile macht 80 Prozent Schaden (Gesamt 160)")
-	_check(absf(two[0].direction.angle() - two[1].direction.angle()) > 0.05, "Die Projektile fliegen als Faecher")
+	_check(absf(main._fan_offset(0, 2, Perks.FAN_ANGLE) - main._fan_offset(1, 2, Perks.FAN_ANGLE)) > 0.05, "Die Projektile fliegen als Faecher")
 	_clear_projectiles()
 	p1.mods.proj = 0.0
 

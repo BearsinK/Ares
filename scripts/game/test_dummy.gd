@@ -52,6 +52,8 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 	amount *= statuses.damage_factor()
 	if element != "" and not from_effect:
 		amount = statuses.process_hit(element, source, amount)
+		if _dead:
+			return
 	health -= amount
 	_flash = 0.08
 	_wobble = direction * 8.0

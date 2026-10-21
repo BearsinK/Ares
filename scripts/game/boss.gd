@@ -120,6 +120,8 @@ func take_damage(amount: float, source: Node, direction := Vector2.ZERO, element
 		return
 	if element != "" and not from_effect:
 		amount = statuses.process_hit(element, source, amount)
+		if dying:
+			return
 		if Fx.instance:
 			Fx.instance.element_hit(global_position + Vector2(randf_range(-150.0, -60.0), randf_range(-380.0, -200.0)), element, 0.6)
 	amount *= statuses.damage_factor()
@@ -344,6 +346,17 @@ func _update_dying(delta: float) -> void:
 
 # ---------------------------------------------------------------- Zeichnen
 
+## Naechster Punkt des Rumpfes zu from (Welt): Waffen zielen auf den Koerper, nicht auf den Fuss am Boden.
+func closest_point(from: Vector2) -> Vector2:
+	var body := Rect2(global_position + Vector2(-180.0, -600.0), Vector2(360.0, 560.0))
+	return Vector2(clampf(from.x, body.position.x, body.end.x), clampf(from.y, body.position.y, body.end.y))
+
+
+## Halbe Rumpfbreite: damit Minen, Wolken, Schwung und Meldungen den Boss als Koerper erkennen.
+func radius() -> float:
+	return 170.0
+
+
 func _draw() -> void:
 	if _flash > 0.0:
 		modulate = Color(1.7, 1.7, 1.7)
@@ -377,6 +390,10 @@ func _draw() -> void:
 	if hp < max_hp * 0.33:
 		draw_polyline(PackedVector2Array([Vector2(-130, -150), Vector2(-100, -200), Vector2(-140, -250)]), Color(1.0, 0.5, 0.15, 0.8), 3.0, true)
 		draw_polyline(PackedVector2Array([Vector2(60, -150), Vector2(90, -230), Vector2(50, -300)]), Color(1.0, 0.5, 0.15, 0.8), 3.0, true)
+	# Zustaende (nass, brennend, frostig, unter Strom, markiert) um die Rumpfmitte.
+	draw_set_transform(Vector2(0.0, -300.0))
+	statuses.draw_overlay(self, radius() * 0.9, _time)
+	draw_set_transform(Vector2.ZERO)
 
 
 func _draw_chimneys(dark: Color) -> void:

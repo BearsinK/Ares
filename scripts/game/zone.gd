@@ -38,10 +38,10 @@ func _physics_process(delta: float) -> void:
 		for enemy in get_tree().get_nodes_in_group("enemies"):
 			if not is_instance_valid(enemy):
 				continue
-			var body := float(enemy.radius()) if enemy.has_method("radius") else 40.0
-			if enemy.global_position.distance_to(global_position) > reach + body:
+			if Targeting.point_of(enemy, global_position).distance_to(global_position) > reach + Targeting.slack_of(enemy):
 				continue
-			enemy.take_damage(dps * 0.4, owner_player, Vector2.ZERO, element, true)
+			# Mit Element wirkt die Wolke wie ein Treffer (Zustaende, Kombos), ohne Element nur als Schaden ueber Zeit.
+			enemy.take_damage(dps * 0.4, owner_player, Vector2.ZERO, element, element == "")
 			if status != "" and enemy.has_method("apply_status"):
 				enemy.apply_status(status, 1.2, owner_player)
 	queue_redraw()
