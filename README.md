@@ -28,7 +28,7 @@ Beide Spieler können Controller und Tastatur gleichzeitig nutzen. Spieler 1 bek
 
 Interagieren (Kreis / G / L) belebt den Partner (halten). Die Klassenfähigkeit auf Quadrat (Taste E bzw. Komma) hat eine Abklingzeit, die Leiste im HUD zeigt sie. Escape oder Options öffnet die Pause.
 
-Das Spiel startet im Titelbildschirm: Spielen (Koop) oder Solo (ein Spieler mit P1-Steuerung, 30 Leben mehr, etwa ein Drittel weniger Gegner, Shop und Level-Up mit einer Wahl, allein am Boden ist Game Over), dann wählt jeder Spieler seine Klasse (Links/Rechts, Kreuz bestätigt, Kreis nimmt zurück). Im Spiel wechseln F4 (Spieler 1) und F5 (Spieler 2) die Klasse (startet die Szene neu).
+Das Spiel startet im Titelbildschirm: Spielen (Koop) oder Solo (ein Spieler mit P1-Steuerung, 50 Leben mehr, etwa die Hälfte weniger Gegner-Punkte, Shop und Level-Up mit einer Wahl, allein am Boden ist Game Over), dann wählt jeder Spieler seine Klasse (Links/Rechts, Kreuz bestätigt, Kreis nimmt zurück). Im Spiel wechseln F4 (Spieler 1) und F5 (Spieler 2) die Klasse (startet die Szene neu).
 
 Debug: F1 und F2 tauschen die aktuelle Waffe von Spieler 1 bzw. 2 gegen die nächste, F3 gibt beiden das komplette Testset (alle Waffen mit Modulen).
 
