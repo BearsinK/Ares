@@ -77,27 +77,27 @@ func _physics_process(delta: float) -> void:
 			main.boss_arena.clear_obstacles()
 		if Time.get_ticks_msec() / 1000.0 > _log_next:
 			_log_next = Time.get_ticks_msec() / 1000.0 + 2.0
-			print("Boss HP %d Phase %d offen %s Attacke %s | P1 %d P2 %d" % [main.boss.hp, main.boss.phase, main.boss.open, main.boss._attack, main.players[0].hp, main.players[1].hp])
+			print("Boss HP %d Phase %d offen %s Attacke %s | P1 %d P2 %d" % [main.boss.hp, main.boss.phase, main.boss.open, main.boss._attack, main.players[0].hp, main.players[main.players.size() - 1].hp])
 	if main.wave != _last_wave:
 		_last_wave = main.wave
 		_report("Welle %d beginnt" % main.wave)
-	for i in 2:
+	for i in main.players.size():
 		_bot(i, delta)
 
 
 func _report(title: String) -> void:
 	var p1: Player = main.players[0]
-	var p2: Player = main.players[1]
 	var t := int(main.director.time)
-	print("%s | Zeit %02d:%02d Stufe %d Kills %d | P1 %s %d/%d Gold %d | P2 %s %d/%d Gold %d | Gegner %d | Waffen %s / %s" % [
-		title, t / 60, t % 60, main.level, main.kills,
-		p1.class_id, p1.hp, p1.max_health(), p1.gold, p2.class_id, p2.hp, p2.max_health(), p2.gold,
-		main.director.alive_count(), p1.weapons, p2.weapons])
+	var line := "%s | Zeit %02d:%02d Stufe %d Kills %d | P1 %s %d/%d Gold %d" % [title, t / 60, t % 60, main.level, main.kills, p1.class_id, p1.hp, p1.max_health(), p1.gold]
+	if main.players.size() > 1:
+		var p2: Player = main.players[1]
+		line += " | P2 %s %d/%d Gold %d" % [p2.class_id, p2.hp, p2.max_health(), p2.gold]
+	print("%s | Gegner %d | Waffen %s" % [line, main.director.alive_count(), p1.weapons])
 
 
 func _shop() -> void:
 	var shop: ShopMenu = main.shop_menu
-	for i in 2:
+	for i in main.players.size():
 		var player: Player = main.players[i]
 		var spent := true
 		while spent:
@@ -136,7 +136,7 @@ func _bot(i: int, delta: float) -> void:
 		return
 	var partner: Player = p.partner
 	# Partner wiederbeleben.
-	if partner.downed:
+	if partner != null and partner.downed:
 		var gap := partner.global_position.x - p.global_position.x
 		if absf(gap) > 40.0:
 			Input.action_press(prefix + ("right" if gap > 0.0 else "left"))
@@ -242,12 +242,14 @@ func _bot(i: int, delta: float) -> void:
 			want_jump = true
 	else:
 		# Ohne Gegner dem Partner naehern.
-		var gap := partner.global_position.x - p.global_position.x
-		move = signf(gap) if absf(gap) > 250.0 else 0.0
+		if partner != null:
+			var gap := partner.global_position.x - p.global_position.x
+			move = signf(gap) if absf(gap) > 250.0 else 0.0
 	# Beieinander bleiben.
-	var partner_gap := partner.global_position.x - p.global_position.x
-	if absf(partner_gap) > 1100.0:
-		move = signf(partner_gap)
+	if partner != null:
+		var partner_gap := partner.global_position.x - p.global_position.x
+		if absf(partner_gap) > 1100.0:
+			move = signf(partner_gap)
 	if move != 0.0:
 		Input.action_press(prefix + ("right" if move > 0.0 else "left"))
 	if p.is_on_wall() and move != 0.0:

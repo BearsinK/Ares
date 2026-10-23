@@ -34,7 +34,7 @@ var modifier: Dictionary = {}
 ## Solo: weniger Gegner, weil nur einer kaempft (ohne Partner und Wiederbeleben).
 var solo := false
 
-const SOLO_CREDITS := 0.65
+const SOLO_CREDITS := 0.55
 const SOLO_CAP := 0.75
 
 var _credits := 4.0

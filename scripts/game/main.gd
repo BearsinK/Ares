@@ -4,7 +4,7 @@ extends Node2D
 ## Layout leicht anpassen laesst.
 
 const ARENA_SIZE := Vector2(3200.0, 1350.0)
-const SOLO_BONUS_HP := 30.0
+const SOLO_BONUS_HP := 50.0
 const FLOOR_Y := 1250.0
 ## Schacht rechts: Bereich des Aufwinds und seine Steiggeschwindigkeit.
 const SHAFT_LIFT := Rect2(2645.0, 610.0, 190.0, 640.0)

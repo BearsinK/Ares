@@ -329,7 +329,7 @@ Grundlage: Klassen sollen sich nicht nur über Werte, sondern über die Art zu k
 
 ## Runde Solo, Beschwörer und Beweglichkeit
 
-- Solo: Ein Eintrag in der Klassenliste heißt Solo, zwei heißen Koop. Alles, was zwei Spieler voraussetzte, arbeitet mit der Zahl der Spieler (HUD, Shop, Level-Up mit gespiegeltem Zeiger, Ergebnis, Kamera). Ausgleich ohne Partner: 30 Leben mehr, 65 Prozent der Gegner-Punkte und 75 Prozent des Gegnerlimits im Director. Allein am Boden ist sofort Game Over
+- Solo: Ein Eintrag in der Klassenliste heißt Solo, zwei heißen Koop. Alles, was zwei Spieler voraussetzte, arbeitet mit der Zahl der Spieler (HUD, Shop, Level-Up mit gespiegeltem Zeiger, Ergebnis, Kamera). Ausgleich ohne Partner: 50 Leben mehr, 55 Prozent der Gegner-Punkte und 75 Prozent des Gegnerlimits im Director. Allein am Boden ist sofort Game Over
 - Kamera und Gefallene: Die Kamera folgt nur Stehenden und lässt Gefallene los. Ein Pfeil am Bildrand in der Farbe des Gefallenen zeigt, wohin man zum Wiederbeleben laufen muss, mit dem Fortschrittsring
 - Die Spielzeit friert bei Game Over ein, damit das Ergebnis den Moment des Ausfalls zeigt
 - Mobilität: Neue Firmware Jet Boots, Turbo Legs, Spring Legs, Blade Dash, Long Dash, dazu drei Stufen für Double Jump und Dash Cell. Jede hat eine eigene Wirkung statt eines reinen Zahlenbonus (Schub mit Tank, Schaden im Dash, weitere Sprünge). Firmware erscheint im Shop häufiger (35 Prozent in den ersten drei Wellen, danach 18)
